@@ -114,10 +114,15 @@ until the grab is indexed as paid, and checks the feed.
 
 ## Notes
 
-- The crank pays won Lucky shares, cancels grabs whose randomness never arrived (after 300 slots),
-  and closes packets that are expired or fully resolved with nothing pending: `close_claims` in
-  batches of 20 claim records, then `close_packet` (refund + crank reward). Each step is isolated
-  and its result is returned as JSON; a failing step never stops the others.
+- The crank pays won Lucky shares (soonest-expiring packets first), cancels grabs whose randomness
+  never arrived (after 300 slots), closes packets that are expired or fully resolved with nothing
+  pending (`close_claims` in batches of 20 claim records, then `close_packet` with refund and crank
+  reward), and closes lapsed Luck-King crowns. An unpaid win on an expired packet keeps being paid
+  for an hour before a close may forfeit it. Each step is isolated, the tick stops starting new
+  transactions after 40 s, and the result is returned as JSON.
+- Circle packet messages are returned only to members of that circle (and the sender); the link page
+  and signed-out reads show the amount without the message. Note that the anon Realtime policy on
+  `packets` still exposes whole rows to holders of the anon key.
 - The indexer decodes Anchor events (`Program data:` lines attributed to the Bao program on the
   invoke stack), upserts rows idempotently (a claim never moves backwards: pending → won → paid),
   re-reads packet accounts to mirror counters, and reconciles claims from chain accounts each tick.
