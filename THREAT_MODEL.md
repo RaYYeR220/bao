@@ -72,3 +72,18 @@ The sum is always exact and no one can choose their own randomness; this is an a
   their own packet; Bao does not restrict which classic SPL mints can be used.
 - **Liveness of the oracle.** If MagicBlock stops answering, Lucky grabs stay pending and can be cancelled after
   300 slots; nothing is paid without a proof.
+
+## Dependency scan
+
+`gitleaks` over the full git history finds no secrets. `osv-scanner` over `Cargo.lock`, `pnpm-lock.yaml`
+and `apps/mobile/package-lock.json` reports the advisories below; none has a fix Bao can apply without
+forking Anchor or the MagicBlock SDK, and none is reachable from the program's own code.
+
+| Crate | Advisory | Pulled in by | Why it does not bite |
+|---|---|---|---|
+| `bincode 1.3.3` | RUSTSEC-2025-0141, unmaintained | `anchor-lang` | no known vulnerability; Bao never decodes bincode from user input |
+| `borsh 0.10.4` | GHSA-fjx5-qpf4-xjf2, ZST parsing unsound | `magicblock-delegation-program-api` | Bao uses Anchor's borsh 1.x; no zero-sized types are deserialized |
+| `rkyv 0.7.46` | RUSTSEC-2026-0235, Rc/Arc archive validation | `magicblock-delegation-program-api` | delegation code path, not used by the VRF calls Bao makes |
+| `libsecp256k1 0.6.0` | RUSTSEC-2025-0161, unmaintained | `solana-program 2.3` (MagicBlock SDK) | compiled for off-chain targets only |
+| `rand 0.7.3` | RUSTSEC-2026-0097, unsound with a custom logger | `solana-program 2.3` (MagicBlock SDK) | off-chain only; on-chain randomness comes from the VRF proof |
+| `ansi_term`, `derivative`, `paste` | unmaintained | test and build tooling | not in the program's dependency graph |
