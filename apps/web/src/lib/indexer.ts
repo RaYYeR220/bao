@@ -53,12 +53,14 @@ export async function mintDecimals(rpc: SolanaRpc, mint: string): Promise<number
   return null;
 }
 
-/** Re-reads the packet account and mirrors it; returns the stored row (null if never seen). */
-export async function refreshPacket(deps: IndexerDeps, packet: string): Promise<PacketRecord | null> {
+/** Re-reads the packet account and mirrors it. `found` tells whether the account exists on chain. */
+export async function syncPacket(deps: IndexerDeps, packet: string): Promise<{ found: boolean; row: PacketRecord | null }> {
   const now = (deps.now ?? nowSecs)();
+  let found = false;
   try {
     const account = await fetchMaybePacket(deps.rpc, address(packet), { commitment: 'confirmed' });
     if (account.exists) {
+      found = true;
       const mirror = mirrorFromAccount(packet, account.data, await mintDecimals(deps.rpc, account.data.mint));
       const known = await deps.store.getPacket(packet);
       await deps.store.upsertPacketMirror(mirror, packetStatus({ ...mirror, reserved: mirror.reserved ?? 0, status: known?.status }, now));
@@ -66,7 +68,12 @@ export async function refreshPacket(deps: IndexerDeps, packet: string): Promise<
   } catch (e) {
     log.warn('indexer.refresh_failed', { packet, error: errorMessage(e) });
   }
-  return deps.store.getPacket(packet);
+  return { found, row: await deps.store.getPacket(packet) };
+}
+
+/** Mirrors the packet account when it exists; returns the stored row (null if never seen). */
+export async function refreshPacket(deps: IndexerDeps, packet: string): Promise<PacketRecord | null> {
+  return (await syncPacket(deps, packet)).row;
 }
 
 async function applyEvent(deps: IndexerDeps, tx: TxInput, event: BaoEvent, blockTime: number) {
