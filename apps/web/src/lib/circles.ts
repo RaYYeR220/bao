@@ -3,6 +3,7 @@ import { randomInt } from 'node:crypto';
 import { address as toAddress } from '@solana/kit';
 import { buildCircleTree, type CircleDetail, type CircleSummary } from '@bao/sdk';
 import type { Store } from './db';
+import { env } from './env';
 import { refreshPacket } from './indexer';
 import { warmSkrNames, type IdentityDeps } from './seeker';
 import type { SolanaRpc } from './rpc';
@@ -60,7 +61,7 @@ export async function circleDetail(deps: IdentityDeps, circle: CircleRecord, now
   const [packets, chains, boards, counts] = await Promise.all([
     store.circlePackets(circle.id),
     store.circleChains(circle.id),
-    store.circleLeaderboards(circle.id),
+    store.circleLeaderboards(circle.id, env().TSKR_MINT),
     store.circleCounts(circle.id, now),
   ]);
   await warmSkrNames(deps, members.map((m) => m.address));

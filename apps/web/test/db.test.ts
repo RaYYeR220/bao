@@ -78,7 +78,7 @@ describe('circles', () => {
     await store.markCrowned(A.p1, A.carol, '3');
     await store.markCrowned(A.p2, A.carol, '2');
     await store.markCrowned(A.p3, A.bob, '1');
-    const boards = await store.circleLeaderboards(c.id);
+    const boards = await store.circleLeaderboards(c.id, A.mint);
     expect(boards.generous).toEqual([
       { address: A.alice, total: '9' },
       { address: A.bob, total: '7' },
@@ -113,14 +113,18 @@ describe('packets', () => {
     const now = 5_000;
     const c = await store.createCircle({ name: 'F', emoji: null, owner: A.alice, inviteCode: 'FEED22' });
     await store.upsertPacketMirror(mirror({ address: A.p1, expiresAt: 9_000 }), 'live');
+    await store.addMember(c.id, A.carol);
+    await store.saveSnapshot(c.id, 'ee'.repeat(32), [A.alice]);
     await store.upsertPacketMirror(mirror({ address: A.p2, audience: 'circle', expiresAt: 8_000 }), 'live');
-    await store.registerPacket(A.p2, { message: null, skin: null, circleId: c.id, snapshotRoot: null, codeHint: null });
+    await store.registerPacket(A.p2, { message: null, skin: null, circleId: c.id, snapshotRoot: 'ee'.repeat(32), codeHint: null });
     await store.upsertPacketMirror(mirror({ address: A.p3, startsAt: 6_000, createdAt: 4_000 }), 'scheduled');
     await store.upsertPacketMirror(mirror({ address: A.p4, audience: 'code' }), 'live');
 
     expect((await store.feed(null, now)).map((p) => p.address)).toEqual([A.p1, A.p3]);
     expect((await store.feed(A.alice, now)).map((p) => p.address)).toEqual([A.p2, A.p1, A.p3]);
     expect((await store.feed(A.bob, now)).map((p) => p.address)).toEqual([A.p1, A.p3]);
+    // carol joined after the snapshot: she cannot grab that circle packet, so she does not see it
+    expect((await store.feed(A.carol, now)).map((p) => p.address)).toEqual([A.p1, A.p3]);
     expect((await store.upcomingRains(now)).map((p) => p.address)).toEqual([A.p3]);
 
     await store.applyGrab({ packet: A.p1, deviceKey: A.carol, claimer: A.alice, index: 0, status: 'pending', at: now, slot: 1 });

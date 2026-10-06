@@ -22,7 +22,10 @@ export async function connectPg(url: string): Promise<Sql> {
     max: 3,
     // Supabase serves its own CA: pass it in DATABASE_CA_CERT, or use the URL's sslmode
     ssl: env().DATABASE_CA_CERT ? { ca: env().DATABASE_CA_CERT, rejectUnauthorized: true } : undefined,
+    idleTimeoutMillis: 10_000,
   });
+  // the pooler drops idle connections; without a listener that would crash the process
+  pool.on('error', (e) => log.error('db.pool_error', { error: e.message }));
   return {
     async query<T extends Row>(text: string, params: unknown[] = []) {
       const res = await pool.query(text, params);
@@ -289,6 +292,11 @@ export class Store {
     return r ? toCircle(r) : null;
   }
 
+  async circleIdsOf(address: string): Promise<Set<string>> {
+    const rows = await this.sql.query('select circle_id from circle_members where address = $1', [address]);
+    return new Set(rows.map((r) => str(r.circle_id)));
+  }
+
   async isMember(circleId: string, address: string): Promise<boolean> {
     const rows = await this.sql.query('select 1 from circle_members where circle_id = $1 and address = $2', [circleId, address]);
     return rows.length > 0;
@@ -361,11 +369,12 @@ export class Store {
       .sort((a, b) => b.depth - a.depth);
   }
 
-  async circleLeaderboards(circleId: string, limit = 10) {
+  /** Most generous is summed in one token (`mint`), since amounts of different mints do not add up. */
+  async circleLeaderboards(circleId: string, mint: string, limit = 10) {
     const generous = await this.sql.query(
       `select sender as address, sum(total_amount)::text as total from packets
-       where circle_id = $1 group by sender order by sum(total_amount) desc, sender limit $2`,
-      [circleId, limit],
+       where circle_id = $1 and mint = $3 group by sender order by sum(total_amount) desc, sender limit $2`,
+      [circleId, limit, mint],
     );
     const lucky = await this.sql.query(
       `select luck_king as address, count(*) as crowns from packets
@@ -514,7 +523,8 @@ export class Store {
        where p.status <> 'closed' and p.expires_at > $2 and p.reserved < p.total_shares
          and (p.audience = 'open'
               or (p.audience = 'circle' and $1::text is not null and exists (
-                    select 1 from circle_members m where m.circle_id = p.circle_id and m.address = $1)))
+                    select 1 from circle_snapshots s
+                    where s.circle_id = p.circle_id and s.root = p.snapshot_root and $1 = any(s.members))))
          and ($1::text is null or not exists (select 1 from grabs g where g.packet = p.address and g.claimer = $1))
        order by case when p.starts_at <= $2 then 0 else 1 end,
                 case when p.starts_at <= $2 then p.expires_at else p.starts_at end,
@@ -533,14 +543,17 @@ export class Store {
     return rows.map(toPacket);
   }
 
-  /** Rains opening before `until` whose start push has not gone out. */
-  async rainsStartingBefore(until: number): Promise<PacketRecord[]> {
+  /**
+   * Registered rains opening between ten minutes ago and `until` whose start push has not gone
+   * out. Unregistered or stale rains never fan out to every subscriber.
+   */
+  async rainsStartingBefore(until: number, now: number): Promise<PacketRecord[]> {
     const rows = await this.sql.query(
       `select ${PACKET_COLUMNS} from packets
-       where audience = 'open' and starts_at > created_at and starts_at <= $1 and rain_push_at is null
-         and status <> 'closed'
-       order by starts_at limit 50`,
-      [until],
+       where audience = 'open' and starts_at > created_at and starts_at <= $1 and starts_at > $2 - 600
+         and expires_at > $2 and registered_at is not null and rain_push_at is null and status <> 'closed'
+       order by starts_at limit 20`,
+      [until, now],
     );
     return rows.map(toPacket);
   }
