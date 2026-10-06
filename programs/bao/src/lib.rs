@@ -1,5 +1,6 @@
 pub mod constants;
 pub mod error;
+pub mod events;
 pub mod instructions;
 pub mod state;
 
@@ -15,11 +16,11 @@ declare_id!("DifXuyhEu3r7sgXQjgCokyikQFcYCYD2cwhjNyU7j6XR");
 pub mod bao {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        crate::instructions::initialize::handle_initialize(ctx)
+    pub fn init_config(ctx: Context<InitConfig>, args: InitConfigArgs) -> Result<()> {
+        instructions::config::handle_init_config(ctx, args)
     }
 
-    pub fn increment(ctx: Context<Increment>) -> Result<()> {
-        crate::instructions::increment::handle_increment(ctx)
+    pub fn update_config(ctx: Context<UpdateConfig>, args: UpdateConfigArgs) -> Result<()> {
+        instructions::config::handle_update_config(ctx, args)
     }
 }
