@@ -63,7 +63,7 @@ export async function mintGenesisMember(authority: KeyPairSigner, group: Address
 }
 
 async function main() {
-  const authority = await loadKeypair();
+  const authority = await loadKeypair(process.env.BAO_MINT_AUTHORITY || undefined);
   let group = readOut().genesisGroup as Address | undefined;
   if (!group) {
     group = await createGenesisGroup(authority);

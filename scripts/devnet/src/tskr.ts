@@ -35,7 +35,7 @@ export async function mintTskr(authority: KeyPairSigner, mint: Address, owner: A
 }
 
 async function main() {
-  const authority = await loadKeypair();
+  const authority = await loadKeypair(process.env.BAO_MINT_AUTHORITY || undefined);
   let mint = readOut().tskrMint as Address | undefined;
   if (!mint) {
     mint = await createTskrMint(authority);
