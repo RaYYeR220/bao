@@ -69,7 +69,7 @@ export function useHistory(owner: string | undefined) {
     queryKey: ['history', owner],
     queryFn: async (): Promise<History> => {
       try {
-        const res = await baoApi.call('GET /api/users/:address', { params: { address: owner! } })
+        const res = await baoApi.call('GET /api/users/:address', { params: { address: owner! } }, { timeoutMs: 25_000 })
         const packets = await fetchPackets(
           client.rpc as never,
           res.grabs.map((g) => g.packet as Address),

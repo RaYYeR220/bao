@@ -11,6 +11,15 @@ const toBase64 = (bytes: Uint8Array) => {
   return globalThis.btoa(binary)
 }
 
+/**
+ * MWA returns the SIWS signature and message as base64 text; the wallet adapter hands them
+ * over as the UTF-8 bytes of that text. Recover the base64 if so, else encode the raw bytes.
+ */
+const walletBase64 = (value: Uint8Array) => {
+  const text = new TextDecoder().decode(value)
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(text) && text.length % 4 === 0 ? text : toBase64(value)
+}
+
 export type SignInResult = { address: string; user: UserView | null; serverReachable: boolean }
 
 /**
@@ -40,8 +49,8 @@ export function useBaoSignIn() {
           input,
           output: {
             address: output.account.address,
-            signedMessage: toBase64(output.signedMessage as Uint8Array),
-            signature: toBase64(output.signature as Uint8Array),
+            signedMessage: walletBase64(output.signedMessage as Uint8Array),
+            signature: walletBase64(output.signature as Uint8Array),
           },
         },
       })

@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { createBaoApi, type Endpoints } from '@bao/sdk'
+import type { Endpoints } from '@bao/sdk'
 import { useQuery } from '@tanstack/react-query'
 import { atom } from 'nanostores'
 
@@ -16,7 +16,38 @@ export class ApiUnavailableError extends Error {
 }
 
 const RECHECK_MS = 30_000
-const raw = createBaoApi(API_URL, getToken)
+
+type Path<K> = K extends `${string} ${infer P}` ? P : never
+
+/** The SDK's typed contract over fetch, with an abort on timeout so a slow call never holds a connection. */
+async function rawCall<K extends keyof Endpoints>(
+  key: K,
+  opts: { params?: Record<string, string>; query?: Record<string, string>; body?: unknown },
+  timeoutMs: number,
+): Promise<Endpoints[K]['res']> {
+  const [method, rawPath] = (key as string).split(' ') as [string, Path<K>]
+  let path: string = rawPath
+  for (const [k, v] of Object.entries(opts.params ?? {})) path = path.replace(`:${k}`, encodeURIComponent(v))
+  const qs = opts.query ? `?${new URLSearchParams(opts.query)}` : ''
+  const token = getToken()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${API_URL}${path}${qs}`, {
+      method,
+      signal: controller.signal,
+      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: method === 'GET' ? undefined : JSON.stringify(opts.body ?? {}),
+    })
+    if (!res.ok) throw new Error(`${key} → ${res.status}: ${await res.text()}`)
+    return (await res.json()) as Endpoints[K]['res']
+  } catch (e) {
+    if (controller.signal.aborted) throw new Error('Request timed out')
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 function looksUnavailable(error: unknown) {
   const text = error instanceof Error ? error.message : String(error)
@@ -30,9 +61,6 @@ function looksUnavailable(error: unknown) {
   return false
 }
 
-const timeout = (ms: number) =>
-  new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Request timed out')), ms))
-
 /**
  * Typed API client. Fails fast for 30 s after the server was found unreachable so screens fall
  * back to the chain without waiting on timeouts; `force` skips that shortcut (pull-to-refresh).
@@ -41,17 +69,21 @@ export const baoApi = {
   async call<K extends keyof Endpoints>(
     key: K,
     opts: { params?: Record<string, string>; query?: Record<string, string>; body?: unknown } = {},
-    { timeoutMs = 7000, force = false }: { timeoutMs?: number; force?: boolean } = {},
+    { timeoutMs = 12_000, force = false }: { timeoutMs?: number; force?: boolean } = {},
   ): Promise<Endpoints[K]['res']> {
     const status = $api.get()
     if (!force && status.state === 'down' && Date.now() - status.checkedAt < RECHECK_MS) throw new ApiUnavailableError()
     try {
-      const res = await Promise.race([raw.call(key, opts), timeout(timeoutMs)])
+      const res = await rawCall(key, opts, timeoutMs)
       $api.set({ state: 'up', checkedAt: Date.now() })
       return res
     } catch (error) {
       if (looksUnavailable(error)) {
-        $api.set({ state: 'down', checkedAt: Date.now() })
+        const text = String(error instanceof Error ? error.message : error)
+        console.log(`api: ${key} unavailable: ${text.slice(0, 200)}`)
+        // a slow endpoint timing out says nothing about the rest of the server
+        const slowOnly = /timed out/i.test(text) && key === 'GET /api/users/:address'
+        if (!slowOnly) $api.set({ state: 'down', checkedAt: Date.now() })
         throw new ApiUnavailableError()
       }
       $api.set({ state: 'up', checkedAt: Date.now() })
