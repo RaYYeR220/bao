@@ -14,9 +14,11 @@ import { LuckKingSeal } from './luck-king-seal'
 /** Counts a Bodoni amount up from zero with a decelerating ease; ticks a haptic as it lands. */
 function CountUp({ amount, decimals, run, size }: { amount: bigint; decimals: number; run: boolean; size: number }) {
   const reduced = useReducedMotion()
-  const [shown, setShown] = useState<bigint>(run && !reduced ? 0n : amount)
+  // stays at zero until the card has landed, then counts up to the drawn share
+  const [shown, setShown] = useState<bigint>(0n)
   useEffect(() => {
-    if (!run || reduced) {
+    if (!run) return
+    if (reduced) {
       setShown(amount)
       return
     }

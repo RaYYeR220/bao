@@ -205,14 +205,15 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
   const sendNext = () =>
     router.push({ pathname: '/send', params: { parent: detail.address, parentRefund: detail.sender } })
 
-  const cardNode = result ? (
+  const renderCard = (where: 'inside' | 'front') =>
+    result ? (
     <ResultCard
       width={geo.card.width}
       height={geo.card.height}
       amount={result.amount}
       decimals={decimals}
       symbol={symbol}
-      landed={landed}
+      landed={landed && where === 'front'}
       isKing={result.isKing && detail.mode === 'lucky'}
       kicker={alreadyMine ? 'You grabbed earlier' : 'You grabbed'}
       headline={result.isKing && detail.mode === 'lucky' ? 'Luck King' : detail.mode === 'lucky' ? 'Lucky share' : 'Equal share'}
@@ -250,7 +251,7 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
         ticks={{ total: detail.shares, left: sharesLeft(detail) }}
         mode={mode}
         face={face}
-        card={cardNode}
+        renderCard={renderCard}
         shimmer={shimmer}
         time={time}
         trembleKey={trembleKey}

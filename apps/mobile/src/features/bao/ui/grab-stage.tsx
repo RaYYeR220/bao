@@ -61,7 +61,7 @@ export function GrabStage({
   ticks,
   mode,
   face,
-  card,
+  renderCard,
   shimmer,
   time,
   trembleKey,
@@ -76,7 +76,8 @@ export function GrabStage({
   ticks?: { total: number; left: number }
   mode: StageMode
   face?: ReactNode
-  card?: ReactNode
+  /** The result card, drawn twice: inside the envelope while it rises, then in front. */
+  renderCard?: (where: 'inside' | 'front') => ReactNode
   shimmer: SharedValue<number>
   time: SharedValue<number>
   trembleKey: number
@@ -302,7 +303,7 @@ export function GrabStage({
           <Lacquer width={envW} tone={tone} part={3} gleam={gleam} heightUnits={ENV.A} />
         </Animated.View>
         <Animated.View style={[styles.cardBox, { width: cf.width, height: cf.height }, inCardStyle]} pointerEvents="none">
-          {card}
+          {renderCard?.('inside')}
         </Animated.View>
         <Lacquer width={envW} tone={tone} part={1} gleam={gleam} shimmer={shimmer} time={time} style={StyleSheet.absoluteFill} />
         <Animated.View style={[StyleSheet.absoluteFill, faceStyle]} pointerEvents="none">
@@ -336,7 +337,7 @@ export function GrabStage({
         style={[styles.cardBox, { left: cf.left, top: cf.top, width: cf.width, height: cf.height }, frontStyle]}
         pointerEvents="box-none"
       >
-        {card}
+        {renderCard?.('front')}
       </Animated.View>
     </View>
   )
