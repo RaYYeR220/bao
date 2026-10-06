@@ -25,6 +25,7 @@ import {
   findPacketPda,
   getCreatePacketInstructionAsync,
   getGrabLuckyInstructionAsync,
+  getPayoutInstructionAsync,
 } from '@bao/sdk';
 import { airdropIfLow, explorer, loadKeypair, readOut, rpc, send, sendExpectingFailure } from './env';
 import { mintGenesisMember } from './genesis-group';
@@ -85,31 +86,41 @@ async function main() {
     seekerOnly: true,
     expiresIn: 3_600n,
     messageHash: new Uint8Array(32),
+    maxFeeBps: 100,
   });
   record('packet', packet);
   record('create_packet', await send([create], sender));
 
-  // 2. a Seeker grabs; the VRF callback pays
+  // 2. a Seeker grabs; the VRF callback assigns the share; payout moves the tokens
   const sgt = await findGenesisToken(rpc, grabber.address, genesisGroup);
   if (!sgt) throw new Error('grabber has no genesis token');
   const grab = await grabLucky(grabber, packet, tskrMint, sgt);
   const started = Date.now();
   record('grab_lucky', await send([grab.ix], grabber));
-  let paid = false;
-  for (let i = 0; i < 60 && !paid; i++) {
+  let won = false;
+  for (let i = 0; i < 60 && !won; i++) {
     const claim = await fetchMaybeClaimRecord(rpc, grab.claim);
-    if (claim.exists && claim.data.status === ClaimStatus.Paid) {
-      paid = true;
+    if (claim.exists && claim.data.status === ClaimStatus.Won) {
+      won = true;
       record('vrf_latency_ms', Date.now() - started);
       record('lucky_amount', Number(claim.data.amount));
     } else {
       await new Promise((r) => setTimeout(r, 500));
     }
   }
-  if (!paid) throw new Error('VRF callback did not arrive within 30s');
+  if (!won) throw new Error('VRF callback did not arrive within 30s');
   const sigs = await rpc.getSignaturesForAddress(grab.claim, { limit: 5 }).send();
   const callback = sigs.find((s) => s.signature !== log.grab_lucky);
   if (callback) record('vrf_callback', callback.signature);
+  record(
+    'payout',
+    await send(
+      [await getPayoutInstructionAsync({ payer: grabber, packet, claim: grab.claim, mint: tskrMint, claimer: grabber.address, claimerToken: grab.claimerToken })],
+      grabber,
+    ),
+  );
+  const paid = await fetchMaybeClaimRecord(rpc, grab.claim);
+  if (!paid.exists || paid.data.status !== ClaimStatus.Paid) throw new Error('payout did not settle the claim');
 
   // 3. a wallet with no genesis token is refused
   const botGrab = await grabLucky(bot, packet, tskrMint, null);

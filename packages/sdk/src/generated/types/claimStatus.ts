@@ -17,6 +17,7 @@ import {
 
 export enum ClaimStatus {
   Pending,
+  Won,
   Paid,
 }
 

@@ -68,8 +68,19 @@ export const BAO_ERROR__WRONG_PACKET = 0x1788; // 6024
 export const BAO_ERROR__CROWN_ACTIVE = 0x1789; // 6025
 /** Overflow: Math overflow */
 export const BAO_ERROR__OVERFLOW = 0x178a; // 6026
+/** FeeAboveLimit: Protocol fee is above the limit the sender accepted */
+export const BAO_ERROR__FEE_ABOVE_LIMIT = 0x178b; // 6027
+/** NotWon: Claim has no unpaid win */
+export const BAO_ERROR__NOT_WON = 0x178c; // 6028
+/** WinNotPaid: Won share is not paid yet and the packet has not expired */
+export const BAO_ERROR__WIN_NOT_PAID = 0x178d; // 6029
+/** WrongRequest: Randomness answers a different request */
+export const BAO_ERROR__WRONG_REQUEST = 0x178e; // 6030
+/** AddressInUse: Address is held by another program */
+export const BAO_ERROR__ADDRESS_IN_USE = 0x178f; // 6031
 
 export type BaoError =
+  | typeof BAO_ERROR__ADDRESS_IN_USE
   | typeof BAO_ERROR__ALREADY_GRABBED_ON_THIS_DEVICE
   | typeof BAO_ERROR__BAD_DEVICE_KEY
   | typeof BAO_ERROR__BAD_EXPIRY
@@ -77,12 +88,14 @@ export type BaoError =
   | typeof BAO_ERROR__BAD_TREASURY
   | typeof BAO_ERROR__CROWN_ACTIVE
   | typeof BAO_ERROR__EXPIRED
+  | typeof BAO_ERROR__FEE_ABOVE_LIMIT
   | typeof BAO_ERROR__FEE_TOO_HIGH
   | typeof BAO_ERROR__NOT_A_SEEKER
   | typeof BAO_ERROR__NOT_IN_CIRCLE
   | typeof BAO_ERROR__NOT_LUCK_KING
   | typeof BAO_ERROR__NOT_PENDING
   | typeof BAO_ERROR__NOT_STALE
+  | typeof BAO_ERROR__NOT_WON
   | typeof BAO_ERROR__OPEN_CLAIMS
   | typeof BAO_ERROR__OPEN_MUST_BE_SEEKER_ONLY
   | typeof BAO_ERROR__OVERFLOW
@@ -93,14 +106,17 @@ export type BaoError =
   | typeof BAO_ERROR__STILL_ACTIVE
   | typeof BAO_ERROR__TOTAL_TOO_SMALL
   | typeof BAO_ERROR__UNSAFE_MINT
+  | typeof BAO_ERROR__WIN_NOT_PAID
   | typeof BAO_ERROR__WRONG_CODE
   | typeof BAO_ERROR__WRONG_MODE
   | typeof BAO_ERROR__WRONG_PACKET
+  | typeof BAO_ERROR__WRONG_REQUEST
   | typeof BAO_ERROR__WRONG_SGT_GROUP;
 
 let baoErrorMessages: Record<BaoError, string> | undefined;
 if (process.env.NODE_ENV !== "production") {
   baoErrorMessages = {
+    [BAO_ERROR__ADDRESS_IN_USE]: `Address is held by another program`,
     [BAO_ERROR__ALREADY_GRABBED_ON_THIS_DEVICE]: `This device already grabbed this packet`,
     [BAO_ERROR__BAD_DEVICE_KEY]: `Device key does not match the grab`,
     [BAO_ERROR__BAD_EXPIRY]: `Expiry must be between 1 hour and 7 days`,
@@ -108,12 +124,14 @@ if (process.env.NODE_ENV !== "production") {
     [BAO_ERROR__BAD_TREASURY]: `Treasury token account missing or wrong`,
     [BAO_ERROR__CROWN_ACTIVE]: `Crown not expired`,
     [BAO_ERROR__EXPIRED]: `Packet expired`,
+    [BAO_ERROR__FEE_ABOVE_LIMIT]: `Protocol fee is above the limit the sender accepted`,
     [BAO_ERROR__FEE_TOO_HIGH]: `Fee above the maximum`,
     [BAO_ERROR__NOT_A_SEEKER]: `Not a Seeker: no Seeker Genesis Token`,
     [BAO_ERROR__NOT_IN_CIRCLE]: `Not in this circle`,
     [BAO_ERROR__NOT_LUCK_KING]: `Only the Luck King of the parent packet can continue the chain`,
     [BAO_ERROR__NOT_PENDING]: `Claim is not pending`,
     [BAO_ERROR__NOT_STALE]: `Claim is not stale yet`,
+    [BAO_ERROR__NOT_WON]: `Claim has no unpaid win`,
     [BAO_ERROR__OPEN_CLAIMS]: `Claim records must be closed first`,
     [BAO_ERROR__OPEN_MUST_BE_SEEKER_ONLY]: `Open packets must be Seeker-only`,
     [BAO_ERROR__OVERFLOW]: `Math overflow`,
@@ -124,9 +142,11 @@ if (process.env.NODE_ENV !== "production") {
     [BAO_ERROR__STILL_ACTIVE]: `Packet still active`,
     [BAO_ERROR__TOTAL_TOO_SMALL]: `Total must be at least one unit per share`,
     [BAO_ERROR__UNSAFE_MINT]: `Mint has an unsupported Token-2022 extension`,
+    [BAO_ERROR__WIN_NOT_PAID]: `Won share is not paid yet and the packet has not expired`,
     [BAO_ERROR__WRONG_CODE]: `Wrong code word`,
     [BAO_ERROR__WRONG_MODE]: `Wrong split mode for this instruction`,
     [BAO_ERROR__WRONG_PACKET]: `Account does not belong to this packet`,
+    [BAO_ERROR__WRONG_REQUEST]: `Randomness answers a different request`,
     [BAO_ERROR__WRONG_SGT_GROUP]: `Token is not a member of the Seeker Genesis group`,
   };
 }

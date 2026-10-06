@@ -1,0 +1,14 @@
+{
+  "genesis_mint_to_grabber": "2T3N4xzNCQN9ajZ4UEsbWUiJ3q2ErXUArd18znbxvAqjUDsW8Z7u55DkpN6UkX3tCNciGPgD6JVBxjrefmKwUN26",
+  "packet": "ASRrZfbPcSoDjjJwuDGhghQyin8meXeb4HwTuEca8rXV",
+  "create_packet": "3KL3pjvmZPt2NveZyQxNCVtTf72dbqMdK3wdcEvfry6pZAgeDCtDCmGKponA4DwviPjmi9BjuifShrhXUEN6fnoZ",
+  "grab_lucky": "i2wFEXCet8MNG6GLxpShLTkPXjEpPoNhUpxo4aVQETmvS7Vwm1ckrwC64X1Y49si7c6yiUQs28U21MaoZYAnfyA",
+  "vrf_latency_ms": 2308,
+  "lucky_amount": 4391318,
+  "vrf_callback": "4ZoxoK1p88Q42Uh98JXNXs4mkTJXXhGcXdz8j4m6qLqsrErTP3AQQB5poB9jjh7zg3fVPAHhr4SJA8yXBeCCQ3wb",
+  "payout": "QJ2rPwPYnQLog9ypjnigzSMAN3YNvRdys6icuEurRRDfSjk7yEVDsfPKK3RfjLfQJod8WTc2cKEPxHcYNfcAPNS",
+  "refused_no_genesis": "5p1KGbsMX1FJoqRhcoNoocq3aspt9PfpM8ttuDGs6uemNj9HWusJLsdqEBzFHjXgK2cvvPAJs8qpBgPTotaoKEr5",
+  "refused_no_genesis_error": "{\"InstructionError\":[0,{\"Custom\":6013}]}",
+  "move_genesis_to_second_wallet": "2L5BJpxTgA5aRXpZDmiiwfuUML5A9i4336vpJGvXKwDs4vmkmQzSG2yG8Jur9LHTBikeiRbmeEXrCoCJT8SRyKSr",
+  "refused_same_device": "4zd1bxFH6k9LAsLo2mtTp7aHMAnv614WNPMs7cbHQcDyt5zfpfZsFutTRHWZX2rNyY5MUYyrXi5BrdxJWpe7z9hk"
+}

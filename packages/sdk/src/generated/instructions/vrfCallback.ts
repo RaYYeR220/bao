@@ -14,6 +14,8 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU64Decoder,
+  getU64Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -30,12 +32,7 @@ import {
   type TransactionSigner,
   type WritableAccount,
 } from "@solana/kit";
-import {
-  findConfigPda,
-  findCrownPda,
-  findGasTankPda,
-  findVaultPda,
-} from "../pdas";
+import { findCrownPda, findGasTankPda } from "../pdas";
 import { BAO_PROGRAM_ADDRESS } from "../programs";
 import {
   expectAddress,
@@ -58,17 +55,8 @@ export type VrfCallbackInstruction<
   TAccountVrfProgramIdentity extends string | AccountMeta<string> = string,
   TAccountPacket extends string | AccountMeta<string> = string,
   TAccountClaim extends string | AccountMeta<string> = string,
-  TAccountVault extends string | AccountMeta<string> = string,
-  TAccountMint extends string | AccountMeta<string> = string,
   TAccountGasTank extends string | AccountMeta<string> = string,
-  TAccountClaimer extends string | AccountMeta<string> = string,
-  TAccountClaimerToken extends string | AccountMeta<string> = string,
   TAccountCrown extends string | AccountMeta<string> = string,
-  TAccountConfig extends string | AccountMeta<string> = string,
-  TAccountTokenProgram extends string | AccountMeta<string> =
-    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-  TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
-    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -86,33 +74,12 @@ export type VrfCallbackInstruction<
       TAccountClaim extends string
         ? WritableAccount<TAccountClaim>
         : TAccountClaim,
-      TAccountVault extends string
-        ? WritableAccount<TAccountVault>
-        : TAccountVault,
-      TAccountMint extends string
-        ? ReadonlyAccount<TAccountMint>
-        : TAccountMint,
       TAccountGasTank extends string
         ? WritableAccount<TAccountGasTank>
         : TAccountGasTank,
-      TAccountClaimer extends string
-        ? ReadonlyAccount<TAccountClaimer>
-        : TAccountClaimer,
-      TAccountClaimerToken extends string
-        ? WritableAccount<TAccountClaimerToken>
-        : TAccountClaimerToken,
       TAccountCrown extends string
         ? WritableAccount<TAccountCrown>
         : TAccountCrown,
-      TAccountConfig extends string
-        ? ReadonlyAccount<TAccountConfig>
-        : TAccountConfig,
-      TAccountTokenProgram extends string
-        ? ReadonlyAccount<TAccountTokenProgram>
-        : TAccountTokenProgram,
-      TAccountAssociatedTokenProgram extends string
-        ? ReadonlyAccount<TAccountAssociatedTokenProgram>
-        : TAccountAssociatedTokenProgram,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -123,15 +90,20 @@ export type VrfCallbackInstruction<
 export type VrfCallbackInstructionData = {
   discriminator: ReadonlyUint8Array;
   randomness: ReadonlyUint8Array;
+  requestedSlot: bigint;
 };
 
-export type VrfCallbackInstructionDataArgs = { randomness: ReadonlyUint8Array };
+export type VrfCallbackInstructionDataArgs = {
+  randomness: ReadonlyUint8Array;
+  requestedSlot: number | bigint;
+};
 
 export function getVrfCallbackInstructionDataEncoder(): FixedSizeEncoder<VrfCallbackInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["randomness", fixEncoderSize(getBytesEncoder(), 32)],
+      ["requestedSlot", getU64Encoder()],
     ]),
     (value) => ({ ...value, discriminator: VRF_CALLBACK_DISCRIMINATOR }),
   );
@@ -141,6 +113,7 @@ export function getVrfCallbackInstructionDataDecoder(): FixedSizeDecoder<VrfCall
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["randomness", fixDecoderSize(getBytesDecoder(), 32)],
+    ["requestedSlot", getU64Decoder()],
   ]);
 }
 
@@ -158,15 +131,8 @@ export type VrfCallbackAsyncInput<
   TAccountVrfProgramIdentity extends string = string,
   TAccountPacket extends string = string,
   TAccountClaim extends string = string,
-  TAccountVault extends string = string,
-  TAccountMint extends string = string,
   TAccountGasTank extends string = string,
-  TAccountClaimer extends string = string,
-  TAccountClaimerToken extends string = string,
   TAccountCrown extends string = string,
-  TAccountConfig extends string = string,
-  TAccountTokenProgram extends string = string,
-  TAccountAssociatedTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
   /**
@@ -176,32 +142,19 @@ export type VrfCallbackAsyncInput<
   vrfProgramIdentity: TransactionSigner<TAccountVrfProgramIdentity>;
   packet: Address<TAccountPacket>;
   claim: Address<TAccountClaim>;
-  vault?: Address<TAccountVault>;
-  mint: Address<TAccountMint>;
   gasTank?: Address<TAccountGasTank>;
-  claimer: Address<TAccountClaimer>;
-  claimerToken: Address<TAccountClaimerToken>;
   crown?: Address<TAccountCrown>;
-  config?: Address<TAccountConfig>;
-  tokenProgram?: Address<TAccountTokenProgram>;
-  associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
   randomness: VrfCallbackInstructionDataArgs["randomness"];
+  requestedSlot: VrfCallbackInstructionDataArgs["requestedSlot"];
 };
 
 export async function getVrfCallbackInstructionAsync<
   TAccountVrfProgramIdentity extends string,
   TAccountPacket extends string,
   TAccountClaim extends string,
-  TAccountVault extends string,
-  TAccountMint extends string,
   TAccountGasTank extends string,
-  TAccountClaimer extends string,
-  TAccountClaimerToken extends string,
   TAccountCrown extends string,
-  TAccountConfig extends string,
-  TAccountTokenProgram extends string,
-  TAccountAssociatedTokenProgram extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof BAO_PROGRAM_ADDRESS,
 >(
@@ -209,15 +162,8 @@ export async function getVrfCallbackInstructionAsync<
     TAccountVrfProgramIdentity,
     TAccountPacket,
     TAccountClaim,
-    TAccountVault,
-    TAccountMint,
     TAccountGasTank,
-    TAccountClaimer,
-    TAccountClaimerToken,
     TAccountCrown,
-    TAccountConfig,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -227,15 +173,8 @@ export async function getVrfCallbackInstructionAsync<
     TAccountVrfProgramIdentity,
     TAccountPacket,
     TAccountClaim,
-    TAccountVault,
-    TAccountMint,
     TAccountGasTank,
-    TAccountClaimer,
-    TAccountClaimerToken,
     TAccountCrown,
-    TAccountConfig,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >
 > {
@@ -250,18 +189,8 @@ export async function getVrfCallbackInstructionAsync<
     },
     packet: { value: input.packet ?? null, isWritable: true },
     claim: { value: input.claim ?? null, isWritable: true },
-    vault: { value: input.vault ?? null, isWritable: true },
-    mint: { value: input.mint ?? null, isWritable: false },
     gasTank: { value: input.gasTank ?? null, isWritable: true },
-    claimer: { value: input.claimer ?? null, isWritable: false },
-    claimerToken: { value: input.claimerToken ?? null, isWritable: true },
     crown: { value: input.crown ?? null, isWritable: true },
-    config: { value: input.config ?? null, isWritable: false },
-    tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
-    associatedTokenProgram: {
-      value: input.associatedTokenProgram ?? null,
-      isWritable: false,
-    },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -273,11 +202,6 @@ export async function getVrfCallbackInstructionAsync<
   const args = { ...input };
 
   // Resolve default values.
-  if (!accounts.vault.value) {
-    accounts.vault.value = await findVaultPda({
-      packet: expectAddress(accounts.packet.value),
-    });
-  }
   if (!accounts.gasTank.value) {
     accounts.gasTank.value = await findGasTankPda({
       packet: expectAddress(accounts.packet.value),
@@ -287,17 +211,6 @@ export async function getVrfCallbackInstructionAsync<
     accounts.crown.value = await findCrownPda({
       packet: expectAddress(accounts.packet.value),
     });
-  }
-  if (!accounts.config.value) {
-    accounts.config.value = await findConfigPda();
-  }
-  if (!accounts.tokenProgram.value) {
-    accounts.tokenProgram.value =
-      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
-  }
-  if (!accounts.associatedTokenProgram.value) {
-    accounts.associatedTokenProgram.value =
-      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
@@ -310,15 +223,8 @@ export async function getVrfCallbackInstructionAsync<
       getAccountMeta(accounts.vrfProgramIdentity),
       getAccountMeta(accounts.packet),
       getAccountMeta(accounts.claim),
-      getAccountMeta(accounts.vault),
-      getAccountMeta(accounts.mint),
       getAccountMeta(accounts.gasTank),
-      getAccountMeta(accounts.claimer),
-      getAccountMeta(accounts.claimerToken),
       getAccountMeta(accounts.crown),
-      getAccountMeta(accounts.config),
-      getAccountMeta(accounts.tokenProgram),
-      getAccountMeta(accounts.associatedTokenProgram),
       getAccountMeta(accounts.systemProgram),
     ],
     data: getVrfCallbackInstructionDataEncoder().encode(
@@ -330,15 +236,8 @@ export async function getVrfCallbackInstructionAsync<
     TAccountVrfProgramIdentity,
     TAccountPacket,
     TAccountClaim,
-    TAccountVault,
-    TAccountMint,
     TAccountGasTank,
-    TAccountClaimer,
-    TAccountClaimerToken,
     TAccountCrown,
-    TAccountConfig,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >);
 }
@@ -347,15 +246,8 @@ export type VrfCallbackInput<
   TAccountVrfProgramIdentity extends string = string,
   TAccountPacket extends string = string,
   TAccountClaim extends string = string,
-  TAccountVault extends string = string,
-  TAccountMint extends string = string,
   TAccountGasTank extends string = string,
-  TAccountClaimer extends string = string,
-  TAccountClaimerToken extends string = string,
   TAccountCrown extends string = string,
-  TAccountConfig extends string = string,
-  TAccountTokenProgram extends string = string,
-  TAccountAssociatedTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
   /**
@@ -365,32 +257,19 @@ export type VrfCallbackInput<
   vrfProgramIdentity: TransactionSigner<TAccountVrfProgramIdentity>;
   packet: Address<TAccountPacket>;
   claim: Address<TAccountClaim>;
-  vault: Address<TAccountVault>;
-  mint: Address<TAccountMint>;
   gasTank: Address<TAccountGasTank>;
-  claimer: Address<TAccountClaimer>;
-  claimerToken: Address<TAccountClaimerToken>;
   crown: Address<TAccountCrown>;
-  config: Address<TAccountConfig>;
-  tokenProgram?: Address<TAccountTokenProgram>;
-  associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
   randomness: VrfCallbackInstructionDataArgs["randomness"];
+  requestedSlot: VrfCallbackInstructionDataArgs["requestedSlot"];
 };
 
 export function getVrfCallbackInstruction<
   TAccountVrfProgramIdentity extends string,
   TAccountPacket extends string,
   TAccountClaim extends string,
-  TAccountVault extends string,
-  TAccountMint extends string,
   TAccountGasTank extends string,
-  TAccountClaimer extends string,
-  TAccountClaimerToken extends string,
   TAccountCrown extends string,
-  TAccountConfig extends string,
-  TAccountTokenProgram extends string,
-  TAccountAssociatedTokenProgram extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof BAO_PROGRAM_ADDRESS,
 >(
@@ -398,15 +277,8 @@ export function getVrfCallbackInstruction<
     TAccountVrfProgramIdentity,
     TAccountPacket,
     TAccountClaim,
-    TAccountVault,
-    TAccountMint,
     TAccountGasTank,
-    TAccountClaimer,
-    TAccountClaimerToken,
     TAccountCrown,
-    TAccountConfig,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -415,15 +287,8 @@ export function getVrfCallbackInstruction<
   TAccountVrfProgramIdentity,
   TAccountPacket,
   TAccountClaim,
-  TAccountVault,
-  TAccountMint,
   TAccountGasTank,
-  TAccountClaimer,
-  TAccountClaimerToken,
   TAccountCrown,
-  TAccountConfig,
-  TAccountTokenProgram,
-  TAccountAssociatedTokenProgram,
   TAccountSystemProgram
 > {
   // Program address.
@@ -437,18 +302,8 @@ export function getVrfCallbackInstruction<
     },
     packet: { value: input.packet ?? null, isWritable: true },
     claim: { value: input.claim ?? null, isWritable: true },
-    vault: { value: input.vault ?? null, isWritable: true },
-    mint: { value: input.mint ?? null, isWritable: false },
     gasTank: { value: input.gasTank ?? null, isWritable: true },
-    claimer: { value: input.claimer ?? null, isWritable: false },
-    claimerToken: { value: input.claimerToken ?? null, isWritable: true },
     crown: { value: input.crown ?? null, isWritable: true },
-    config: { value: input.config ?? null, isWritable: false },
-    tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
-    associatedTokenProgram: {
-      value: input.associatedTokenProgram ?? null,
-      isWritable: false,
-    },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -460,14 +315,6 @@ export function getVrfCallbackInstruction<
   const args = { ...input };
 
   // Resolve default values.
-  if (!accounts.tokenProgram.value) {
-    accounts.tokenProgram.value =
-      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
-  }
-  if (!accounts.associatedTokenProgram.value) {
-    accounts.associatedTokenProgram.value =
-      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
-  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
@@ -479,15 +326,8 @@ export function getVrfCallbackInstruction<
       getAccountMeta(accounts.vrfProgramIdentity),
       getAccountMeta(accounts.packet),
       getAccountMeta(accounts.claim),
-      getAccountMeta(accounts.vault),
-      getAccountMeta(accounts.mint),
       getAccountMeta(accounts.gasTank),
-      getAccountMeta(accounts.claimer),
-      getAccountMeta(accounts.claimerToken),
       getAccountMeta(accounts.crown),
-      getAccountMeta(accounts.config),
-      getAccountMeta(accounts.tokenProgram),
-      getAccountMeta(accounts.associatedTokenProgram),
       getAccountMeta(accounts.systemProgram),
     ],
     data: getVrfCallbackInstructionDataEncoder().encode(
@@ -499,15 +339,8 @@ export function getVrfCallbackInstruction<
     TAccountVrfProgramIdentity,
     TAccountPacket,
     TAccountClaim,
-    TAccountVault,
-    TAccountMint,
     TAccountGasTank,
-    TAccountClaimer,
-    TAccountClaimerToken,
     TAccountCrown,
-    TAccountConfig,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >);
 }
@@ -525,16 +358,9 @@ export type ParsedVrfCallbackInstruction<
     vrfProgramIdentity: TAccountMetas[0];
     packet: TAccountMetas[1];
     claim: TAccountMetas[2];
-    vault: TAccountMetas[3];
-    mint: TAccountMetas[4];
-    gasTank: TAccountMetas[5];
-    claimer: TAccountMetas[6];
-    claimerToken: TAccountMetas[7];
-    crown: TAccountMetas[8];
-    config: TAccountMetas[9];
-    tokenProgram: TAccountMetas[10];
-    associatedTokenProgram: TAccountMetas[11];
-    systemProgram: TAccountMetas[12];
+    gasTank: TAccountMetas[3];
+    crown: TAccountMetas[4];
+    systemProgram: TAccountMetas[5];
   };
   data: VrfCallbackInstructionData;
 };
@@ -547,7 +373,7 @@ export function parseVrfCallbackInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedVrfCallbackInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 13) {
+  if (instruction.accounts.length < 6) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -563,15 +389,8 @@ export function parseVrfCallbackInstruction<
       vrfProgramIdentity: getNextAccount(),
       packet: getNextAccount(),
       claim: getNextAccount(),
-      vault: getNextAccount(),
-      mint: getNextAccount(),
       gasTank: getNextAccount(),
-      claimer: getNextAccount(),
-      claimerToken: getNextAccount(),
       crown: getNextAccount(),
-      config: getNextAccount(),
-      tokenProgram: getNextAccount(),
-      associatedTokenProgram: getNextAccount(),
       systemProgram: getNextAccount(),
     },
     data: getVrfCallbackInstructionDataDecoder().decode(instruction.data),

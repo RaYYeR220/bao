@@ -76,15 +76,19 @@ export type Packet = {
   totalAmount: bigint;
   remainingAmount: bigint;
   totalShares: number;
-  /** Shares handed out (paid or awaiting randomness). */
+  /** Shares handed out (assigned or awaiting randomness). */
   reserved: number;
-  /** Shares paid out. */
+  /** Shares whose amount is assigned. */
   resolved: number;
   /** Claim records not yet closed. */
   openClaims: number;
   mode: SplitMode;
   audience: Audience;
   seekerOnly: boolean;
+  /** Genesis group snapshotted from the config at creation; later config changes do not apply. */
+  sgtGroup: Address;
+  /** Crank reward snapshotted from the config at creation; it is pre-funded in the GasTank. */
+  crankReward: bigint;
   createdAt: bigint;
   expiresAt: bigint;
   messageHash: ReadonlyUint8Array;
@@ -107,15 +111,19 @@ export type PacketArgs = {
   totalAmount: number | bigint;
   remainingAmount: number | bigint;
   totalShares: number;
-  /** Shares handed out (paid or awaiting randomness). */
+  /** Shares handed out (assigned or awaiting randomness). */
   reserved: number;
-  /** Shares paid out. */
+  /** Shares whose amount is assigned. */
   resolved: number;
   /** Claim records not yet closed. */
   openClaims: number;
   mode: SplitModeArgs;
   audience: AudienceArgs;
   seekerOnly: boolean;
+  /** Genesis group snapshotted from the config at creation; later config changes do not apply. */
+  sgtGroup: Address;
+  /** Crank reward snapshotted from the config at creation; it is pre-funded in the GasTank. */
+  crankReward: number | bigint;
   createdAt: number | bigint;
   expiresAt: number | bigint;
   messageHash: ReadonlyUint8Array;
@@ -148,6 +156,8 @@ export function getPacketEncoder(): Encoder<PacketArgs> {
       ["mode", getSplitModeEncoder()],
       ["audience", getAudienceEncoder()],
       ["seekerOnly", getBooleanEncoder()],
+      ["sgtGroup", getAddressEncoder()],
+      ["crankReward", getU64Encoder()],
       ["createdAt", getI64Encoder()],
       ["expiresAt", getI64Encoder()],
       ["messageHash", fixEncoderSize(getBytesEncoder(), 32)],
@@ -182,6 +192,8 @@ export function getPacketDecoder(): Decoder<Packet> {
     ["mode", getSplitModeDecoder()],
     ["audience", getAudienceDecoder()],
     ["seekerOnly", getBooleanDecoder()],
+    ["sgtGroup", getAddressDecoder()],
+    ["crankReward", getU64Decoder()],
     ["createdAt", getI64Decoder()],
     ["expiresAt", getI64Decoder()],
     ["messageHash", fixDecoderSize(getBytesDecoder(), 32)],

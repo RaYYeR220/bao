@@ -25,6 +25,7 @@ import {
   parseGrabEqualInstruction,
   parseGrabLuckyInstruction,
   parseInitConfigInstruction,
+  parsePayoutInstruction,
   parseUpdateConfigInstruction,
   parseVrfCallbackInstruction,
   type ParsedCancelStaleInstruction,
@@ -35,6 +36,7 @@ import {
   type ParsedGrabEqualInstruction,
   type ParsedGrabLuckyInstruction,
   type ParsedInitConfigInstruction,
+  type ParsedPayoutInstruction,
   type ParsedUpdateConfigInstruction,
   type ParsedVrfCallbackInstruction,
 } from "../instructions";
@@ -111,6 +113,7 @@ export enum BaoInstruction {
   GrabEqual,
   GrabLucky,
   InitConfig,
+  Payout,
   UpdateConfig,
   VrfCallback,
 }
@@ -211,6 +214,17 @@ export function identifyBaoInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([149, 140, 194, 236, 174, 189, 6, 239]),
+      ),
+      0,
+    )
+  ) {
+    return BaoInstruction.Payout;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([29, 158, 252, 191, 10, 83, 219, 99]),
       ),
       0,
@@ -261,6 +275,9 @@ export type ParsedBaoInstruction<
   | ({
       instructionType: BaoInstruction.InitConfig;
     } & ParsedInitConfigInstruction<TProgram>)
+  | ({
+      instructionType: BaoInstruction.Payout;
+    } & ParsedPayoutInstruction<TProgram>)
   | ({
       instructionType: BaoInstruction.UpdateConfig;
     } & ParsedUpdateConfigInstruction<TProgram>)
@@ -327,6 +344,13 @@ export function parseBaoInstruction<TProgram extends string>(
       return {
         instructionType: BaoInstruction.InitConfig,
         ...parseInitConfigInstruction(instruction),
+      };
+    }
+    case BaoInstruction.Payout: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: BaoInstruction.Payout,
+        ...parsePayoutInstruction(instruction),
       };
     }
     case BaoInstruction.UpdateConfig: {

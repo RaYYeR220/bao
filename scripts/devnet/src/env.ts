@@ -6,12 +6,10 @@ import {
   createKeyPairSignerFromBytes,
   createDefaultRpcTransport,
   createSolanaRpcFromTransport,
-  createSolanaRpcSubscriptions,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   pipe,
-  sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
@@ -42,8 +40,6 @@ const retryingTransport: typeof baseTransport = async (config) => {
 };
 
 export const rpc = createSolanaRpcFromTransport(retryingTransport);
-export const rpcSubscriptions = createSolanaRpcSubscriptions(RPC_URL.replace(/^http/, 'ws'));
-const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
 
 export const explorer = (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
 
@@ -62,11 +58,25 @@ async function build(instructions: Instruction[], feePayer: TransactionSigner) {
   return signTransactionMessageWithSigners(message);
 }
 
-/** Signs with every signer attached to the instructions, sends and waits for confirmation. */
+/** Polls over HTTP until the signature is confirmed (public devnet websockets drop often). */
+async function waitForConfirmation(signature: Signature) {
+  for (let i = 0; i < 90; i++) {
+    const { value } = await rpc.getSignatureStatuses([signature]).send();
+    const status = value[0];
+    if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') return status;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error(`transaction ${signature} not confirmed after 90s`);
+}
+
+/** Signs with every signer attached to the instructions, sends with preflight and waits for confirmation. */
 export async function send(instructions: Instruction[], feePayer: TransactionSigner): Promise<Signature> {
   const tx = await build(instructions, feePayer);
-  await sendAndConfirm(tx as Parameters<typeof sendAndConfirm>[0], { commitment: 'confirmed' });
-  return getSignatureFromTransaction(tx);
+  const signature = getSignatureFromTransaction(tx);
+  await rpc.sendTransaction(getBase64EncodedWireTransaction(tx), { encoding: 'base64', preflightCommitment: 'confirmed' }).send();
+  const status = await waitForConfirmation(signature);
+  if (status.err) throw new Error(`transaction ${signature} failed: ${JSON.stringify(status.err)}`);
+  return signature;
 }
 
 /**
@@ -79,11 +89,7 @@ export async function sendExpectingFailure(instructions: Instruction[], feePayer
   await rpc
     .sendTransaction(getBase64EncodedWireTransaction(tx), { encoding: 'base64', skipPreflight: true })
     .send();
-  for (let i = 0; i < 60; i++) {
-    const { value } = await rpc.getSignatureStatuses([signature]).send();
-    if (value[0]?.confirmationStatus === 'confirmed' || value[0]?.confirmationStatus === 'finalized') break;
-    await new Promise((r) => setTimeout(r, 1000));
-  }
+  await waitForConfirmation(signature);
   const result = await rpc
     .getTransaction(signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0, encoding: 'json' })
     .send();

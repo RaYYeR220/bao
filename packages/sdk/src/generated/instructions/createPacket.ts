@@ -138,6 +138,8 @@ export type CreatePacketInstructionData = {
   seekerOnly: boolean;
   expiresIn: bigint;
   messageHash: ReadonlyUint8Array;
+  /** Highest protocol fee the sender accepts; protects against a fee change racing the transaction. */
+  maxFeeBps: number;
 };
 
 export type CreatePacketInstructionDataArgs = {
@@ -149,6 +151,8 @@ export type CreatePacketInstructionDataArgs = {
   seekerOnly: boolean;
   expiresIn: number | bigint;
   messageHash: ReadonlyUint8Array;
+  /** Highest protocol fee the sender accepts; protects against a fee change racing the transaction. */
+  maxFeeBps: number;
 };
 
 export function getCreatePacketInstructionDataEncoder(): Encoder<CreatePacketInstructionDataArgs> {
@@ -163,6 +167,7 @@ export function getCreatePacketInstructionDataEncoder(): Encoder<CreatePacketIns
       ["seekerOnly", getBooleanEncoder()],
       ["expiresIn", getI64Encoder()],
       ["messageHash", fixEncoderSize(getBytesEncoder(), 32)],
+      ["maxFeeBps", getU16Encoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_PACKET_DISCRIMINATOR }),
   );
@@ -179,6 +184,7 @@ export function getCreatePacketInstructionDataDecoder(): Decoder<CreatePacketIns
     ["seekerOnly", getBooleanDecoder()],
     ["expiresIn", getI64Decoder()],
     ["messageHash", fixDecoderSize(getBytesDecoder(), 32)],
+    ["maxFeeBps", getU16Decoder()],
   ]);
 }
 
@@ -228,6 +234,7 @@ export type CreatePacketAsyncInput<
   seekerOnly: CreatePacketInstructionDataArgs["seekerOnly"];
   expiresIn: CreatePacketInstructionDataArgs["expiresIn"];
   messageHash: CreatePacketInstructionDataArgs["messageHash"];
+  maxFeeBps: CreatePacketInstructionDataArgs["maxFeeBps"];
 };
 
 export async function getCreatePacketInstructionAsync<
@@ -402,6 +409,7 @@ export type CreatePacketInput<
   seekerOnly: CreatePacketInstructionDataArgs["seekerOnly"];
   expiresIn: CreatePacketInstructionDataArgs["expiresIn"];
   messageHash: CreatePacketInstructionDataArgs["messageHash"];
+  maxFeeBps: CreatePacketInstructionDataArgs["maxFeeBps"];
 };
 
 export function getCreatePacketInstruction<

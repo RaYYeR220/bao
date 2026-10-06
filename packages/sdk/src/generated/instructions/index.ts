@@ -14,5 +14,6 @@ export * from "./createPacket";
 export * from "./grabEqual";
 export * from "./grabLucky";
 export * from "./initConfig";
+export * from "./payout";
 export * from "./updateConfig";
 export * from "./vrfCallback";

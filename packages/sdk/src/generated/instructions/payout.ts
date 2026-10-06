@@ -25,12 +25,12 @@ import {
   type InstructionWithAccounts,
   type InstructionWithData,
   type ReadonlyAccount,
+  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-  type WritableSignerAccount,
 } from "@solana/kit";
-import { findCrownPda, findGasTankPda, findVaultPda } from "../pdas";
+import { findGasTankPda, findVaultPda } from "../pdas";
 import { BAO_PROGRAM_ADDRESS } from "../programs";
 import {
   expectAddress,
@@ -38,26 +38,24 @@ import {
   type ResolvedAccount,
 } from "../shared";
 
-export const CLOSE_PACKET_DISCRIMINATOR = new Uint8Array([
-  65, 54, 103, 89, 123, 52, 178, 88,
+export const PAYOUT_DISCRIMINATOR = new Uint8Array([
+  149, 140, 194, 236, 174, 189, 6, 239,
 ]);
 
-export function getClosePacketDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
-    CLOSE_PACKET_DISCRIMINATOR,
-  );
+export function getPayoutDiscriminatorBytes() {
+  return fixEncoderSize(getBytesEncoder(), 8).encode(PAYOUT_DISCRIMINATOR);
 }
 
-export type ClosePacketInstruction<
+export type PayoutInstruction<
   TProgram extends string = typeof BAO_PROGRAM_ADDRESS,
-  TAccountCaller extends string | AccountMeta<string> = string,
+  TAccountPayer extends string | AccountMeta<string> = string,
   TAccountPacket extends string | AccountMeta<string> = string,
-  TAccountSender extends string | AccountMeta<string> = string,
-  TAccountMint extends string | AccountMeta<string> = string,
+  TAccountClaim extends string | AccountMeta<string> = string,
   TAccountVault extends string | AccountMeta<string> = string,
-  TAccountSenderToken extends string | AccountMeta<string> = string,
+  TAccountMint extends string | AccountMeta<string> = string,
   TAccountGasTank extends string | AccountMeta<string> = string,
-  TAccountCrown extends string | AccountMeta<string> = string,
+  TAccountClaimer extends string | AccountMeta<string> = string,
+  TAccountClaimerToken extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends string | AccountMeta<string> =
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
@@ -69,31 +67,31 @@ export type ClosePacketInstruction<
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountCaller extends string
-        ? WritableSignerAccount<TAccountCaller> &
-            AccountSignerMeta<TAccountCaller>
-        : TAccountCaller,
+      TAccountPayer extends string
+        ? ReadonlySignerAccount<TAccountPayer> &
+            AccountSignerMeta<TAccountPayer>
+        : TAccountPayer,
       TAccountPacket extends string
-        ? WritableAccount<TAccountPacket>
+        ? ReadonlyAccount<TAccountPacket>
         : TAccountPacket,
-      TAccountSender extends string
-        ? WritableAccount<TAccountSender>
-        : TAccountSender,
-      TAccountMint extends string
-        ? ReadonlyAccount<TAccountMint>
-        : TAccountMint,
+      TAccountClaim extends string
+        ? WritableAccount<TAccountClaim>
+        : TAccountClaim,
       TAccountVault extends string
         ? WritableAccount<TAccountVault>
         : TAccountVault,
-      TAccountSenderToken extends string
-        ? WritableAccount<TAccountSenderToken>
-        : TAccountSenderToken,
+      TAccountMint extends string
+        ? ReadonlyAccount<TAccountMint>
+        : TAccountMint,
       TAccountGasTank extends string
         ? WritableAccount<TAccountGasTank>
         : TAccountGasTank,
-      TAccountCrown extends string
-        ? WritableAccount<TAccountCrown>
-        : TAccountCrown,
+      TAccountClaimer extends string
+        ? ReadonlyAccount<TAccountClaimer>
+        : TAccountClaimer,
+      TAccountClaimerToken extends string
+        ? WritableAccount<TAccountClaimerToken>
+        : TAccountClaimerToken,
       TAccountTokenProgram extends string
         ? ReadonlyAccount<TAccountTokenProgram>
         : TAccountTokenProgram,
@@ -107,98 +105,98 @@ export type ClosePacketInstruction<
     ]
   >;
 
-export type ClosePacketInstructionData = { discriminator: ReadonlyUint8Array };
+export type PayoutInstructionData = { discriminator: ReadonlyUint8Array };
 
-export type ClosePacketInstructionDataArgs = {};
+export type PayoutInstructionDataArgs = {};
 
-export function getClosePacketInstructionDataEncoder(): FixedSizeEncoder<ClosePacketInstructionDataArgs> {
+export function getPayoutInstructionDataEncoder(): FixedSizeEncoder<PayoutInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([["discriminator", fixEncoderSize(getBytesEncoder(), 8)]]),
-    (value) => ({ ...value, discriminator: CLOSE_PACKET_DISCRIMINATOR }),
+    (value) => ({ ...value, discriminator: PAYOUT_DISCRIMINATOR }),
   );
 }
 
-export function getClosePacketInstructionDataDecoder(): FixedSizeDecoder<ClosePacketInstructionData> {
+export function getPayoutInstructionDataDecoder(): FixedSizeDecoder<PayoutInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
   ]);
 }
 
-export function getClosePacketInstructionDataCodec(): FixedSizeCodec<
-  ClosePacketInstructionDataArgs,
-  ClosePacketInstructionData
+export function getPayoutInstructionDataCodec(): FixedSizeCodec<
+  PayoutInstructionDataArgs,
+  PayoutInstructionData
 > {
   return combineCodec(
-    getClosePacketInstructionDataEncoder(),
-    getClosePacketInstructionDataDecoder(),
+    getPayoutInstructionDataEncoder(),
+    getPayoutInstructionDataDecoder(),
   );
 }
 
-export type ClosePacketAsyncInput<
-  TAccountCaller extends string = string,
+export type PayoutAsyncInput<
+  TAccountPayer extends string = string,
   TAccountPacket extends string = string,
-  TAccountSender extends string = string,
-  TAccountMint extends string = string,
+  TAccountClaim extends string = string,
   TAccountVault extends string = string,
-  TAccountSenderToken extends string = string,
+  TAccountMint extends string = string,
   TAccountGasTank extends string = string,
-  TAccountCrown extends string = string,
+  TAccountClaimer extends string = string,
+  TAccountClaimerToken extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
-  caller: TransactionSigner<TAccountCaller>;
+  payer: TransactionSigner<TAccountPayer>;
   packet: Address<TAccountPacket>;
-  sender: Address<TAccountSender>;
-  mint: Address<TAccountMint>;
+  claim: Address<TAccountClaim>;
   vault?: Address<TAccountVault>;
-  senderToken: Address<TAccountSenderToken>;
+  mint: Address<TAccountMint>;
   gasTank?: Address<TAccountGasTank>;
-  crown?: Address<TAccountCrown>;
+  claimer: Address<TAccountClaimer>;
+  claimerToken: Address<TAccountClaimerToken>;
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
 };
 
-export async function getClosePacketInstructionAsync<
-  TAccountCaller extends string,
+export async function getPayoutInstructionAsync<
+  TAccountPayer extends string,
   TAccountPacket extends string,
-  TAccountSender extends string,
-  TAccountMint extends string,
+  TAccountClaim extends string,
   TAccountVault extends string,
-  TAccountSenderToken extends string,
+  TAccountMint extends string,
   TAccountGasTank extends string,
-  TAccountCrown extends string,
+  TAccountClaimer extends string,
+  TAccountClaimerToken extends string,
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof BAO_PROGRAM_ADDRESS,
 >(
-  input: ClosePacketAsyncInput<
-    TAccountCaller,
+  input: PayoutAsyncInput<
+    TAccountPayer,
     TAccountPacket,
-    TAccountSender,
-    TAccountMint,
+    TAccountClaim,
     TAccountVault,
-    TAccountSenderToken,
+    TAccountMint,
     TAccountGasTank,
-    TAccountCrown,
+    TAccountClaimer,
+    TAccountClaimerToken,
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
-  ClosePacketInstruction<
+  PayoutInstruction<
     TProgramAddress,
-    TAccountCaller,
+    TAccountPayer,
     TAccountPacket,
-    TAccountSender,
-    TAccountMint,
+    TAccountClaim,
     TAccountVault,
-    TAccountSenderToken,
+    TAccountMint,
     TAccountGasTank,
-    TAccountCrown,
+    TAccountClaimer,
+    TAccountClaimerToken,
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram
@@ -209,14 +207,14 @@ export async function getClosePacketInstructionAsync<
 
   // Original accounts.
   const originalAccounts = {
-    caller: { value: input.caller ?? null, isWritable: true },
-    packet: { value: input.packet ?? null, isWritable: true },
-    sender: { value: input.sender ?? null, isWritable: true },
-    mint: { value: input.mint ?? null, isWritable: false },
+    payer: { value: input.payer ?? null, isWritable: false },
+    packet: { value: input.packet ?? null, isWritable: false },
+    claim: { value: input.claim ?? null, isWritable: true },
     vault: { value: input.vault ?? null, isWritable: true },
-    senderToken: { value: input.senderToken ?? null, isWritable: true },
+    mint: { value: input.mint ?? null, isWritable: false },
     gasTank: { value: input.gasTank ?? null, isWritable: true },
-    crown: { value: input.crown ?? null, isWritable: true },
+    claimer: { value: input.claimer ?? null, isWritable: false },
+    claimerToken: { value: input.claimerToken ?? null, isWritable: true },
     tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
     associatedTokenProgram: {
       value: input.associatedTokenProgram ?? null,
@@ -240,11 +238,6 @@ export async function getClosePacketInstructionAsync<
       packet: expectAddress(accounts.packet.value),
     });
   }
-  if (!accounts.crown.value) {
-    accounts.crown.value = await findCrownPda({
-      packet: expectAddress(accounts.packet.value),
-    });
-  }
   if (!accounts.tokenProgram.value) {
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
@@ -261,100 +254,100 @@ export async function getClosePacketInstructionAsync<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta(accounts.caller),
+      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.packet),
-      getAccountMeta(accounts.sender),
-      getAccountMeta(accounts.mint),
+      getAccountMeta(accounts.claim),
       getAccountMeta(accounts.vault),
-      getAccountMeta(accounts.senderToken),
+      getAccountMeta(accounts.mint),
       getAccountMeta(accounts.gasTank),
-      getAccountMeta(accounts.crown),
+      getAccountMeta(accounts.claimer),
+      getAccountMeta(accounts.claimerToken),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.associatedTokenProgram),
       getAccountMeta(accounts.systemProgram),
     ],
-    data: getClosePacketInstructionDataEncoder().encode({}),
+    data: getPayoutInstructionDataEncoder().encode({}),
     programAddress,
-  } as ClosePacketInstruction<
+  } as PayoutInstruction<
     TProgramAddress,
-    TAccountCaller,
+    TAccountPayer,
     TAccountPacket,
-    TAccountSender,
-    TAccountMint,
+    TAccountClaim,
     TAccountVault,
-    TAccountSenderToken,
+    TAccountMint,
     TAccountGasTank,
-    TAccountCrown,
+    TAccountClaimer,
+    TAccountClaimerToken,
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >);
 }
 
-export type ClosePacketInput<
-  TAccountCaller extends string = string,
+export type PayoutInput<
+  TAccountPayer extends string = string,
   TAccountPacket extends string = string,
-  TAccountSender extends string = string,
-  TAccountMint extends string = string,
+  TAccountClaim extends string = string,
   TAccountVault extends string = string,
-  TAccountSenderToken extends string = string,
+  TAccountMint extends string = string,
   TAccountGasTank extends string = string,
-  TAccountCrown extends string = string,
+  TAccountClaimer extends string = string,
+  TAccountClaimerToken extends string = string,
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
-  caller: TransactionSigner<TAccountCaller>;
+  payer: TransactionSigner<TAccountPayer>;
   packet: Address<TAccountPacket>;
-  sender: Address<TAccountSender>;
-  mint: Address<TAccountMint>;
+  claim: Address<TAccountClaim>;
   vault: Address<TAccountVault>;
-  senderToken: Address<TAccountSenderToken>;
+  mint: Address<TAccountMint>;
   gasTank: Address<TAccountGasTank>;
-  crown: Address<TAccountCrown>;
+  claimer: Address<TAccountClaimer>;
+  claimerToken: Address<TAccountClaimerToken>;
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
 };
 
-export function getClosePacketInstruction<
-  TAccountCaller extends string,
+export function getPayoutInstruction<
+  TAccountPayer extends string,
   TAccountPacket extends string,
-  TAccountSender extends string,
-  TAccountMint extends string,
+  TAccountClaim extends string,
   TAccountVault extends string,
-  TAccountSenderToken extends string,
+  TAccountMint extends string,
   TAccountGasTank extends string,
-  TAccountCrown extends string,
+  TAccountClaimer extends string,
+  TAccountClaimerToken extends string,
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof BAO_PROGRAM_ADDRESS,
 >(
-  input: ClosePacketInput<
-    TAccountCaller,
+  input: PayoutInput<
+    TAccountPayer,
     TAccountPacket,
-    TAccountSender,
-    TAccountMint,
+    TAccountClaim,
     TAccountVault,
-    TAccountSenderToken,
+    TAccountMint,
     TAccountGasTank,
-    TAccountCrown,
+    TAccountClaimer,
+    TAccountClaimerToken,
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
-): ClosePacketInstruction<
+): PayoutInstruction<
   TProgramAddress,
-  TAccountCaller,
+  TAccountPayer,
   TAccountPacket,
-  TAccountSender,
-  TAccountMint,
+  TAccountClaim,
   TAccountVault,
-  TAccountSenderToken,
+  TAccountMint,
   TAccountGasTank,
-  TAccountCrown,
+  TAccountClaimer,
+  TAccountClaimerToken,
   TAccountTokenProgram,
   TAccountAssociatedTokenProgram,
   TAccountSystemProgram
@@ -364,14 +357,14 @@ export function getClosePacketInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    caller: { value: input.caller ?? null, isWritable: true },
-    packet: { value: input.packet ?? null, isWritable: true },
-    sender: { value: input.sender ?? null, isWritable: true },
-    mint: { value: input.mint ?? null, isWritable: false },
+    payer: { value: input.payer ?? null, isWritable: false },
+    packet: { value: input.packet ?? null, isWritable: false },
+    claim: { value: input.claim ?? null, isWritable: true },
     vault: { value: input.vault ?? null, isWritable: true },
-    senderToken: { value: input.senderToken ?? null, isWritable: true },
+    mint: { value: input.mint ?? null, isWritable: false },
     gasTank: { value: input.gasTank ?? null, isWritable: true },
-    crown: { value: input.crown ?? null, isWritable: true },
+    claimer: { value: input.claimer ?? null, isWritable: false },
+    claimerToken: { value: input.claimerToken ?? null, isWritable: true },
     tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
     associatedTokenProgram: {
       value: input.associatedTokenProgram ?? null,
@@ -401,65 +394,65 @@ export function getClosePacketInstruction<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta(accounts.caller),
+      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.packet),
-      getAccountMeta(accounts.sender),
-      getAccountMeta(accounts.mint),
+      getAccountMeta(accounts.claim),
       getAccountMeta(accounts.vault),
-      getAccountMeta(accounts.senderToken),
+      getAccountMeta(accounts.mint),
       getAccountMeta(accounts.gasTank),
-      getAccountMeta(accounts.crown),
+      getAccountMeta(accounts.claimer),
+      getAccountMeta(accounts.claimerToken),
       getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.associatedTokenProgram),
       getAccountMeta(accounts.systemProgram),
     ],
-    data: getClosePacketInstructionDataEncoder().encode({}),
+    data: getPayoutInstructionDataEncoder().encode({}),
     programAddress,
-  } as ClosePacketInstruction<
+  } as PayoutInstruction<
     TProgramAddress,
-    TAccountCaller,
+    TAccountPayer,
     TAccountPacket,
-    TAccountSender,
-    TAccountMint,
+    TAccountClaim,
     TAccountVault,
-    TAccountSenderToken,
+    TAccountMint,
     TAccountGasTank,
-    TAccountCrown,
+    TAccountClaimer,
+    TAccountClaimerToken,
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram
   >);
 }
 
-export type ParsedClosePacketInstruction<
+export type ParsedPayoutInstruction<
   TProgram extends string = typeof BAO_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    caller: TAccountMetas[0];
+    payer: TAccountMetas[0];
     packet: TAccountMetas[1];
-    sender: TAccountMetas[2];
-    mint: TAccountMetas[3];
-    vault: TAccountMetas[4];
-    senderToken: TAccountMetas[5];
-    gasTank: TAccountMetas[6];
-    crown: TAccountMetas[7];
+    claim: TAccountMetas[2];
+    vault: TAccountMetas[3];
+    mint: TAccountMetas[4];
+    gasTank: TAccountMetas[5];
+    claimer: TAccountMetas[6];
+    claimerToken: TAccountMetas[7];
     tokenProgram: TAccountMetas[8];
     associatedTokenProgram: TAccountMetas[9];
     systemProgram: TAccountMetas[10];
   };
-  data: ClosePacketInstructionData;
+  data: PayoutInstructionData;
 };
 
-export function parseClosePacketInstruction<
+export function parsePayoutInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
-): ParsedClosePacketInstruction<TProgram, TAccountMetas> {
+): ParsedPayoutInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 11) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
@@ -473,18 +466,18 @@ export function parseClosePacketInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      caller: getNextAccount(),
+      payer: getNextAccount(),
       packet: getNextAccount(),
-      sender: getNextAccount(),
-      mint: getNextAccount(),
+      claim: getNextAccount(),
       vault: getNextAccount(),
-      senderToken: getNextAccount(),
+      mint: getNextAccount(),
       gasTank: getNextAccount(),
-      crown: getNextAccount(),
+      claimer: getNextAccount(),
+      claimerToken: getNextAccount(),
       tokenProgram: getNextAccount(),
       associatedTokenProgram: getNextAccount(),
       systemProgram: getNextAccount(),
     },
-    data: getClosePacketInstructionDataDecoder().decode(instruction.data),
+    data: getPayoutInstructionDataDecoder().decode(instruction.data),
   };
 }
