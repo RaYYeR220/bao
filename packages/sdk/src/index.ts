@@ -4,6 +4,7 @@ export * from './merkle';
 export * from './pda';
 export * from './sgt';
 export * from './api';
+export * from './flows';
 import devnet from './devnet.json';
 
 /** Public devnet deployment (written by scripts/devnet). */
