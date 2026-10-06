@@ -1,0 +1,50 @@
+# Proof
+
+Everything below is a public devnet transaction or account you can open in the explorer. Bao runs on
+**devnet** for now: the mainnet launch follows the dApp Store release.
+
+## Deployment
+
+| What | Address |
+|---|---|
+| Program | [`DifXuyhEu3r7sgXQjgCokyikQFcYCYD2cwhjNyU7j6XR`](https://explorer.solana.com/address/DifXuyhEu3r7sgXQjgCokyikQFcYCYD2cwhjNyU7j6XR?cluster=devnet) |
+| Config | [`JCtfrDrv2ha714adGaRDQMj92txd24nucXWw7bA5FWTA`](https://explorer.solana.com/address/JCtfrDrv2ha714adGaRDQMj92txd24nucXWw7bA5FWTA?cluster=devnet) |
+| Test Genesis group (devnet stand-in for the Seeker Genesis collection) | [`BuRJQxYkL43H3MmgmZmRuC1GCDFc1hSkEu2t1mxiDgwK`](https://explorer.solana.com/address/BuRJQxYkL43H3MmgmZmRuC1GCDFc1hSkEu2t1mxiDgwK?cluster=devnet) |
+| tSKR (devnet stand-in for SKR, 6 decimals) | [`aveV2LBQt6Bck1nsju3md5k223uxQNULjDvW6QcmCCr`](https://explorer.solana.com/address/aveV2LBQt6Bck1nsju3md5k223uxQNULjDvW6QcmCCr?cluster=devnet) |
+| MagicBlock VRF program | `Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz`, base-layer queue `Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh` |
+
+## One packet, end to end
+
+From `scripts/devnet/src/smoke.ts` (run it yourself: `pnpm --filter @bao/devnet-scripts smoke`).
+Recorded in [`scripts/devnet/out/smoke-2026-10-06T20-14-40-518Z.json`](scripts/devnet/out/smoke-2026-10-06T20-14-40-518Z.json).
+
+| Step | Transaction |
+|---|---|
+| A sender drops a Lucky, Seeker-only packet of 10 tSKR | [create_packet](https://explorer.solana.com/tx/3KL3pjvmZPt2NveZyQxNCVtTf72dbqMdK3wdcEvfry6pZAgeDCtDCmGKponA4DwviPjmi9BjuifShrhXUEN6fnoZ?cluster=devnet) |
+| A wallet holding a Genesis token grabs: its place is reserved and randomness requested | [grab_lucky](https://explorer.solana.com/tx/i2wFEXCet8MNG6GLxpShLTkPXjEpPoNhUpxo4aVQETmvS7Vwm1ckrwC64X1Y49si7c6yiUQs28U21MaoZYAnfyA?cluster=devnet) |
+| 2.3 s later the VRF oracle delivers a proven random value; the program assigns 4.391318 tSKR | [vrf_callback](https://explorer.solana.com/tx/4ZoxoK1p88Q42Uh98JXNXs4mkTJXXhGcXdz8j4m6qLqsrErTP3AQQB5poB9jjh7zg3fVPAHhr4SJA8yXBeCCQ3wb?cluster=devnet) |
+| The share is paid out to the grabber | [payout](https://explorer.solana.com/tx/QJ2rPwPYnQLog9ypjnigzSMAN3YNvRdys6icuEurRRDfSjk7yEVDsfPKK3RfjLfQJod8WTc2cKEPxHcYNfcAPNS?cluster=devnet) |
+
+## Refusals (the part bots meet)
+
+| Attempt | Result |
+|---|---|
+| A wallet with no Seeker Genesis Token tries to grab | [refused on-chain](https://explorer.solana.com/tx/5p1KGbsMX1FJoqRhcoNoocq3aspt9PfpM8ttuDGs6uemNj9HWusJLsdqEBzFHjXgK2cvvPAJs8qpBgPTotaoKEr5?cluster=devnet) with `NotASeeker` (error 6013) |
+| The same Genesis token is [moved to a second wallet](https://explorer.solana.com/tx/2L5BJpxTgA5aRXpZDmiiwfuUML5A9i4336vpJGvXKwDs4vmkmQzSG2yG8Jur9LHTBikeiRbmeEXrCoCJT8SRyKSr?cluster=devnet), which tries again | [refused on-chain](https://explorer.solana.com/tx/4zd1bxFH6k9LAsLo2mtTp7aHMAnv614WNPMs7cbHQcDyt5zfpfZsFutTRHWZX2rNyY5MUYyrXi5BrdxJWpe7z9hk?cluster=devnet) with `AlreadyGrabbedOnThisDevice` (error 6016) |
+
+## Tests
+
+`cargo test -p bao` runs 74 tests against the compiled program in LiteSVM:
+
+| Suite | Tests | Covers |
+|---|---|---|
+| unit (`src/`) | 17 | share math (property tests: every split sums exactly to the deposit, no share is ever 0), Genesis token verification (7 forgeries), Merkle and code-word checks |
+| `test_config` | 4 | only the upgrade authority can initialize; fee ceiling; pause |
+| `test_create` | 6 | deposits, protocol fee, bounds, hostile mints, pause |
+| `test_grab` | 12 | device binding (same token from a second wallet, someone else's token, fake group, wrong metadata pointer), circles, code words, sold out, expiry |
+| `test_lucky` | 13 | VRF reservation, callbacks out of order, forged callbacks, stale requests, payout |
+| `test_close` | 6 | refunds, crank reward, Luck-King crowns and chains |
+| `test_hardening` | 16 | pre-funded PDA griefing, self-sabotaged payouts, config changes that must not reach live packets, every denied Token-2022 extension, a full Token-2022 life cycle, scheduled rains |
+
+`pnpm --filter @bao/sdk test` runs the TypeScript SDK tests, including a vector pinned on both sides so the
+app computes exactly the same shares as the program.
