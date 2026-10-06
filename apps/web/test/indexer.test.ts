@@ -2,9 +2,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import type { Store } from '@/lib/db';
 import { indexTransaction, indexWebhook, parseWebhookPayload, pollProgram, type TxInput } from '@/lib/indexer';
 import { setPushTransport, type PushMessage } from '@/lib/push';
+import closeFx from './fixtures/close-txs.json';
 import smoke from './fixtures/smoke-txs.json';
 import { fakeRpc } from './fake-rpc';
-import { freshStore, wipe } from './helpers';
+import { freshStore, mirror, wipe } from './helpers';
 
 const PACKET = 'ASRrZfbPcSoDjjJwuDGhghQyin8meXeb4HwTuEca8rXV';
 type Fx = { signature: string; slot: number; blockTime: number; err: unknown; logMessages: string[] };
@@ -116,5 +117,24 @@ describe('helius webhooks', () => {
     const result = await indexWebhook({ store, rpc }, [{ signature: fx.create_packet.signature }]);
     expect(result).toEqual({ received: 1, events: 1, failed: [] });
     expect(await store.getPacket(PACKET)).not.toBeNull();
+  });
+});
+
+describe('crowning and closing (real devnet crank pass)', () => {
+  it('records the Luck King and the close', async () => {
+    const c = closeFx as unknown as Record<'vrf_callback_crowned' | 'close_claims' | 'close_packet', Fx> & { packet: string };
+    const deps = { store, rpc: rpcWithoutAccounts() };
+    expect((await indexTransaction(deps, tx(c.vrf_callback_crowned))).events).toEqual(['Grabbed', 'LuckKingCrowned']);
+    expect((await indexTransaction(deps, tx(c.close_claims))).events).toEqual([]);
+    expect((await indexTransaction(deps, tx(c.close_packet))).events).toEqual(['PacketClosed']);
+    const [grab] = await store.grabsOf(c.packet);
+    expect(grab.status).toBe('won');
+    // the row exists only through events here; the close and crown still land on it once known
+    await store.upsertPacketMirror(mirror({ address: c.packet }), 'live');
+    await indexTransaction(deps, tx(c.vrf_callback_crowned));
+    await indexTransaction(deps, tx(c.close_packet));
+    const packet = await store.getPacket(c.packet);
+    expect(packet).toMatchObject({ status: 'closed', crowned: true, luckKing: grab.claimer, refunded: '0' });
+    expect(packet?.closeSignature).toBe(c.close_packet.signature);
   });
 });
