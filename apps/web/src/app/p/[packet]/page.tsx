@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { baseUrl, env } from '@/lib/env';
 import { loadPacketPage, packetCopy, timeLeft } from '@/lib/link-page';
+import { Countdown } from './countdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +59,17 @@ export default async function PacketPage({ params }: Props) {
         <h1 style={{ margin: '12px 0 4px', fontSize: 44, color: '#ffd36b' }}>{copy.amount}</h1>
         <p style={{ margin: 0 }}>{copy.shares}</p>
         {p.message ? <p style={{ fontSize: 20, fontStyle: 'italic', margin: '20px 0 0' }}>“{p.message}”</p> : null}
-        <p style={{ margin: '20px 0 0', opacity: 0.8 }}>{timeLeft(p)}</p>
+        <p style={{ margin: '20px 0 0', opacity: 0.8 }}>
+          {p.status === 'live' || p.status === 'scheduled' ? (
+            <Countdown
+              label={p.status === 'live' ? 'Expires in' : 'Opens in'}
+              target={p.status === 'live' ? p.expiresAt : p.startsAt}
+              initial={timeLeft(p)}
+            />
+          ) : (
+            timeLeft(p)
+          )}
+        </p>
         <p style={{ margin: '6px 0 0', fontSize: 14, opacity: 0.7 }}>
           {copy.mode} · {copy.gate}
         </p>
@@ -75,7 +86,10 @@ export default async function PacketPage({ params }: Props) {
           Grab with any Solana wallet
         </a>
       </div>
-      <p style={{ fontSize: 13, opacity: 0.6, marginTop: 24, textAlign: 'center' }}>
+      <p style={{ fontSize: 13, opacity: 0.6, marginTop: 24, textAlign: 'center', wordBreak: 'break-all' }}>
+        Share: {baseUrl()}/p/{packet}
+      </p>
+      <p style={{ fontSize: 13, opacity: 0.6, marginTop: 8, textAlign: 'center' }}>
         {p.grabs.length} {p.grabs.length === 1 ? 'grab' : 'grabs'} so far · runs on Solana devnet ·{' '}
         <a style={{ color: 'inherit' }} href={`https://explorer.solana.com/address/${packet}?cluster=devnet`}>
           view on explorer
