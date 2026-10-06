@@ -665,6 +665,7 @@ dependencies = [
  "solana-signer",
  "solana-transaction",
  "spl-associated-token-account-interface",
+ "spl-pod",
  "spl-token-2022-interface",
  "spl-token-group-interface",
  "spl-token-interface",

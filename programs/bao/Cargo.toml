@@ -25,6 +25,7 @@ anchor-lang = { version = "1.2.0", features = ["init-if-needed"] }
 anchor-spl = { version = "1.2.0", features = ["token", "token_2022", "associated_token", "token_2022_extensions"] }
 ephemeral-rollups-sdk = { version = "0.17.3", features = ["anchor", "vrf"] }
 solana-sha256-hasher = "3.1"
+spl-pod = "0.7"
 spl-token-2022-interface = "2"
 spl-token-group-interface = "0.7"
 
