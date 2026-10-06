@@ -17,6 +17,11 @@ const DENIED: [ExtensionType; 7] = [
     ExtensionType::Pausable,
 ];
 
+/// Used as an account constraint so the check runs before the vault is initialized.
+pub fn is_safe_mint(mint: &AccountInfo) -> bool {
+    assert_safe_mint(mint).is_ok()
+}
+
 pub fn assert_safe_mint(mint: &AccountInfo) -> Result<()> {
     if *mint.owner == anchor_spl::token::ID {
         return Ok(());

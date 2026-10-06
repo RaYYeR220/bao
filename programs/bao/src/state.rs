@@ -35,15 +35,19 @@ pub struct Packet {
     pub total_amount: u64,
     pub remaining_amount: u64,
     pub total_shares: u16,
-    /// Shares handed out (paid or awaiting randomness).
+    /// Shares handed out (assigned or awaiting randomness).
     pub reserved: u16,
-    /// Shares paid out.
+    /// Shares whose amount is assigned.
     pub resolved: u16,
     /// Claim records not yet closed.
     pub open_claims: u16,
     pub mode: SplitMode,
     pub audience: Audience,
     pub seeker_only: bool,
+    /// Genesis group snapshotted from the config at creation; later config changes do not apply.
+    pub sgt_group: Pubkey,
+    /// Crank reward snapshotted from the config at creation; it is pre-funded in the GasTank.
+    pub crank_reward: u64,
     pub created_at: i64,
     pub expires_at: i64,
     pub message_hash: [u8; 32],
@@ -70,7 +74,10 @@ impl Packet {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
 pub enum ClaimStatus {
+    /// Lucky grab waiting for its randomness.
     Pending,
+    /// Share assigned by the VRF callback, not paid out yet.
+    Won,
     Paid,
 }
 

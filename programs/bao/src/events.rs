@@ -37,6 +37,20 @@ pub struct Grabbed {
 }
 
 #[event]
+pub struct PaidOut {
+    pub packet: Pubkey,
+    pub claimer: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct ClaimForfeited {
+    pub packet: Pubkey,
+    pub claimer: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
 pub struct LuckKingCrowned {
     pub packet: Pubkey,
     pub king: Pubkey,

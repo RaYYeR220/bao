@@ -3,7 +3,7 @@
 
 use anchor_lang::{prelude::*, system_program};
 
-use crate::{constants::*, state::*};
+use crate::{constants::*, error::BaoError, state::*};
 
 /// Lamports a packet pre-funds into its GasTank. Unspent lamports go back to the sender on close.
 pub fn gas_budget(rent: &Rent, shares: u16, mode: SplitMode, crank_reward: u64) -> u64 {
@@ -17,6 +17,10 @@ pub fn gas_budget(rent: &Rent, shares: u16, mode: SplitMode, crank_reward: u64) 
 }
 
 /// Creates a program-owned PDA account, paid by the GasTank.
+///
+/// Anyone can send lamports to a PDA address before it exists, which would make a plain
+/// `create_account` fail forever. Like Anchor's `init`, a pre-funded address is topped up to
+/// rent-exempt, then allocated and assigned with the PDA's own seeds.
 pub fn create_pda_account<'info>(
     gas_tank: &AccountInfo<'info>,
     gas_seeds: &[&[u8]],
@@ -26,15 +30,38 @@ pub fn create_pda_account<'info>(
     owner: &Pubkey,
     system: &AccountInfo<'info>,
 ) -> Result<()> {
-    let lamports = Rent::get()?.minimum_balance(space);
-    system_program::create_account(
+    let rent_exempt = Rent::get()?.minimum_balance(space);
+    let current = new_account.lamports();
+    if current == 0 {
+        return system_program::create_account(
+            CpiContext::new_with_signer(
+                system.key(),
+                system_program::CreateAccount { from: gas_tank.clone(), to: new_account.clone() },
+                &[gas_seeds, new_seeds],
+            ),
+            rent_exempt,
+            space as u64,
+            owner,
+        );
+    }
+    require_keys_eq!(*new_account.owner, system_program::ID, BaoError::AddressInUse);
+    if rent_exempt > current {
+        transfer_from_gas(gas_tank, gas_seeds, new_account, rent_exempt - current, system)?;
+    }
+    system_program::allocate(
         CpiContext::new_with_signer(
             system.key(),
-            system_program::CreateAccount { from: gas_tank.clone(), to: new_account.clone() },
-            &[gas_seeds, new_seeds],
+            system_program::Allocate { account_to_allocate: new_account.clone() },
+            &[new_seeds],
         ),
-        lamports,
         space as u64,
+    )?;
+    system_program::assign(
+        CpiContext::new_with_signer(
+            system.key(),
+            system_program::Assign { account_to_assign: new_account.clone() },
+            &[new_seeds],
+        ),
         owner,
     )
 }

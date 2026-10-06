@@ -112,8 +112,7 @@ fn callbacks_pay_every_share_and_crown_the_biggest_grab() {
     let grabs: Vec<(Keypair, Pubkey)> = (0..3).map(|_| seeker_grab(&mut h, &packet, &mint)).collect();
     let mut paid = vec![];
     for (i, (c, sgt)) in grabs.iter().enumerate() {
-        let ix = vrf_callback_ix(&packet, &claim_pda(&packet, sgt), &mint, &c.pubkey(), [i as u8 * 50 + 11; 32]);
-        h.send_as_vrf(&[ix]).unwrap();
+        h.settle(&packet, &claim_pda(&packet, sgt), &c.pubkey(), &mint, [i as u8 * 50 + 11; 32]);
         paid.push(h.token_balance(&ata(&c.pubkey(), &mint)));
     }
     assert_eq!(paid.iter().sum::<u64>(), 3_000_000);
@@ -141,8 +140,7 @@ fn out_of_order_callbacks_still_sum_exactly() {
     let grabs: Vec<(Keypair, Pubkey)> = (0..4).map(|_| seeker_grab(&mut h, &packet, &mint)).collect();
     for i in [2usize, 0, 3, 1] {
         let (c, sgt) = &grabs[i];
-        h.send_as_vrf(&[vrf_callback_ix(&packet, &claim_pda(&packet, sgt), &mint, &c.pubkey(), [i as u8 * 37 + 1; 32])])
-            .unwrap();
+        h.settle(&packet, &claim_pda(&packet, sgt), &c.pubkey(), &mint, [i as u8 * 37 + 1; 32]);
     }
     let total: u64 = grabs.iter().map(|(c, _)| h.token_balance(&ata(&c.pubkey(), &mint))).sum();
     assert_eq!(total, 1_000_003);
@@ -154,7 +152,9 @@ fn callback_not_signed_by_the_vrf_identity_is_refused() {
     let (_s, mint, packet) = lucky_packet(&mut h, 2, 2_000);
     let (c, sgt) = seeker_grab(&mut h, &packet, &mint);
     let attacker = h.funded();
-    let mut ix = vrf_callback_ix(&packet, &claim_pda(&packet, &sgt), &mint, &c.pubkey(), [9; 32]);
+    let claim = claim_pda(&packet, &sgt);
+    let slot = h.account::<bao::state::ClaimRecord>(&claim).requested_slot;
+    let mut ix = vrf_callback_ix(&packet, &claim, [9; 32], slot);
     ix.accounts[0] = anchor_lang::solana_program::instruction::AccountMeta::new_readonly(attacker.pubkey(), true);
     assert!(h.send(&[ix], &attacker).is_err());
     assert_eq!(h.token_balance_or_zero(&ata(&c.pubkey(), &mint)), 0);
@@ -165,19 +165,23 @@ fn second_callback_for_the_same_claim_is_refused() {
     let mut h = Harness::ready().with_vrf_stub();
     let (_s, mint, packet) = lucky_packet(&mut h, 2, 2_000);
     let (c, sgt) = seeker_grab(&mut h, &packet, &mint);
-    let ix = vrf_callback_ix(&packet, &claim_pda(&packet, &sgt), &mint, &c.pubkey(), [5; 32]);
-    h.send_as_vrf(&[ix.clone()]).unwrap();
-    assert_err(h.send_as_vrf(&[ix]), BaoError::NotPending);
+    let claim = claim_pda(&packet, &sgt);
+    h.callback(&packet, &claim, [5; 32]).unwrap();
+    assert_err(h.callback(&packet, &claim, [6; 32]), BaoError::NotPending);
+    let _ = c;
 }
 
 #[test]
-fn callback_for_a_different_claimer_is_refused() {
+fn payout_to_anyone_but_the_claimer_is_refused() {
     let mut h = Harness::ready().with_vrf_stub();
     let (_s, mint, packet) = lucky_packet(&mut h, 2, 2_000);
-    let (_c, sgt) = seeker_grab(&mut h, &packet, &mint);
+    let (c, sgt) = seeker_grab(&mut h, &packet, &mint);
+    let claim = claim_pda(&packet, &sgt);
+    h.callback(&packet, &claim, [5; 32]).unwrap();
     let other = h.funded();
-    let ix = vrf_callback_ix(&packet, &claim_pda(&packet, &sgt), &mint, &other.pubkey(), [5; 32]);
-    assert!(h.send_as_vrf(&[ix]).is_err());
+    assert!(h.payout(&packet, &claim, &other.pubkey(), &mint).is_err());
+    h.payout(&packet, &claim, &c.pubkey(), &mint).unwrap();
+    assert_err(h.payout(&packet, &claim, &c.pubkey(), &mint), BaoError::NotWon);
 }
 
 #[test]
@@ -198,7 +202,7 @@ fn stale_grab_can_be_cancelled_then_a_late_callback_pays_nothing_and_the_device_
     assert_eq!((p.reserved, p.open_claims), (0, 0));
     assert!(!h.exists(&claim));
 
-    let late = vrf_callback_ix(&packet, &claim, &mint, &c.pubkey(), [1; 32]);
+    let late = vrf_callback_ix(&packet, &claim, [1; 32], 0);
     assert!(h.send_as_vrf(&[late]).is_err());
     assert_eq!(h.token_balance_or_zero(&ata(&c.pubkey(), &mint)), 0);
 
@@ -213,7 +217,8 @@ fn paid_claims_cannot_be_cancelled() {
     let (_s, mint, packet) = lucky_packet(&mut h, 2, 2_000);
     let (c, sgt) = seeker_grab(&mut h, &packet, &mint);
     let claim = claim_pda(&packet, &sgt);
-    h.send_as_vrf(&[vrf_callback_ix(&packet, &claim, &mint, &c.pubkey(), [3; 32])]).unwrap();
+    h.callback(&packet, &claim, [3; 32]).unwrap();
+    let _ = c;
     h.warp_slots(301);
     let crank = h.funded();
     assert_err(h.send(&[cancel_stale_ix(&crank.pubkey(), &packet, &claim)], &crank), BaoError::NotPending);

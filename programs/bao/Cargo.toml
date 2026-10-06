@@ -21,7 +21,7 @@ custom-panic = []
 
 
 [dependencies]
-anchor-lang = { version = "1.2.0", features = ["init-if-needed"] }
+anchor-lang = "1.2.0"
 anchor-spl = { version = "1.2.0", features = ["token", "token_2022", "associated_token", "token_2022_extensions"] }
 ephemeral-rollups-sdk = { version = "0.17.3", features = ["anchor", "vrf"] }
 solana-sha256-hasher = "3.1"

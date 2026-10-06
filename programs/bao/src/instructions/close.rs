@@ -5,7 +5,12 @@ use anchor_spl::{
 };
 
 use crate::{
-    constants::*, error::BaoError, events::PacketClosed, gas, instructions::vrf_callback::crown_packet, state::*,
+    constants::*,
+    error::BaoError,
+    events::{ClaimForfeited, PacketClosed},
+    gas,
+    instructions::vrf_callback::crown_packet,
+    state::*,
 };
 
 /// A packet can wind down once it is expired or fully paid, and no grab awaits randomness.
@@ -29,13 +34,20 @@ pub struct CloseClaims<'info> {
 }
 
 /// Closes claim records passed as remaining accounts; their rent goes back to the GasTank.
+/// A won share that was never paid out is forfeited to the sender, but only once the packet
+/// has expired, so a crank cannot sweep a share from its winner.
 pub fn handle_close_claims<'info>(ctx: Context<'info, CloseClaims<'info>>) -> Result<()> {
-    require_closable(&ctx.accounts.packet, Clock::get()?.unix_timestamp)?;
+    let now = Clock::get()?.unix_timestamp;
+    require_closable(&ctx.accounts.packet, now)?;
     let packet_key = ctx.accounts.packet.key();
     for info in ctx.remaining_accounts.iter() {
         require_keys_eq!(*info.owner, crate::ID, BaoError::WrongPacket);
         let record = Account::<ClaimRecord>::try_from(info)?;
         require_keys_eq!(record.packet, packet_key, BaoError::WrongPacket);
+        if record.status == ClaimStatus::Won {
+            require!(ctx.accounts.packet.is_expired(now), BaoError::WinNotPaid);
+            emit!(ClaimForfeited { packet: packet_key, claimer: record.claimer, amount: record.amount });
+        }
         record.close(ctx.accounts.gas_tank.to_account_info())?;
         ctx.accounts.packet.open_claims -= 1;
     }
@@ -73,8 +85,6 @@ pub struct ClosePacket<'info> {
     /// CHECK: crown PDA; created here when a Lucky packet expires with a king but no crown yet.
     #[account(mut, seeds = [CROWN_SEED, packet.key().as_ref()], bump)]
     pub crown: UncheckedAccount<'info>,
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
-    pub config: Box<Account<'info, Config>>,
     #[account(address = packet.token_program)]
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -138,7 +148,7 @@ pub fn handle_close_packet(ctx: Context<ClosePacket>) -> Result<()> {
     ))?;
 
     // pay the crank, then sweep whatever the grabs did not use back to the sender
-    let reward = ctx.accounts.config.crank_reward_lamports.min(gas_tank.lamports());
+    let reward = packet.crank_reward.min(gas_tank.lamports());
     gas::transfer_from_gas(&gas_tank, gas_seeds, &ctx.accounts.caller.to_account_info(), reward, &system)?;
     let rest = gas_tank.lamports();
     gas::transfer_from_gas(&gas_tank, gas_seeds, &ctx.accounts.sender.to_account_info(), rest, &system)?;

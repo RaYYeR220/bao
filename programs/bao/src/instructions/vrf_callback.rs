@@ -1,13 +1,11 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
-};
 use ephemeral_rollups_sdk::anchor::vrf_callback;
 
 use crate::{constants::*, error::BaoError, events::*, gas, math, state::*};
 
 /// Delivered by the MagicBlock VRF program once the randomness for a Lucky grab is proven.
+/// It only assigns the share: nothing here depends on accounts the claimer controls, so a
+/// claimer cannot make it fail. Tokens move later in `payout`.
 /// Account order matches the metas `grab_lucky` registered with the request.
 #[vrf_callback]
 #[derive(Accounts)]
@@ -25,80 +23,28 @@ pub struct VrfCallback<'info> {
         bump = claim.bump
     )]
     pub claim: Box<Account<'info, ClaimRecord>>,
-    #[account(mut, seeds = [VAULT_SEED, packet.key().as_ref()], bump = packet.vault_bump)]
-    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
-    #[account(address = packet.mint)]
-    pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, seeds = [GAS_SEED, packet.key().as_ref()], bump = packet.gas_bump)]
     pub gas_tank: SystemAccount<'info>,
-    /// CHECK: must be the claimer recorded on the claim.
-    #[account(address = claim.claimer @ BaoError::WrongPacket)]
-    pub claimer: UncheckedAccount<'info>,
-    /// CHECK: claimer ATA, created idempotently for (claimer, mint).
-    #[account(
-        mut,
-        address = anchor_spl::associated_token::get_associated_token_address_with_program_id(
-            &claim.claimer, &packet.mint, &packet.token_program
-        )
-    )]
-    pub claimer_token: UncheckedAccount<'info>,
     /// CHECK: crown PDA, created when the packet is fully resolved.
     #[account(mut, seeds = [CROWN_SEED, packet.key().as_ref()], bump)]
     pub crown: UncheckedAccount<'info>,
-    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
-    pub config: Box<Account<'info, Config>>,
-    #[account(address = packet.token_program)]
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32]) -> Result<()> {
-    require!(ctx.accounts.claim.status == ClaimStatus::Pending, BaoError::NotPending);
-    let packet_key = ctx.accounts.packet.key();
-    let gas_bump = [ctx.accounts.packet.gas_bump];
-    let gas_seeds: &[&[u8]] = &[GAS_SEED, packet_key.as_ref(), &gas_bump];
-    let gas_tank = ctx.accounts.gas_tank.to_account_info();
-    let system = ctx.accounts.system_program.to_account_info();
+pub fn handle_vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32], requested_slot: u64) -> Result<()> {
+    let claim = &mut ctx.accounts.claim;
+    require!(claim.status == ClaimStatus::Pending, BaoError::NotPending);
+    // after a cancel and re-grab, a late answer to the old request must not settle the new one
+    require!(claim.requested_slot == requested_slot, BaoError::WrongRequest);
 
+    let packet_key = ctx.accounts.packet.key();
     let packet = &mut ctx.accounts.packet;
     // Order-independent: every callback draws from what is left, so the sum stays exact.
     let amount = math::lucky_share(packet.remaining_amount, packet.total_shares - packet.resolved, &randomness);
-
-    gas::create_ata_idempotent(
-        &gas_tank,
-        gas_seeds,
-        &ctx.accounts.claimer_token.to_account_info(),
-        &ctx.accounts.claimer.to_account_info(),
-        &ctx.accounts.mint.to_account_info(),
-        &ctx.accounts.token_program.to_account_info(),
-        &ctx.accounts.associated_token_program.to_account_info(),
-        &system,
-    )?;
-
-    let id = packet.id.to_le_bytes();
-    let bump = [packet.bump];
-    let packet_seeds: &[&[u8]] = &[PACKET_SEED, packet.sender.as_ref(), &id, &bump];
-    token_interface::transfer_checked(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.key(),
-            TransferChecked {
-                from: ctx.accounts.vault.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-                to: ctx.accounts.claimer_token.to_account_info(),
-                authority: packet.to_account_info(),
-            },
-            &[packet_seeds],
-        ),
-        amount,
-        ctx.accounts.mint.decimals,
-    )?;
-
     packet.remaining_amount -= amount;
     packet.resolved += 1;
-    let claim = &mut ctx.accounts.claim;
     claim.amount = amount;
-    claim.status = ClaimStatus::Paid;
+    claim.status = ClaimStatus::Won;
     // ties keep the earlier grab as king
     if packet.luck_king.is_none() || amount > packet.luck_king_amount {
         packet.luck_king = Some(claim.claimer);
@@ -115,12 +61,23 @@ pub fn handle_vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32]) -> R
     });
 
     if packet.is_finished() && !packet.crowned {
-        crown_packet(packet, &packet_key, &ctx.accounts.crown.to_account_info(), ctx.bumps.crown, &gas_tank, gas_seeds, &system)?;
+        let gas_bump = [packet.gas_bump];
+        let gas_seeds: &[&[u8]] = &[GAS_SEED, packet_key.as_ref(), &gas_bump];
+        crown_packet(
+            packet,
+            &packet_key,
+            &ctx.accounts.crown.to_account_info(),
+            ctx.bumps.crown,
+            &ctx.accounts.gas_tank.to_account_info(),
+            gas_seeds,
+            &ctx.accounts.system_program.to_account_info(),
+        )?;
     }
     Ok(())
 }
 
-/// Creates the Crown for the packet's Luck King, paid by the GasTank.
+/// Creates the Crown for the packet's Luck King, paid by the GasTank. A crown still alive at
+/// this address (left by an earlier packet with the same sender and id) is kept as is.
 pub(crate) fn crown_packet<'info>(
     packet: &mut Packet,
     packet_key: &Pubkey,
@@ -130,9 +87,13 @@ pub(crate) fn crown_packet<'info>(
     gas_seeds: &[&[u8]],
     system: &AccountInfo<'info>,
 ) -> Result<()> {
+    packet.crowned = true;
     let Some(king) = packet.luck_king else {
         return Ok(());
     };
+    if *crown.owner == crate::ID {
+        return Ok(());
+    }
     let crown_seeds: &[&[u8]] = &[CROWN_SEED, packet_key.as_ref(), &[crown_bump]];
     gas::create_pda_account(gas_tank, gas_seeds, crown, crown_seeds, 8 + Crown::INIT_SPACE, &crate::ID, system)?;
     let record = Crown {
@@ -147,7 +108,6 @@ pub(crate) fn crown_packet<'info>(
     };
     let mut data = crown.try_borrow_mut_data()?;
     record.try_serialize(&mut &mut data[..])?;
-    packet.crowned = true;
     emit!(LuckKingCrowned {
         packet: *packet_key,
         king,

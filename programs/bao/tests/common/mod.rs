@@ -332,7 +332,7 @@ impl Harness {
 }
 
 pub fn create_args(id: u64, total: u64, shares: u16, mode: SplitMode, audience: Audience, seeker_only: bool) -> bao::CreatePacketArgs {
-    bao::CreatePacketArgs { id, total, shares, mode, audience, seeker_only, expires_in: 86_400, message_hash: [7u8; 32] }
+    bao::CreatePacketArgs { id, total, shares, mode, audience, seeker_only, expires_in: 86_400, message_hash: [7u8; 32], max_fee_bps: 500 }
 }
 
 /// `create_packet` for a classic SPL mint. `parent_crown` continues a Luck-King chain.
@@ -504,30 +504,159 @@ pub fn grab_lucky_ix(claimer: &Pubkey, packet: &Pubkey, mint: &Pubkey, args: bao
     )
 }
 
-/// The callback the VRF oracle delivers for one claim.
-pub fn vrf_callback_ix(packet: &Pubkey, claim: &Pubkey, mint: &Pubkey, claimer: &Pubkey, randomness: [u8; 32]) -> Instruction {
+/// The callback the VRF oracle delivers for one claim; `requested_slot` echoes the request.
+pub fn vrf_callback_ix(packet: &Pubkey, claim: &Pubkey, randomness: [u8; 32], requested_slot: u64) -> Instruction {
+    let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
+    Instruction::new_with_bytes(
+        bao::ID,
+        &bao::instruction::VrfCallback { randomness, requested_slot }.data(),
+        bao::accounts::VrfCallback {
+            vrf_program_identity: vrf_identity(),
+            packet: *packet,
+            claim: *claim,
+            gas_tank: gas,
+            crown: crown_pda(packet),
+            system_program: SYSTEM_PROGRAM,
+        }
+        .to_account_metas(None),
+    )
+}
+
+/// Permissionless payout of a won share to its claimer.
+pub fn payout_ix(payer: &Pubkey, packet: &Pubkey, claim: &Pubkey, claimer: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Instruction {
     let vault = Pubkey::find_program_address(&[bao::VAULT_SEED, packet.as_ref()], &bao::ID).0;
     let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
     Instruction::new_with_bytes(
         bao::ID,
-        &bao::instruction::VrfCallback { randomness }.data(),
-        bao::accounts::VrfCallback {
-            vrf_program_identity: vrf_identity(),
+        &bao::instruction::Payout {}.data(),
+        bao::accounts::Payout {
+            payer: *payer,
             packet: *packet,
             claim: *claim,
             vault,
             mint: *mint,
             gas_tank: gas,
             claimer: *claimer,
-            claimer_token: ata(claimer, mint),
-            crown: crown_pda(packet),
-            config: Harness::config_pda(),
-            token_program: TOKEN,
+            claimer_token: ata_with(claimer, mint, token_program),
+            token_program: *token_program,
             associated_token_program: ATA_PROGRAM,
             system_program: SYSTEM_PROGRAM,
         }
         .to_account_metas(None),
     )
+}
+
+impl Harness {
+    /// Delivers the VRF callback for `claim`, echoing the slot recorded on the claim.
+    pub fn callback(&mut self, packet: &Pubkey, claim: &Pubkey, randomness: [u8; 32]) -> TransactionResult {
+        let requested_slot = match self.svm.get_account(claim) {
+            Some(a) if a.owner == bao::ID => {
+                let r: bao::state::ClaimRecord = self.account(claim);
+                r.requested_slot
+            }
+            _ => 0,
+        };
+        self.send_as_vrf(&[vrf_callback_ix(packet, claim, randomness, requested_slot)])
+    }
+
+    pub fn payout(&mut self, packet: &Pubkey, claim: &Pubkey, claimer: &Pubkey, mint: &Pubkey) -> TransactionResult {
+        self.payout_with(packet, claim, claimer, mint, &TOKEN)
+    }
+
+    pub fn payout_with(&mut self, packet: &Pubkey, claim: &Pubkey, claimer: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> TransactionResult {
+        let payer = self.funded();
+        self.send(&[payout_ix(&payer.pubkey(), packet, claim, claimer, mint, token_program)], &payer)
+    }
+
+    /// Callback then payout: the normal life of a Lucky grab.
+    pub fn settle(&mut self, packet: &Pubkey, claim: &Pubkey, claimer: &Pubkey, mint: &Pubkey, randomness: [u8; 32]) {
+        self.callback(packet, claim, randomness).unwrap();
+        self.payout(packet, claim, claimer, mint).unwrap();
+    }
+
+    /// Sends lamports to an address that has no account yet, as an attacker could.
+    pub fn prefund(&mut self, key: &Pubkey, lamports: u64) {
+        self.svm
+            .set_account(*key, Account { lamports, data: vec![], owner: SYSTEM_PROGRAM, executable: false, rent_epoch: 0 })
+            .unwrap();
+    }
+
+    /// Re-points a classic token account to another owner (a grabber sabotaging their own ATA).
+    pub fn reassign_token_owner(&mut self, token_account: &Pubkey, new_owner: &Pubkey) {
+        let mut acc: Account = self.svm.get_account(token_account).unwrap();
+        acc.data[32..64].copy_from_slice(new_owner.as_ref());
+        self.svm.set_account(*token_account, acc).unwrap();
+    }
+
+    /// A Token-2022 mint carrying one extension (for hostile-mint tests) or none.
+    pub fn make_t22_mint(&mut self, decimals: u8, ext: Option<ExtensionType>) -> Pubkey {
+        let mint = Pubkey::new_unique();
+        let exts: Vec<ExtensionType> = ext.into_iter().collect();
+        let space = ExtensionType::try_calculate_account_len::<T22Mint>(&exts).unwrap();
+        let mut data = vec![0u8; space];
+        {
+            let mut s = StateWithExtensionsMut::<T22Mint>::unpack_uninitialized(&mut data).unwrap();
+            if let Some(e) = ext {
+                use spl_token_2022_interface::extension::*;
+                match e {
+                    ExtensionType::TransferHook => {
+                        s.init_extension::<transfer_hook::TransferHook>(true).unwrap();
+                    }
+                    ExtensionType::PermanentDelegate => {
+                        s.init_extension::<permanent_delegate::PermanentDelegate>(true).unwrap();
+                    }
+                    ExtensionType::DefaultAccountState => {
+                        // a real hostile mint freezes every new account by default
+                        let d = s.init_extension::<default_account_state::DefaultAccountState>(true).unwrap();
+                        d.state = AccountState::Frozen as u8;
+                    }
+                    ExtensionType::Pausable => {
+                        s.init_extension::<pausable::PausableConfig>(true).unwrap();
+                    }
+                    ExtensionType::NonTransferable => {
+                        s.init_extension::<non_transferable::NonTransferable>(true).unwrap();
+                    }
+                    ExtensionType::ConfidentialTransferMint => {
+                        s.init_extension::<confidential_transfer::ConfidentialTransferMint>(true).unwrap();
+                    }
+                    ExtensionType::TransferFeeConfig => {
+                        s.init_extension::<TransferFeeConfig>(true).unwrap();
+                    }
+                    ExtensionType::MetadataPointer => {
+                        s.init_extension::<MetadataPointer>(true).unwrap();
+                    }
+                    other => panic!("fixture does not build {other:?}"),
+                }
+            }
+            s.base.decimals = decimals;
+            s.base.is_initialized = true;
+            s.pack_base();
+            s.init_account_type().unwrap();
+        }
+        self.put(mint, TOKEN_2022, data);
+        let treasury = self.admin.pubkey();
+        self.fund_t22_plain(&mint, &treasury, 0);
+        mint
+    }
+
+    /// Token-2022 ATA with ImmutableOwner, as the associated token program creates it.
+    pub fn fund_t22_plain(&mut self, mint: &Pubkey, owner: &Pubkey, amount: u64) -> Pubkey {
+        let a = ata_with(owner, mint, &TOKEN_2022);
+        let space = ExtensionType::try_calculate_account_len::<T22Account>(&[ExtensionType::ImmutableOwner]).unwrap();
+        let mut data = vec![0u8; space];
+        {
+            let mut s = StateWithExtensionsMut::<T22Account>::unpack_uninitialized(&mut data).unwrap();
+            s.init_extension::<spl_token_2022_interface::extension::immutable_owner::ImmutableOwner>(true).unwrap();
+            s.base.mint = mint.to_bytes().into();
+            s.base.owner = owner.to_bytes().into();
+            s.base.amount = amount;
+            s.base.state = AccountState::Initialized;
+            s.pack_base();
+            s.init_account_type().unwrap();
+        }
+        self.put(a, TOKEN_2022, data);
+        a
+    }
 }
 
 pub fn cancel_stale_ix(caller: &Pubkey, packet: &Pubkey, claim: &Pubkey) -> Instruction {
@@ -561,7 +690,6 @@ pub fn close_packet_ix(caller: &Pubkey, packet: &Pubkey, sender: &Pubkey, mint: 
             sender_token: ata(sender, mint),
             gas_tank: gas,
             crown: crown_pda(packet),
-            config: Harness::config_pda(),
             token_program: TOKEN,
             associated_token_program: ATA_PROGRAM,
             system_program: SYSTEM_PROGRAM,

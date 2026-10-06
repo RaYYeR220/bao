@@ -29,7 +29,7 @@ fn lucky_grab(h: &mut Harness, packet: &Pubkey, mint: &Pubkey) -> (Keypair, Pubk
 }
 
 fn deliver(h: &mut Harness, packet: &Pubkey, mint: &Pubkey, c: &Keypair, sgt: &Pubkey, byte: u8) {
-    h.send_as_vrf(&[vrf_callback_ix(packet, &claim_pda(packet, sgt), mint, &c.pubkey(), [byte; 32])]).unwrap();
+    h.settle(packet, &claim_pda(packet, sgt), &c.pubkey(), mint, [byte; 32]);
 }
 
 #[test]
@@ -72,8 +72,8 @@ fn expired_packet_returns_tokens_and_lamports_to_the_sender_and_crowns_the_king(
     assert!(!h.exists(&claim_pda(&packet, &sgt)));
     assert_eq!(h.token_balance(&ata(&sender.pubkey(), &mint)) - tokens_before, 3_000 - got);
     assert!(h.lamports(&sender.pubkey()) > lamports_before, "rent and unspent gas go back to the sender");
-    // two transactions at 5_000 lamports each, minus the 10_000 crank reward
-    assert!(h.lamports(&crank.pubkey()) + 10_000 >= crank_before, "the crank is not out of pocket");
+    // two transactions at 5_000 lamports each, plus exactly the 10_000 crank reward
+    assert_eq!(h.lamports(&crank.pubkey()), crank_before - 10_000 + 10_000, "the crank earns exactly its reward");
     let crown: bao::state::Crown = h.account(&crown_pda(&packet));
     assert_eq!((crown.king, crown.amount), (c.pubkey(), got));
 }

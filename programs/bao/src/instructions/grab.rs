@@ -54,7 +54,7 @@ pub(crate) fn validate_and_reserve(
     if packet.seeker_only {
         let mint = sgt_mint.ok_or(error!(BaoError::NotASeeker))?;
         let token = sgt_token.ok_or(error!(BaoError::NotASeeker))?;
-        sgt::verify_sgt(claimer, &config.sgt_group, mint, token)?;
+        sgt::verify_sgt(claimer, &packet.sgt_group, mint, token)?;
         require_keys_eq!(args.device_key, mint.key(), BaoError::BadDeviceKey);
     } else {
         require_keys_eq!(args.device_key, *claimer, BaoError::BadDeviceKey);
@@ -66,7 +66,8 @@ pub(crate) fn validate_and_reserve(
 }
 
 /// Creates the claim record PDA, paid by the GasTank. The address is keyed by the device,
-/// so a second grab from the same device finds it already there and is refused.
+/// so a second grab from the same device finds a record owned by this program and is refused.
+/// Lamports sent to the address by someone else do not count as a grab.
 pub(crate) fn write_claim_record<'info>(
     claim: &AccountInfo<'info>,
     claim_bump: u8,
@@ -75,7 +76,7 @@ pub(crate) fn write_claim_record<'info>(
     system: &AccountInfo<'info>,
     record: &ClaimRecord,
 ) -> Result<()> {
-    require!(claim.data_is_empty() && claim.lamports() == 0, BaoError::AlreadyGrabbedOnThisDevice);
+    require!(*claim.owner != crate::ID, BaoError::AlreadyGrabbedOnThisDevice);
     let claim_seeds: &[&[u8]] = &[CLAIM_SEED, record.packet.as_ref(), record.device_key.as_ref(), &[claim_bump]];
     gas::create_pda_account(gas_tank, gas_seeds, claim, claim_seeds, 8 + ClaimRecord::INIT_SPACE, &crate::ID, system)?;
     let mut data = claim.try_borrow_mut_data()?;
@@ -298,7 +299,8 @@ pub fn handle_grab_lucky(ctx: Context<GrabLucky>, args: GrabArgs) -> Result<()> 
     ])
     .to_bytes();
     let meta = |pubkey: Pubkey, is_writable: bool| SerializableAccountMeta { pubkey, is_signer: false, is_writable };
-    // Order must match `VrfCallback` (after the injected VRF identity).
+    // Order must match `VrfCallback` (after the injected VRF identity). The callback only
+    // assigns the share, so nothing the claimer controls is passed to it.
     let ix = create_request_randomness_ix(RequestRandomnessParams {
         payer: a.gas_tank.key(),
         oracle_queue: a.oracle_queue.key(),
@@ -308,18 +310,12 @@ pub fn handle_grab_lucky(ctx: Context<GrabLucky>, args: GrabArgs) -> Result<()> 
         accounts_metas: Some(vec![
             meta(packet_key, true),
             meta(a.claim.key(), true),
-            meta(a.vault.key(), true),
-            meta(a.mint.key(), false),
             meta(a.gas_tank.key(), true),
-            meta(claimer, false),
-            meta(a.claimer_token.key(), true),
             meta(a.crown.key(), true),
-            meta(a.config.key(), false),
-            meta(a.token_program.key(), false),
-            meta(a.associated_token_program.key(), false),
             meta(a.system_program.key(), false),
         ]),
-        callback_args: None,
+        // echoed back so the callback can tell this request from an older one
+        callback_args: Some(clock.slot.to_le_bytes().to_vec()),
     });
     let identity_bump = [ctx.bumps.program_identity];
     // The GasTank pays the request fee, so the grabber only pays the network fee.

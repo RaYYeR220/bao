@@ -13,6 +13,8 @@ pub struct CreatePacketArgs {
     pub seeker_only: bool,
     pub expires_in: i64,
     pub message_hash: [u8; 32],
+    /// Highest protocol fee the sender accepts; protects against a fee change racing the transaction.
+    pub max_fee_bps: u16,
 }
 
 #[derive(Accounts)]
@@ -30,7 +32,10 @@ pub struct CreatePacket<'info> {
         bump
     )]
     pub packet: Box<Account<'info, Packet>>,
-    #[account(mint::token_program = token_program)]
+    #[account(
+        mint::token_program = token_program,
+        constraint = mint_safety::is_safe_mint(&mint.to_account_info()) @ BaoError::UnsafeMint
+    )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, token::mint = mint, token::authority = sender, token::token_program = token_program)]
     pub sender_token: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -87,11 +92,13 @@ pub fn handle_create_packet(ctx: Context<CreatePacket>, args: CreatePacketArgs) 
     if args.audience == Audience::Open {
         require!(args.seeker_only, BaoError::OpenMustBeSeekerOnly);
     }
-    mint_safety::assert_safe_mint(&ctx.accounts.mint.to_account_info())?;
 
     let token_program = ctx.accounts.token_program.key();
 
     // Open packets reach every verified Seeker and pay the protocol fee on top of the deposit.
+    if args.audience == Audience::Open {
+        require!(config.fee_bps <= args.max_fee_bps, BaoError::FeeAboveLimit);
+    }
     if args.audience == Audience::Open && config.fee_bps > 0 {
         let fee = (args.total as u128 * config.fee_bps as u128 / 10_000) as u64;
         if fee > 0 {
@@ -144,6 +151,8 @@ pub fn handle_create_packet(ctx: Context<CreatePacket>, args: CreatePacketArgs) 
     packet.mode = args.mode;
     packet.audience = args.audience;
     packet.seeker_only = args.seeker_only;
+    packet.sgt_group = config.sgt_group;
+    packet.crank_reward = config.crank_reward_lamports;
     packet.created_at = now;
     packet.expires_at = now + args.expires_in;
     packet.message_hash = args.message_hash;

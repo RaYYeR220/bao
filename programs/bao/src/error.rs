@@ -56,4 +56,14 @@ pub enum BaoError {
     CrownActive,
     #[msg("Math overflow")]
     Overflow,
+    #[msg("Protocol fee is above the limit the sender accepted")]
+    FeeAboveLimit,
+    #[msg("Claim has no unpaid win")]
+    NotWon,
+    #[msg("Won share is not paid yet and the packet has not expired")]
+    WinNotPaid,
+    #[msg("Randomness answers a different request")]
+    WrongRequest,
+    #[msg("Address is held by another program")]
+    AddressInUse,
 }

@@ -41,8 +41,12 @@ pub mod bao {
         instructions::grab::handle_grab_lucky(ctx, args)
     }
 
-    pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32]) -> Result<()> {
-        instructions::vrf_callback::handle_vrf_callback(ctx, randomness)
+    pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32], requested_slot: u64) -> Result<()> {
+        instructions::vrf_callback::handle_vrf_callback(ctx, randomness, requested_slot)
+    }
+
+    pub fn payout(ctx: Context<Payout>) -> Result<()> {
+        instructions::payout::handle_payout(ctx)
     }
 
     pub fn cancel_stale(ctx: Context<CancelStale>) -> Result<()> {
