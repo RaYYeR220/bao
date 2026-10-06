@@ -80,3 +80,18 @@ export async function identity(deps: IdentityDeps, address: string, opts: { refr
     devnetGenesisMint: row?.devnetGenesisMint ?? null,
   };
 }
+
+/** Resolves `.skr` names for addresses never looked up (bounded, best effort), so lists show names. */
+export async function warmSkrNames(deps: IdentityDeps, addresses: string[], max = 8): Promise<void> {
+  const unique = [...new Set(addresses.filter(Boolean))];
+  if (unique.length === 0) return;
+  const rows = await Promise.all(unique.map((a) => deps.store.getIdentity(a)));
+  const missing = unique.filter((_a, i) => rows[i]?.skrCheckedAt == null).slice(0, max);
+  await Promise.all(
+    missing.map((a) =>
+      withTimeout(resolveSkrName(deps.mainnet ?? mainnetRpc(), toAddress(a)), READ_TIMEOUT_MS, 'skr lookup')
+        .then((name) => deps.store.saveSkr(a, name))
+        .catch((err) => log.warn('identity.skr_failed', { address: a, error: errorMessage(err) })),
+    ),
+  );
+}
