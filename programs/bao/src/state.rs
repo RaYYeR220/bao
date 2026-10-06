@@ -49,6 +49,8 @@ pub struct Packet {
     /// Crank reward snapshotted from the config at creation; it is pre-funded in the GasTank.
     pub crank_reward: u64,
     pub created_at: i64,
+    /// Grabs open at this time (scheduled rains); equals `created_at` for immediate packets.
+    pub starts_at: i64,
     pub expires_at: i64,
     pub message_hash: [u8; 32],
     pub parent: Option<Pubkey>,

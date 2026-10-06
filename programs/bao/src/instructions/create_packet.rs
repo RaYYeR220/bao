@@ -15,6 +15,8 @@ pub struct CreatePacketArgs {
     pub message_hash: [u8; 32],
     /// Highest protocol fee the sender accepts; protects against a fee change racing the transaction.
     pub max_fee_bps: u16,
+    /// Unix time grabs open (a scheduled rain); 0 opens immediately.
+    pub starts_at: i64,
 }
 
 #[derive(Accounts)]
@@ -137,6 +139,8 @@ pub fn handle_create_packet(ctx: Context<CreatePacket>, args: CreatePacketArgs) 
     };
 
     let now = Clock::get()?.unix_timestamp;
+    let starts_at = if args.starts_at == 0 { now } else { args.starts_at.max(now) };
+    require!(starts_at <= now + MAX_START_DELAY_SECS, BaoError::BadStart);
     let packet = &mut ctx.accounts.packet;
     packet.sender = ctx.accounts.sender.key();
     packet.id = args.id;
@@ -154,7 +158,8 @@ pub fn handle_create_packet(ctx: Context<CreatePacket>, args: CreatePacketArgs) 
     packet.sgt_group = config.sgt_group;
     packet.crank_reward = config.crank_reward_lamports;
     packet.created_at = now;
-    packet.expires_at = now + args.expires_in;
+    packet.starts_at = starts_at;
+    packet.expires_at = starts_at + args.expires_in;
     packet.message_hash = args.message_hash;
     packet.parent = parent;
     packet.chain_root = chain_root;

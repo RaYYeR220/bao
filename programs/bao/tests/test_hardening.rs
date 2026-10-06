@@ -338,3 +338,39 @@ fn another_packets_vault_or_the_wrong_token_program_is_refused() {
     // the untouched instruction still works, so the failures above came from the substitutions
     h.send(&[grab_equal_ix(&c.pubkey(), &p1, &mint, grab_args(sgt, vec![], None), Some((sgt, ta)))], &c).unwrap();
 }
+
+// --- scheduled rains -------------------------------------------------------------------------
+
+#[test]
+fn scheduled_rain_cannot_be_grabbed_before_it_starts() {
+    let mut h = Harness::ready();
+    let sender = h.funded();
+    let mint = h.make_spl_mint(6);
+    h.fund_tokens(&mint, &sender.pubkey(), 10_000);
+    let now: anchor_lang::prelude::Clock = h.svm.get_sysvar();
+    let mut args = create_args(1, 1_000, 2, SplitMode::Equal, Audience::Open, true);
+    args.starts_at = now.unix_timestamp + 600;
+    h.send(&[create_packet_ix(&h, &sender.pubkey(), &mint, args, None)], &sender).unwrap();
+    let packet = packet_pdas(&sender.pubkey(), 1).0;
+    let p: bao::state::Packet = h.account(&packet);
+    assert_eq!(p.starts_at, now.unix_timestamp + 600);
+    assert_eq!(p.expires_at, now.unix_timestamp + 600 + 86_400);
+
+    let (c, sgt, ta) = seeker(&mut h);
+    let ix = || grab_equal_ix(&c.pubkey(), &packet, &mint, grab_args(sgt, vec![], None), Some((sgt, ta)));
+    assert_err(h.send(&[ix()], &c), BaoError::NotStarted);
+    h.warp_seconds(600);
+    h.send(&[ix()], &c).unwrap();
+}
+
+#[test]
+fn rain_cannot_be_scheduled_more_than_a_week_ahead() {
+    let mut h = Harness::ready();
+    let sender = h.funded();
+    let mint = h.make_spl_mint(6);
+    h.fund_tokens(&mint, &sender.pubkey(), 10_000);
+    let now: anchor_lang::prelude::Clock = h.svm.get_sysvar();
+    let mut args = create_args(1, 1_000, 2, SplitMode::Equal, Audience::Open, true);
+    args.starts_at = now.unix_timestamp + 8 * 86_400;
+    assert_err(h.send(&[create_packet_ix(&h, &sender.pubkey(), &mint, args, None)], &sender), BaoError::BadStart);
+}

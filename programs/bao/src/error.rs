@@ -66,4 +66,8 @@ pub enum BaoError {
     WrongRequest,
     #[msg("Address is held by another program")]
     AddressInUse,
+    #[msg("Packet has not started yet")]
+    NotStarted,
+    #[msg("Start must be within the next 7 days")]
+    BadStart,
 }

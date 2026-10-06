@@ -14,6 +14,8 @@ pub const MAX_FEE_BPS: u16 = 500;
 /// Slots after which an unanswered VRF request can be cancelled.
 pub const STALE_SLOTS: u64 = 300;
 pub const CROWN_TTL_SECS: i64 = 7 * 86_400;
+/// How far ahead a rain can be scheduled.
+pub const MAX_START_DELAY_SECS: i64 = 7 * 86_400;
 
 /// Upper bound for a recipient token account (Token-2022 ATA with ImmutableOwner).
 pub const ATA_SPACE_BUDGET: usize = 200;

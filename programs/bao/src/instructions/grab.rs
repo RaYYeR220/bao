@@ -38,6 +38,7 @@ pub(crate) fn validate_and_reserve(
     now: i64,
 ) -> Result<u16> {
     require!(!config.paused, BaoError::Paused);
+    require!(now >= packet.starts_at, BaoError::NotStarted);
     require!(!packet.is_expired(now), BaoError::Expired);
     require!(packet.reserved < packet.total_shares, BaoError::SoldOut);
     match packet.audience {

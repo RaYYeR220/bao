@@ -332,7 +332,7 @@ impl Harness {
 }
 
 pub fn create_args(id: u64, total: u64, shares: u16, mode: SplitMode, audience: Audience, seeker_only: bool) -> bao::CreatePacketArgs {
-    bao::CreatePacketArgs { id, total, shares, mode, audience, seeker_only, expires_in: 86_400, message_hash: [7u8; 32], max_fee_bps: 500 }
+    bao::CreatePacketArgs { id, total, shares, mode, audience, seeker_only, expires_in: 86_400, message_hash: [7u8; 32], max_fee_bps: 500, starts_at: 0 }
 }
 
 /// `create_packet` for a classic SPL mint. `parent_crown` continues a Luck-King chain.
