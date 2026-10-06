@@ -2,12 +2,22 @@
  * End to end against a running API (local Postgres) and real devnet:
  *   sign in two fresh wallets -> faucet -> circle + snapshot -> a Lucky circle packet created
  *   with the SDK -> registered -> grabbed by the other member -> VRF -> /api/cron/tick pays it
- *   -> the grab shows up indexed and paid, and the feed shows the packet.
+ *   -> the grab shows up indexed and paid, and the feed shows the packet; then an open Equal
+ *   packet is grabbed through the Solana Actions endpoint.
  *
  *   BASE_URL=http://localhost:3000 CRON_SECRET=... pnpm --filter web e2e
  */
 import { createSignInMessageText } from '@solana/wallet-standard-util';
-import { address, generateKeyPairSigner, signBytes, type KeyPairSigner } from '@solana/kit';
+import {
+  address,
+  generateKeyPairSigner,
+  getBase64EncodedWireTransaction,
+  getSignatureFromTransaction,
+  getTransactionDecoder,
+  signBytes,
+  signTransaction,
+  type KeyPairSigner,
+} from '@solana/kit';
 import {
   ClaimStatus,
   DEVNET,
@@ -18,7 +28,7 @@ import {
   findGenesisToken,
   hexToBytes,
 } from '@bao/sdk';
-import { createRpc, devnetUrl, explorerTx, sendAndConfirm } from '../src/lib/rpc';
+import { createRpc, devnetUrl, explorerTx, sendAndConfirm, waitForConfirmation } from '../src/lib/rpc';
 
 const BASE_URL = (process.env.BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
@@ -164,6 +174,44 @@ async function main() {
   record('feed_grabber_hides_grabbed', !grabberFeed.packets.some((p) => p.address === created.packet));
   if (!inSender) throw new Error('packet missing from the sender feed');
   record('widget_sender', await senderApi.call('GET /api/widget'));
+
+  // 10. an open Equal packet grabbed through the Solana Actions endpoint (what any Actions wallet does)
+  const open = await buildCreatePacket({
+    sender,
+    mint: address(DEVNET.tskrMint!),
+    treasury: address(DEVNET.treasury!),
+    total: 3_000_000n,
+    shares: 3,
+    mode: 'equal',
+    audience: { kind: 'open' },
+    seekerOnly: true,
+    expiresIn: 3_600n,
+  });
+  record('open_packet', open.packet);
+  record('create_open_packet', await sendAndConfirm(rpc, open.instructions, sender));
+  await senderApi.call('POST /api/packets', { body: { address: open.packet } });
+  const action = await fetch(`${BASE_URL}/api/actions/grab/${open.packet}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ account: grabber.address }),
+  });
+  if (!action.ok) throw new Error(`action POST ${action.status}: ${await action.text()}`);
+  const { transaction } = (await action.json()) as { transaction: string };
+  const signed = await signTransaction([grabber.keyPair], getTransactionDecoder().decode(Buffer.from(transaction, 'base64')));
+  await rpc.sendTransaction(getBase64EncodedWireTransaction(signed), { encoding: 'base64', preflightCommitment: 'confirmed' }).send();
+  const actionSig = getSignatureFromTransaction(signed);
+  await waitForConfirmation(rpc, actionSig);
+  record('action_grab_equal', actionSig);
+  for (let i = 1; i <= 3; i++) {
+    await tick();
+    const detail = await grabberApi.call('GET /api/packets/:address', { params: { address: open.packet } });
+    const mine = detail.grabs.find((g) => g.claimer === grabber.address);
+    if (mine?.status === 'paid') {
+      record('action_grab_indexed', { status: mine.status, amount: mine.amount, grabSignature: mine.grabSignature });
+      break;
+    }
+    if (i === 3) throw new Error('action grab not indexed');
+  }
   console.log('\ne2e OK');
 }
 
