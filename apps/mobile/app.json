@@ -2,10 +2,9 @@
   "expo": {
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#0F0B0B",
+        "foregroundImage": "./assets/images/bao-icon-foreground.png",
+        "monochromeImage": "./assets/images/bao-icon-monochrome.png"
       },
       "package": "app.getbao",
       "predictiveBackGestureEnabled": false,
@@ -14,13 +13,44 @@
         "android.permission.VIBRATE",
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS"
+      ],
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "getbao.vercel.app",
+              "pathPrefix": "/p/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "android.nfc.action.NDEF_DISCOVERED",
+          "data": [
+            {
+              "scheme": "https",
+              "host": "getbao.vercel.app",
+              "pathPrefix": "/p/"
+            }
+          ],
+          "category": [
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "experiments": {
       "reactCompiler": true,
-      "typedRoutes": true
+      "typedRoutes": false
     },
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/bao-icon-foreground.png",
     "ios": {
       "icon": "./assets/expo.icon"
     },
@@ -34,15 +64,20 @@
           "skipOnboarding": true
         }
       ],
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "root": "./src/routes"
+        }
+      ],
       [
         "expo-splash-screen",
         {
           "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "image": "./assets/images/bao-splash-seal.png",
+            "imageWidth": 120
           },
-          "backgroundColor": "#208AEF"
+          "backgroundColor": "#0F0B0B"
         }
       ],
       "expo-status-bar",
@@ -60,7 +95,9 @@
       [
         "expo-notifications",
         {
-          "color": "#C8102E"
+          "color": "#C0282D",
+          "icon": "./assets/images/bao-notification.png",
+          "defaultChannel": "packets"
         }
       ],
       [
@@ -78,13 +115,20 @@
             {
               "name": "BaoPackets",
               "label": "Bao packets",
-              "description": "Packets waiting for you",
+              "description": "Packets waiting for you and the next rain",
               "minWidth": "250dp",
               "minHeight": "110dp",
               "targetCellWidth": 4,
               "targetCellHeight": 2,
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/images/bao-widget-preview.png",
+              "resizeMode": "horizontal|vertical"
             }
+          ],
+          "fonts": [
+            "./assets/fonts/BodoniModa-Medium.ttf",
+            "./assets/fonts/InstrumentSans-Regular.ttf",
+            "./assets/fonts/InstrumentSansCondensed-SemiBold.ttf"
           ]
         }
       ],
@@ -108,6 +152,11 @@
     "web": {
       "favicon": "./assets/images/favicon.png",
       "output": "static"
+    },
+    "extra": {
+      "router": {
+        "root": "src/routes"
+      }
     }
   }
 }
