@@ -8,7 +8,9 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
     environment: 'node',
-    testTimeout: 20_000,
+    testTimeout: 30_000,
+    // every file boots its own in-memory Postgres
+    hookTimeout: 60_000,
     // live devnet checks only run when asked for
     exclude: process.env.DEVNET_TESTS ? [] : ['test/**/*.devnet.test.ts'],
   },
