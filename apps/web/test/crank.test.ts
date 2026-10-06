@@ -74,6 +74,7 @@ const snap = (packets: [string, Packet][], claims: [string, ClaimRecord][]): Cha
   now: NOW,
   packets: packets.map(([a, data]) => ({ address: address(a), data })),
   claims: claims.map(([a, data]) => ({ address: address(a), data })),
+  crowns: [],
 });
 
 describe('planCrank', () => {
@@ -108,9 +109,13 @@ describe('planCrank', () => {
     expect(unpaid.payouts).toHaveLength(1);
   });
 
-  it('closes expired packets, forfeiting unpaid wins, but never with a grab in flight', () => {
-    const expired = packet({ expiresAt: BigInt(NOW - 1), reserved: 1, resolved: 1 });
-    expect(planCrank(snap([[A.p1, expired]], [[A.p2, claim(A.p1, A.bob, ClaimStatus.Won)]])).closes).toHaveLength(1);
+  it('closes expired packets, forfeiting unpaid wins only after a grace period, never with a grab in flight', () => {
+    const won: [string, ClaimRecord][] = [[A.p2, claim(A.p1, A.bob, ClaimStatus.Won)]];
+    const justExpired = packet({ expiresAt: BigInt(NOW - 1), reserved: 1, resolved: 1 });
+    expect(planCrank(snap([[A.p1, justExpired]], won)).closes).toEqual([]);
+    expect(planCrank(snap([[A.p1, justExpired]], [])).closes).toHaveLength(1);
+    const longExpired = packet({ expiresAt: BigInt(NOW - 3_600), reserved: 1, resolved: 1 });
+    expect(planCrank(snap([[A.p1, longExpired]], won)).closes).toHaveLength(1);
     const inFlight = packet({ expiresAt: BigInt(NOW - 1), reserved: 2, resolved: 1 });
     expect(planCrank(snap([[A.p1, inFlight]], [])).closes).toEqual([]);
     const live = packet({ reserved: 1, resolved: 1 });
@@ -124,6 +129,43 @@ describe('planCrank', () => {
     });
     const plan = planCrank(snap([[A.p1, packet({ totalShares: 45, reserved: 45, resolved: 45 })]], claims));
     expect(plan.closes[0].claimBatches.map((b) => b.length)).toEqual([20, 20, 5]);
+  });
+
+  it('pays shares of packets closest to expiry first', () => {
+    const plan = planCrank(
+      snap(
+        [
+          [A.p1, packet({ expiresAt: BigInt(NOW + 9_000) })],
+          [A.p3, packet({ expiresAt: BigInt(NOW + 60) })],
+        ],
+        [
+          [A.p2, claim(A.p1, A.bob, ClaimStatus.Won)],
+          [A.p4, claim(A.p3, A.carol, ClaimStatus.Won)],
+        ],
+      ),
+      { payouts: 1, cancels: 0, closes: 0 },
+    );
+    expect(plan.payouts.map((p) => p.claim)).toEqual([A.p4]);
+  });
+
+  it('closes lapsed crowns', () => {
+    const crown = (expiresAt: bigint) => ({
+      discriminator: new Uint8Array(8),
+      packet: address(A.p1),
+      king: address(A.bob),
+      amount: 1n,
+      chainRoot: address(A.p1),
+      chainDepth: 0,
+      refundTo: address(A.alice),
+      expiresAt,
+      bump: 255,
+    });
+    const s = snap([], []);
+    s.crowns = [
+      { address: address(A.p2), data: crown(BigInt(NOW - 1)) },
+      { address: address(A.p3), data: crown(BigInt(NOW + 100)) },
+    ];
+    expect(planCrank(s).crowns).toEqual([{ crown: A.p2, refundTo: A.alice }]);
   });
 
   it('respects per-tick limits', () => {
@@ -160,6 +202,9 @@ describe('runCrank', () => {
     setPushTransport({ send: async (_t, m) => (pushes.push(m.kind), 'ok') });
     await store.upsertPacketMirror(mirror({ address: A.p1 }), 'live');
     await store.upsertPacketMirror(mirror({ address: A.p4, createdAt: NOW - 600, startsAt: NOW + 30, expiresAt: NOW + 4_000 }), 'scheduled');
+    await store.registerPacket(A.p4, { message: null, skin: null, circleId: null, snapshotRoot: null, codeHint: null });
+    // an unregistered rain never fans out
+    await store.upsertPacketMirror(mirror({ address: A.p3, createdAt: NOW - 600, startsAt: NOW + 30, expiresAt: NOW + 4_000 }), 'scheduled');
     await store.registerPushToken(A.bob, 'tok-bob');
 
     const finished = packet({ reserved: 2, resolved: 2, openClaims: 1 });

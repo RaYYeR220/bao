@@ -9,15 +9,19 @@ import { findAssociatedTokenPda } from '@solana-program/token-2022';
 import {
   BAO_PROGRAM_ADDRESS,
   CLAIM_RECORD_DISCRIMINATOR,
+  CROWN_DISCRIMINATOR,
   ClaimStatus,
   PACKET_DISCRIMINATOR,
   buildPayout,
   getCancelStaleInstructionAsync,
   getClaimRecordDecoder,
   getCloseClaimsInstructionAsync,
+  getCloseCrownInstruction,
+  getCrownDecoder,
   getClosePacketInstructionAsync,
   getPacketDecoder,
   type ClaimRecord,
+  type Crown,
   type Packet,
 } from '@bao/sdk';
 import { PACKET_SIZE } from './chain';
@@ -30,6 +34,9 @@ import { sendAndConfirm, type SolanaRpc } from './rpc';
 /** Account sizes of the deployed layout; older layouts on devnet are skipped. */
 export { PACKET_SIZE };
 export const CLAIM_SIZE = 124;
+export const CROWN_SIZE = 155;
+/** Won shares of an expired packet keep being paid for this long before a close may forfeit them. */
+export const FORFEIT_GRACE_SECS = 3_600;
 export const STALE_SLOTS = 300n;
 export const MAX_CLAIMS_PER_TX = 20;
 
@@ -38,21 +45,24 @@ export interface ChainSnapshot {
   now: number;
   packets: { address: Address; data: Packet }[];
   claims: { address: Address; data: ClaimRecord }[];
+  crowns: { address: Address; data: Crown }[];
 }
 
 export interface CrankPlan {
   payouts: { claim: Address; packet: Address; claimer: Address; mint: Address; tokenProgram: Address; amount: bigint }[];
   cancels: { claim: Address; packet: Address; deviceKey: Address }[];
   closes: { packet: Address; sender: Address; mint: Address; tokenProgram: Address; claimBatches: Address[][] }[];
+  crowns: { crown: Address; refundTo: Address }[];
 }
 
 export interface CrankLimits {
   payouts: number;
   cancels: number;
   closes: number;
+  crowns?: number;
 }
 
-const DEFAULT_LIMITS: CrankLimits = { payouts: 10, cancels: 5, closes: 3 };
+const DEFAULT_LIMITS: CrankLimits = { payouts: 10, cancels: 5, closes: 3, crowns: 5 };
 /** Stop starting new transactions after this long, so a tick fits a 60 s function. */
 const DEFAULT_BUDGET_MS = 40_000;
 
@@ -72,13 +82,14 @@ export function planCrank(s: ChainSnapshot, limits: CrankLimits = DEFAULT_LIMITS
     claimsOf.set(c.data.packet, list);
   }
 
-  const payouts: CrankPlan['payouts'] = [];
+  const payouts: (CrankPlan['payouts'][number] & { expiresAt: bigint })[] = [];
   const cancels: CrankPlan['cancels'] = [];
   for (const c of s.claims) {
     const packet = packets.get(c.data.packet);
     if (!packet) continue;
     if (c.data.status === ClaimStatus.Won) {
       payouts.push({
+        expiresAt: packet.expiresAt,
         claim: c.address,
         packet: c.data.packet,
         claimer: c.data.claimer,
@@ -97,8 +108,10 @@ export function planCrank(s: ChainSnapshot, limits: CrankLimits = DEFAULT_LIMITS
     const finished = p.resolved === p.totalShares;
     if (!(expired || finished) || p.reserved !== p.resolved) continue;
     const claims = claimsOf.get(address) ?? [];
-    // a won share that is not expired yet must be paid before its record can close
-    if (!expired && claims.some((c) => c.data.status === ClaimStatus.Won)) continue;
+    // a won share must be paid before its record can close; once the packet expires the crank
+    // keeps trying for a grace period, and only then may close_claims forfeit it to the sender
+    const graceOver = BigInt(s.now) >= p.expiresAt + BigInt(FORFEIT_GRACE_SECS);
+    if (!graceOver && claims.some((c) => c.data.status === ClaimStatus.Won)) continue;
     closes.push({
       packet: address,
       sender: p.sender,
@@ -111,10 +124,17 @@ export function planCrank(s: ChainSnapshot, limits: CrankLimits = DEFAULT_LIMITS
     });
   }
 
+  const crowns = s.crowns
+    .filter((c) => BigInt(s.now) >= c.data.expiresAt)
+    .map((c) => ({ crown: c.address, refundTo: c.data.refundTo }));
+
+  // shares of packets closest to expiry first
+  payouts.sort((a, b) => (a.expiresAt < b.expiresAt ? -1 : a.expiresAt > b.expiresAt ? 1 : 0));
   return {
-    payouts: payouts.slice(0, limits.payouts),
+    payouts: payouts.slice(0, limits.payouts).map(({ expiresAt: _e, ...rest }) => rest),
     cancels: cancels.slice(0, limits.cancels),
     closes: closes.sort((a, b) => a.claimBatches.length - b.claimBatches.length).slice(0, limits.closes),
+    crowns: crowns.slice(0, limits.crowns ?? 5),
   };
 }
 
@@ -132,10 +152,11 @@ export async function loadChainSnapshot(rpc: SolanaRpc, program: Address = BAO_P
         ],
       })
       .send();
-  const [slot, rawPackets, rawClaims] = await Promise.all([
+  const [slot, rawPackets, rawClaims, rawCrowns] = await Promise.all([
     rpc.getSlot({ commitment: 'confirmed' }).send(),
     accountsOf(PACKET_DISCRIMINATOR, PACKET_SIZE),
     accountsOf(CLAIM_RECORD_DISCRIMINATOR, CLAIM_SIZE),
+    accountsOf(CROWN_DISCRIMINATOR, CROWN_SIZE),
   ]);
   const decode = <T>(decoder: { decode: (b: Uint8Array) => T }, list: typeof rawPackets) =>
     list.flatMap((a) => {
@@ -150,6 +171,7 @@ export async function loadChainSnapshot(rpc: SolanaRpc, program: Address = BAO_P
     now: Math.floor(Date.now() / 1000),
     packets: decode(getPacketDecoder(), rawPackets),
     claims: decode(getClaimRecordDecoder(), rawClaims),
+    crowns: decode(getCrownDecoder(), rawCrowns),
   };
 }
 
@@ -184,6 +206,8 @@ export interface CrankReport {
     payouts: StepResult<ItemResults>;
     cancels: StepResult<ItemResults>;
     closes: StepResult<ItemResults>;
+    crowns: StepResult<ItemResults>;
+    housekeeping: StepResult<{ prunedNonces: true }>;
     rains: StepResult<{ pushed: string[] }>;
     indexer: StepResult<PollResult>;
   };
@@ -226,7 +250,7 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
     return { packets: snapshot.packets.length, claims: snapshot.claims.length };
   });
 
-  const each = async <T extends { packet: Address }>(items: T[], target: (t: T) => string, run: (t: T, signer: KeyPairSigner) => Promise<string>) => {
+  const each = async <T,>(items: T[], target: (t: T) => string, run: (t: T, signer: KeyPairSigner) => Promise<string>) => {
     const out: ItemResults = { done: [], failed: [] };
     if (!crank) {
       if (items.length) log.once('crank.no_key', { note: 'CRANK_KEYPAIR unset; on-chain crank steps skipped' });
@@ -312,9 +336,22 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
     });
   });
 
+  const crowns = await step('crowns', async () => {
+    const p = plan as CrankPlan | null;
+    if (!p) return empty;
+    return each(p.crowns, (x) => x.crown, async (x, signer) =>
+      send(deps.rpc, [getCloseCrownInstruction({ caller: signer, crown: x.crown, refundTo: x.refundTo })], signer),
+    );
+  });
+
+  const housekeeping = await step('housekeeping', async () => {
+    await deps.store.pruneNonces();
+    return { prunedNonces: true as const };
+  });
+
   const rains = await step('rains', async () => {
     const now = (deps.now ?? (() => Math.floor(Date.now() / 1000)))();
-    const due = await deps.store.rainsStartingBefore(now + 60);
+    const due = await deps.store.rainsStartingBefore(now + 60, now);
     for (const rain of due) await pushRainStarting(deps.store, rain);
     return { pushed: due.map((r) => r.address) };
   });
@@ -323,7 +360,7 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
     ? { ok: true, ms: 0, result: { seen: 0, processed: 0, events: 0, cursor: null } }
     : await step('indexer', () => pollProgram({ store: deps.store, rpc: deps.rpc }));
 
-  const steps = { snapshot: snapshotStep, reconcile, payouts, cancels, closes, rains, indexer };
+  const steps = { snapshot: snapshotStep, reconcile, payouts, cancels, closes, crowns, housekeeping, rains, indexer };
   const s = snapshot as ChainSnapshot | null;
   return { ok: Object.values(steps).every((x) => x.ok), slot: s ? s.slot.toString() : null, steps };
 }
