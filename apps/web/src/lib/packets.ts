@@ -43,7 +43,8 @@ export async function registerPacket(
   if (!packet) throw new HttpError(404, 'packet account not found on devnet (yet)');
   if (packet.sender !== viewer) throw new HttpError(403, 'only the sender can register this packet');
 
-  const message = input.message?.trim() ? input.message : null;
+  // same rule as the sdk: an empty message hashes to zeros
+  const message = input.message ? input.message : null;
   if (packet.messageHash !== hex(messageHash(message))) throw new HttpError(400, 'message does not match the on-chain message hash');
 
   let circleId: string | null = null;
