@@ -1,5 +1,5 @@
 import { address, createNoopSigner, type Address } from '@solana/kit'
-import { buildCreatePacket, hexToBytes, type AudienceInput } from '@bao/sdk'
+import { buildCreatePacket, fetchMaybeCrown, findCrownPda, hexToBytes, type AudienceInput } from '@bao/sdk'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
 
@@ -63,6 +63,16 @@ export function useDropPacket() {
         audience = { kind: 'open' }
       }
 
+      // Continuing a Luck King chain closes the parent's crown; its rent goes back where the crown says.
+      let parentRefund = input.parentRefundTo ? address(input.parentRefundTo) : undefined
+      if (input.parentPacket) {
+        const [crownPda] = await findCrownPda({ packet: address(input.parentPacket) })
+        const crown = await fetchMaybeCrown(client.rpc as never, crownPda)
+        if (!crown.exists) throw new Error('That crown has already been passed on.')
+        if (crown.data.king !== account.address) throw new Error('Only the Luck King of that packet can send the next one.')
+        parentRefund = crown.data.refundTo
+      }
+
       const { packet, instructions } = await buildCreatePacket({
         sender: createNoopSigner(account.address),
         mint,
@@ -76,7 +86,7 @@ export function useDropPacket() {
         startsAt: input.startsAt ? BigInt(input.startsAt) : 0n,
         message: input.message,
         parentPacket: input.parentPacket ? address(input.parentPacket) : undefined,
-        parentCrownRefund: input.parentRefundTo ? address(input.parentRefundTo) : undefined,
+        parentCrownRefund: parentRefund,
       })
       const signature = await sendWithWallet(wallet, client, account.address, instructions)
       await confirmSignature(client, signature)
