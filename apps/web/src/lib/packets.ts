@@ -101,10 +101,14 @@ export async function packetDetail(store: Store, rpc: SolanaRpc, address: string
   return { ...view, grabs: await grabViews(store, await store.grabsOf(address)) };
 }
 
-export async function feed(deps: IdentityDeps, viewer: string | null, now = nowSecs()): Promise<FeedView> {
+/** The feed plus the senders whose `.skr` names are worth looking up after the response. */
+export async function feed(deps: IdentityDeps, viewer: string | null, now = nowSecs()): Promise<FeedView & { senders: string[] }> {
   const [packets, rains] = await Promise.all([deps.store.feed(viewer, now), deps.store.upcomingRains(now)]);
-  await warmSkrNames(deps, packets.map((p) => p.sender));
-  return { packets: await packetViews(deps.store, packets, now), rains: await packetViews(deps.store, rains, now) };
+  return {
+    packets: await packetViews(deps.store, packets, now),
+    rains: await packetViews(deps.store, rains, now),
+    senders: [...packets, ...rains].map((p) => p.sender),
+  };
 }
 
 /** "3 packets waiting · 47 tSKR · rain in 12 min" for the home-screen widget. */

@@ -19,6 +19,8 @@ export interface PushMessage {
 
 export type PushResult = 'ok' | 'unregistered' | 'error';
 
+const PUSH_CONCURRENCY = 8;
+
 export interface PushTransport {
   send(token: string, message: PushMessage): Promise<PushResult>;
 }
@@ -130,15 +132,19 @@ export async function deliver(store: Store, recipients: { token: string; address
     return { sent: 0, skipped: recipients.length };
   }
   let sent = 0;
-  for (const r of recipients) {
-    try {
-      const result = await t.send(r.token, message);
-      if (result === 'ok') sent++;
-      if (result === 'unregistered') await store.deletePushToken(r.token);
-    } catch (e) {
-      log.warn('push.error', { kind: message.kind, error: (e as Error).message });
+  const queue = [...recipients];
+  const worker = async () => {
+    for (let r = queue.shift(); r; r = queue.shift()) {
+      try {
+        const result = await t.send(r.token, message);
+        if (result === 'ok') sent++;
+        if (result === 'unregistered') await store.deletePushToken(r.token);
+      } catch (e) {
+        log.warn('push.error', { kind: message.kind, error: (e as Error).message });
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(PUSH_CONCURRENCY, queue.length) }, worker));
   return { sent, skipped: 0 };
 }
 

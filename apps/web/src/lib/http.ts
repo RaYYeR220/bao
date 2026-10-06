@@ -1,5 +1,6 @@
 /** Route-handler plumbing: JSON responses, body validation, error mapping, rate limits. */
 import { timingSafeEqual } from 'node:crypto';
+import { after } from 'next/server';
 import type { z } from 'zod';
 import { errorMessage, log } from './log';
 import { HttpError } from './types';
@@ -78,4 +79,14 @@ export function requireSecret(req: Request, secret: string | undefined, header =
   const a = Buffer.from(given);
   const b = Buffer.from(secret);
   if (a.length !== b.length || !timingSafeEqual(a, b)) throw new HttpError(401, 'bad secret');
+}
+
+/** Runs work after the response (Next `after`); outside a request it just runs detached. */
+export function runAfter(task: () => Promise<unknown>) {
+  const detached = () => void task().catch((e) => log.warn('http.after_failed', { error: errorMessage(e) }));
+  try {
+    after(task);
+  } catch {
+    detached();
+  }
 }
