@@ -1,0 +1,25 @@
+{
+  "name": "@bao/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "generate": "node codama.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0",
+    "@solana-program/token-2022": "^0.19.0",
+    "@solana/kit": "7.1.1"
+  },
+  "devDependencies": {
+    "@codama/nodes-from-anchor": "^1.2.0",
+    "@codama/renderers-js": "^1.3.0",
+    "@types/node": "^26.6.4",
+    "codama": "^1.3.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
