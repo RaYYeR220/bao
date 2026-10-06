@@ -1,8 +1,8 @@
-import { assertAddress } from '@/lib/auth';
+import { assertAddress, sessionAddress } from '@/lib/auth';
 import { clientIp, json, rateLimit, route } from '@/lib/http';
 import { identity } from '@/lib/seeker';
 import { deps, type Ctx } from '@/lib/server';
-import { grabViews, packetViews } from '@/lib/views';
+import { grabViews, packetViews, redactForViewer } from '@/lib/views';
 
 export const GET = route(async (req, ctx: Ctx<'address'>) => {
   rateLimit(`user:${clientIp(req)}`, 60, 60_000);
@@ -14,5 +14,6 @@ export const GET = route(async (req, ctx: Ctx<'address'>) => {
     d.store.grabsByClaimer(address),
     d.store.crownCount(address),
   ]);
-  return json({ ...user, sent: await packetViews(d.store, sent), grabs: await grabViews(d.store, grabs), crowns });
+  const sentViews = await redactForViewer(d.store, await sessionAddress(req), await packetViews(d.store, sent));
+  return json({ ...user, sent: sentViews, grabs: await grabViews(d.store, grabs), crowns });
 });

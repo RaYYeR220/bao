@@ -10,7 +10,7 @@ import { warmSkrNames, type IdentityDeps } from './seeker';
 import { env } from './env';
 import { formatUi, tokenMeta } from './tokens';
 import { HttpError, type PacketRecord } from './types';
-import { grabViews, nowSecs, packetViews } from './views';
+import { grabViews, nowSecs, packetViews, redactForViewer } from './views';
 
 export interface RegisterInput {
   address: string;
@@ -93,11 +93,11 @@ async function fillCreateSignature(store: Store, rpc: SolanaRpc, address: string
   }
 }
 
-export async function packetDetail(store: Store, rpc: SolanaRpc, address: string): Promise<PacketDetail> {
+export async function packetDetail(store: Store, rpc: SolanaRpc, address: string, viewer: string | null = null): Promise<PacketDetail> {
   let packet = await store.getPacket(address);
   if (!packet) packet = await refreshPacket({ store, rpc }, address);
   if (!packet) throw new HttpError(404, 'packet not found');
-  const [view] = await packetViews(store, [packet]);
+  const [view] = await redactForViewer(store, viewer, await packetViews(store, [packet]));
   return { ...view, grabs: await grabViews(store, await store.grabsOf(address)) };
 }
 

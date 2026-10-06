@@ -66,3 +66,16 @@ export async function grabViews(store: Store, rows: GrabRecord[]): Promise<GrabV
   const names = await store.skrNames(rows.map((g) => g.claimer));
   return rows.map((g) => toGrabView(g, names));
 }
+
+/** Circle packet messages are for the circle: others (and signed-out viewers) see them without it. */
+export async function redactForViewer<T extends { audience: string; circleId: string | null; sender: string; message: string | null }>(
+  store: Store,
+  viewer: string | null,
+  packets: T[],
+): Promise<T[]> {
+  if (!packets.some((p) => p.audience === 'circle' && p.message)) return packets;
+  const mine = viewer ? await store.circleIdsOf(viewer) : new Set<string>();
+  return packets.map((p) =>
+    p.audience === 'circle' && p.sender !== viewer && !(p.circleId && mine.has(p.circleId)) ? { ...p, message: null } : p,
+  );
+}

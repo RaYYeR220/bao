@@ -183,3 +183,15 @@ describe('circle packet lifecycle', () => {
   });
 });
 
+
+describe('circle message privacy', () => {
+  it('shows a circle packet message to members only', async () => {
+    const forMember = await (await getPacket(req('GET', `/api/packets/${PACKET}`, A.bob), params({ address: PACKET }))).json();
+    expect(forMember.message).toBe('happy new year');
+    const forOutsider = await (await getPacket(req('GET', `/api/packets/${PACKET}`, A.carol), params({ address: PACKET }))).json();
+    expect(forOutsider.message).toBeNull();
+    const signedOut = await (await getPacket(req('GET', `/api/packets/${PACKET}`), params({ address: PACKET }))).json();
+    expect(signedOut.message).toBeNull();
+    expect(signedOut.total).toBe('10000000');
+  });
+});
