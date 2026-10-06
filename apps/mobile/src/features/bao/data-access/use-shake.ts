@@ -1,41 +1,31 @@
 import { Accelerometer } from 'expo-sensors'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 const SHAKE_G = 1.8
-const SHAKES_TO_OPEN = 3
-const WINDOW_MS = 1200
+const DEBOUNCE_MS = 250
 
 /**
- * Detects a deliberate shake: three spikes above 1.8 g within 1.2 s. Reports progress (0..1)
- * so the envelope can tremble harder with every shake before it opens.
+ * Reports each deliberate shake (a spike above 1.8 g, debounced) so the screen can fill the
+ * foil ring a third at a time and make the envelope tremble harder with every one.
  */
-export function useShake(enabled: boolean, onShake: () => void) {
-  const [progress, setProgress] = useState(0)
-  const hits = useRef<number[]>([])
-  const fired = useRef(false)
+export function useShakeSteps(enabled: boolean, onStep: () => void) {
+  const last = useRef(0)
+  const cb = useRef(onStep)
+  useEffect(() => {
+    cb.current = onStep
+  }, [onStep])
 
   useEffect(() => {
-    if (!enabled) {
-      hits.current = []
-      fired.current = false
-      setProgress(0)
-      return
-    }
+    if (!enabled) return
     Accelerometer.setUpdateInterval(50)
     const sub = Accelerometer.addListener(({ x, y, z }) => {
       const g = Math.sqrt(x * x + y * y + z * z)
-      if (g < SHAKE_G || fired.current) return
+      if (g < SHAKE_G) return
       const now = Date.now()
-      if (hits.current.length && now - hits.current[hits.current.length - 1] < 150) return
-      hits.current = [...hits.current.filter((t) => now - t < WINDOW_MS), now]
-      setProgress(Math.min(1, hits.current.length / SHAKES_TO_OPEN))
-      if (hits.current.length >= SHAKES_TO_OPEN) {
-        fired.current = true
-        onShake()
-      }
+      if (now - last.current < DEBOUNCE_MS) return
+      last.current = now
+      cb.current()
     })
     return () => sub.remove()
-  }, [enabled, onShake])
-
-  return progress
+  }, [enabled])
 }

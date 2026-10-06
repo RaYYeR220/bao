@@ -6,8 +6,9 @@ import { useMobileWallet } from '@wallet-ui/react-native-kit'
 import { useAppCluster } from '@/features/cluster/data-access/cluster-provider'
 
 import { TREASURY, TSKR_DECIMALS, TSKR_MINT } from './bao-config'
+import { rememberPacketMeta } from './prefs'
 import { confirmSignature, sendWithWallet } from './send-with-wallet'
-import { baoApi } from './use-bao-api'
+import { ApiUnavailableError, baoApi } from './use-bao-api'
 
 export interface DropInput {
   amountUi: string
@@ -49,7 +50,11 @@ export function useDropPacket() {
       let audience: AudienceInput
       let snapshotRoot: string | undefined
       if (input.audience.kind === 'circle') {
-        const snap = await baoApi.call('POST /api/circles/:id/snapshot', { params: { id: input.audience.circleId } })
+        const snap = await baoApi
+          .call('POST /api/circles/:id/snapshot', { params: { id: input.audience.circleId } }, { force: true })
+          .catch((e) => {
+            throw e instanceof ApiUnavailableError ? new Error('Circle packets need the Bao server, which is unreachable right now. Try a public or code-word packet.') : e
+          })
         snapshotRoot = snap.root
         audience = { kind: 'circle', root: hexToBytes(snap.root) }
       } else if (input.audience.kind === 'code') {
@@ -75,17 +80,23 @@ export function useDropPacket() {
       })
       const signature = await sendWithWallet(wallet, client, account.address, instructions)
       await confirmSignature(client, signature)
-      const view = await baoApi.call('POST /api/packets', {
-        body: {
-          address: packet,
-          message: input.message,
-          skin: input.skin,
-          circleId: input.audience.kind === 'circle' ? input.audience.circleId : undefined,
-          snapshotRoot,
-          codeHint: input.audience.kind === 'code' ? input.audience.hint : undefined,
-        },
-      })
+      rememberPacketMeta(packet, { message: input.message, skin: input.skin })
+      // The packet is live on-chain now; the API only adds the message, skin and circle to it.
+      const view = await baoApi
+        .call('POST /api/packets', {
+          body: {
+            address: packet,
+            message: input.message,
+            skin: input.skin,
+            circleId: input.audience.kind === 'circle' ? input.audience.circleId : undefined,
+            snapshotRoot,
+            codeHint: input.audience.kind === 'code' ? input.audience.hint : undefined,
+          },
+        })
+        .catch(() => null)
       await queryClient.invalidateQueries({ queryKey: ['feed'] })
+      await queryClient.invalidateQueries({ queryKey: ['balances'] })
+      await queryClient.invalidateQueries({ queryKey: ['history'] })
       return { packet, signature, view }
     },
   })

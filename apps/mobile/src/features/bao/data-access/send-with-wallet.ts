@@ -13,7 +13,15 @@ import { getSetComputeUnitPriceInstruction } from '@solana-program/compute-budge
 import { transact, type useMobileWallet } from '@wallet-ui/react-native-kit'
 import {
   BAO_ERROR__ALREADY_GRABBED_ON_THIS_DEVICE,
+  BAO_ERROR__BAD_EXPIRY,
+  BAO_ERROR__BAD_SHARES,
+  BAO_ERROR__BAD_START,
+  BAO_ERROR__CROWN_ACTIVE,
   BAO_ERROR__EXPIRED,
+  BAO_ERROR__NOT_LUCK_KING,
+  BAO_ERROR__OPEN_MUST_BE_SEEKER_ONLY,
+  BAO_ERROR__TOTAL_TOO_SMALL,
+  BAO_ERROR__UNSAFE_MINT,
   BAO_ERROR__NOT_A_SEEKER,
   BAO_ERROR__NOT_IN_CIRCLE,
   BAO_ERROR__NOT_STARTED,
@@ -72,6 +80,10 @@ export async function sendWithWallet(
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error)
     if (/declin|reject|cancel/i.test(text)) throw new WalletRejectedError('You closed the wallet before signing.')
+    // the wallet simulated the transaction and the program refused it before sending
+    const code = programErrorCodeFromText(text)
+    if (code !== null) throw new TransactionFailedError(null, { InstructionError: [1, { Custom: code }] })
+    if (/insufficient|0x1|debit an account/i.test(text)) throw new Error('Not enough SOL or tSKR in this wallet for that.')
     throw error
   }
 }
@@ -96,7 +108,7 @@ export async function confirmSignature(client: SolanaClient, signature: Signatur
 
 export class TransactionFailedError extends Error {
   constructor(
-    readonly signature: Signature,
+    readonly signature: Signature | null,
     readonly detail: unknown,
   ) {
     super(describeProgramError(detail))
@@ -109,8 +121,24 @@ export class TransactionFailedError extends Error {
   }
 }
 
+/** Reads `custom program error: 0x1780` out of a wallet or RPC error message. */
+export function programErrorCodeFromText(text: string): number | null {
+  const m = /custom program error: (0x[0-9a-f]+|\d+)/i.exec(text)
+  if (!m) return null
+  const code = m[1].startsWith('0x') ? parseInt(m[1], 16) : Number(m[1])
+  return code >= 6000 ? code : null
+}
+
 const BAO_ERRORS: Record<number, string> = {
   [BAO_ERROR__PAUSED]: 'Bao is paused for maintenance.',
+  [BAO_ERROR__BAD_SHARES]: 'Shares must be between 1 and 200.',
+  [BAO_ERROR__TOTAL_TOO_SMALL]: 'Put in at least one unit per share.',
+  [BAO_ERROR__BAD_EXPIRY]: 'Pick an expiry between one hour and seven days.',
+  [BAO_ERROR__OPEN_MUST_BE_SEEKER_ONLY]: 'Public packets are always Seeker-only.',
+  [BAO_ERROR__UNSAFE_MINT]: 'That token cannot go in a packet.',
+  [BAO_ERROR__NOT_LUCK_KING]: 'Only the Luck King of that packet can send the next one in its chain.',
+  [BAO_ERROR__CROWN_ACTIVE]: 'That crown is still being worn.',
+  [BAO_ERROR__BAD_START]: 'Pick a rain time in the future, within the next week.',
   [BAO_ERROR__EXPIRED]: 'This packet has expired.',
   [BAO_ERROR__SOLD_OUT]: 'Every share is already taken.',
   [BAO_ERROR__NOT_IN_CIRCLE]: 'This packet is for a circle you are not in.',
@@ -125,5 +153,18 @@ const BAO_ERRORS: Record<number, string> = {
 export function describeProgramError(detail: unknown): string {
   const custom = (detail as { InstructionError?: [number, { Custom?: number }] })?.InstructionError?.[1]?.Custom
   if (typeof custom === 'number' && BAO_ERRORS[custom]) return BAO_ERRORS[custom]
-  return `Transaction failed: ${JSON.stringify(detail)}`
+  if (custom === 1) return 'Not enough tSKR in this wallet.'
+  return `The network refused the transaction (${JSON.stringify(detail)}).`
+}
+
+/** Turns wallet, network and RPC failures into one calm sentence for the screen. */
+export function humanError(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error)
+  if (/TimeoutException|timed out waiting/i.test(text)) return 'The wallet took too long to answer. Open it and try again.'
+  if (/no installed wallet|ActivityNotFound|wallet app not found|SolanaMobileWalletAdapterWalletNotInstalledError/i.test(text))
+    return 'No Solana wallet on this phone yet. Install one (Seed Vault on a Seeker) and try again.'
+  if (/network request failed|failed to fetch|ENOTFOUND|ECONN/i.test(text)) return 'Solana devnet did not answer. Check the connection and try again.'
+  if (/blockhash not found|BlockhashNotFound/i.test(text)) return 'The transaction took too long to sign. Try again.'
+  if (/did not confirm the transaction in time/i.test(text)) return 'Solana is slow right now; the grab may still land. Check back in a minute.'
+  return text.length > 160 ? `${text.slice(0, 157)}…` : text
 }
