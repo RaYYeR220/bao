@@ -438,6 +438,72 @@ pub fn grab_equal_ix(
     )
 }
 
+pub const VRF_PROGRAM: Pubkey = anchor_lang::pubkey!("Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz");
+pub const SLOT_HASHES: Pubkey = anchor_lang::pubkey!("SysvarS1otHashes111111111111111111111111111");
+
+pub fn program_identity() -> Pubkey {
+    Pubkey::find_program_address(&[b"identity"], &bao::ID).0
+}
+
+/// Scoped identity the VRF program signs callbacks with: PDA([identity, bao], vrf).
+pub fn vrf_identity() -> Pubkey {
+    Pubkey::find_program_address(&[b"identity", bao::ID.as_ref()], &VRF_PROGRAM).0
+}
+
+impl Harness {
+    /// Maps a no-op program at the VRF program id and creates the oracle queue account,
+    /// so `grab_lucky` request CPIs succeed; tests then deliver callbacks themselves.
+    pub fn with_vrf_stub(mut self) -> Self {
+        self.svm.add_program(VRF_PROGRAM, noop_bytes()).unwrap();
+        self.put(bao::VRF_ORACLE_QUEUE, VRF_PROGRAM, vec![0u8; 64]);
+        self
+    }
+
+    /// Sends instructions signed by the VRF identity (signature unchecked: sigverify is off).
+    pub fn send_as_vrf(&mut self, ixs: &[Instruction]) -> TransactionResult {
+        let payer = self.funded();
+        let blockhash = self.svm.latest_blockhash();
+        let msg = Message::new_with_blockhash(ixs, Some(&payer.pubkey()), &blockhash);
+        let mut sigs = vec![solana_signature::Signature::default(); msg.header.num_required_signatures as usize];
+        sigs[0] = payer.sign_message(&msg.serialize());
+        let tx = VersionedTransaction { signatures: sigs, message: VersionedMessage::Legacy(msg) };
+        let res = self.svm.send_transaction(tx);
+        self.svm.expire_blockhash();
+        res
+    }
+}
+
+/// `grab_lucky` for a classic SPL packet.
+pub fn grab_lucky_ix(claimer: &Pubkey, packet: &Pubkey, mint: &Pubkey, args: bao::GrabArgs, sgt: Option<(Pubkey, Pubkey)>) -> Instruction {
+    let vault = Pubkey::find_program_address(&[bao::VAULT_SEED, packet.as_ref()], &bao::ID).0;
+    let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
+    Instruction::new_with_bytes(
+        bao::ID,
+        &bao::instruction::GrabLucky { args: args.clone() }.data(),
+        bao::accounts::GrabLucky {
+            claimer: *claimer,
+            config: Harness::config_pda(),
+            packet: *packet,
+            mint: *mint,
+            vault,
+            gas_tank: gas,
+            claim: claim_pda(packet, &args.device_key),
+            claimer_token: ata(claimer, mint),
+            crown: crown_pda(packet),
+            sgt_mint: sgt.map(|s| s.0),
+            sgt_token: sgt.map(|s| s.1),
+            token_program: TOKEN,
+            associated_token_program: ATA_PROGRAM,
+            oracle_queue: bao::VRF_ORACLE_QUEUE,
+            program_identity: program_identity(),
+            vrf_program: VRF_PROGRAM,
+            slot_hashes: SLOT_HASHES,
+            system_program: SYSTEM_PROGRAM,
+        }
+        .to_account_metas(None),
+    )
+}
+
 /// Asserts that the transaction failed with the given program error.
 pub fn assert_err(res: TransactionResult, code: bao::error::BaoError) {
     let failed = match res {

@@ -36,4 +36,8 @@ pub mod bao {
     pub fn grab_equal(ctx: Context<GrabEqual>, args: GrabArgs) -> Result<()> {
         instructions::grab::handle_grab_equal(ctx, args)
     }
+
+    pub fn grab_lucky(ctx: Context<GrabLucky>, args: GrabArgs) -> Result<()> {
+        instructions::grab::handle_grab_lucky(ctx, args)
+    }
 }

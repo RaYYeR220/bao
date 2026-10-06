@@ -22,3 +22,6 @@ pub const VRF_FEE_ALLOWANCE: u64 = 1_000_000;
 
 /// MagicBlock base-layer oracle queue (mainnet and devnet).
 pub const VRF_ORACLE_QUEUE: Pubkey = pubkey!("Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh");
+
+/// Anchor discriminator of `vrf_callback` (sha256("global:vrf_callback")[..8]).
+pub const VRF_CALLBACK_DISCRIMINATOR: [u8; 8] = [248, 224, 55, 227, 56, 10, 108, 36];

@@ -4,6 +4,15 @@ use anchor_spl::{
     token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
+use anchor_lang::solana_program::program::invoke_signed;
+use ephemeral_rollups_sdk::anchor::vrf;
+use ephemeral_rollups_sdk::vrf::{
+    consts::IDENTITY,
+    instructions::{create_request_randomness_ix, RequestRandomnessParams},
+    types::SerializableAccountMeta,
+};
+use solana_sha256_hasher::hashv;
+
 use crate::{audience, constants::*, error::BaoError, events::*, gas, math, sgt, state::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -192,5 +201,140 @@ pub fn handle_grab_equal(ctx: Context<GrabEqual>, args: GrabArgs) -> Result<()> 
         remaining: packet.remaining_amount,
         randomness: [0u8; 32],
     });
+    Ok(())
+}
+
+#[vrf]
+#[derive(Accounts)]
+#[instruction(args: GrabArgs)]
+pub struct GrabLucky<'info> {
+    #[account(mut)]
+    pub claimer: Signer<'info>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(
+        mut,
+        seeds = [PACKET_SEED, packet.sender.as_ref(), &packet.id.to_le_bytes()],
+        bump = packet.bump,
+        constraint = packet.mode == SplitMode::Lucky @ BaoError::WrongMode
+    )]
+    pub packet: Box<Account<'info, Packet>>,
+    #[account(address = packet.mint)]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(mut, seeds = [VAULT_SEED, packet.key().as_ref()], bump = packet.vault_bump)]
+    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(mut, seeds = [GAS_SEED, packet.key().as_ref()], bump = packet.gas_bump)]
+    pub gas_tank: SystemAccount<'info>,
+    /// CHECK: created in this instruction; address pinned by seeds.
+    #[account(mut, seeds = [CLAIM_SEED, packet.key().as_ref(), args.device_key.as_ref()], bump)]
+    pub claim: UncheckedAccount<'info>,
+    /// CHECK: claimer ATA, passed through to the VRF callback.
+    #[account(
+        mut,
+        address = anchor_spl::associated_token::get_associated_token_address_with_program_id(
+            &claimer.key(), &packet.mint, &packet.token_program
+        )
+    )]
+    pub claimer_token: UncheckedAccount<'info>,
+    /// CHECK: crown PDA, passed through to the VRF callback.
+    #[account(mut, seeds = [CROWN_SEED, packet.key().as_ref()], bump)]
+    pub crown: UncheckedAccount<'info>,
+    /// CHECK: verified by `sgt::verify_sgt`.
+    pub sgt_mint: Option<UncheckedAccount<'info>>,
+    /// CHECK: verified by `sgt::verify_sgt`.
+    pub sgt_token: Option<UncheckedAccount<'info>>,
+    #[account(address = packet.token_program)]
+    pub token_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    /// CHECK: MagicBlock base-layer oracle queue.
+    #[account(mut, address = VRF_ORACLE_QUEUE)]
+    pub oracle_queue: UncheckedAccount<'info>,
+}
+
+pub fn handle_grab_lucky(ctx: Context<GrabLucky>, args: GrabArgs) -> Result<()> {
+    let clock = Clock::get()?;
+    let packet_key = ctx.accounts.packet.key();
+    let claimer = ctx.accounts.claimer.key();
+    let sgt_mint = ctx.accounts.sgt_mint.as_ref().map(|a| a.to_account_info());
+    let sgt_token = ctx.accounts.sgt_token.as_ref().map(|a| a.to_account_info());
+    let index = validate_and_reserve(
+        &mut ctx.accounts.packet,
+        &packet_key,
+        &ctx.accounts.config,
+        &claimer,
+        &args,
+        sgt_mint.as_ref(),
+        sgt_token.as_ref(),
+        clock.unix_timestamp,
+    )?;
+
+    let gas_bump = [ctx.accounts.packet.gas_bump];
+    let gas_seeds: &[&[u8]] = &[GAS_SEED, packet_key.as_ref(), &gas_bump];
+    let a = &ctx.accounts;
+    write_claim_record(
+        &a.claim.to_account_info(),
+        ctx.bumps.claim,
+        &a.gas_tank.to_account_info(),
+        gas_seeds,
+        &a.system_program.to_account_info(),
+        &ClaimRecord {
+            packet: packet_key,
+            claimer,
+            device_key: args.device_key,
+            index,
+            amount: 0,
+            status: ClaimStatus::Pending,
+            requested_slot: clock.slot,
+            bump: ctx.bumps.claim,
+        },
+    )?;
+
+    // The seed is program-derived, so grabbers cannot grind it.
+    let caller_seed = hashv(&[
+        packet_key.as_ref(),
+        &index.to_le_bytes(),
+        args.device_key.as_ref(),
+        &clock.slot.to_le_bytes(),
+    ])
+    .to_bytes();
+    let meta = |pubkey: Pubkey, is_writable: bool| SerializableAccountMeta { pubkey, is_signer: false, is_writable };
+    // Order must match `VrfCallback` (after the injected VRF identity).
+    let ix = create_request_randomness_ix(RequestRandomnessParams {
+        payer: a.gas_tank.key(),
+        oracle_queue: a.oracle_queue.key(),
+        callback_program_id: crate::ID,
+        callback_discriminator: VRF_CALLBACK_DISCRIMINATOR.to_vec(),
+        caller_seed,
+        accounts_metas: Some(vec![
+            meta(packet_key, true),
+            meta(a.claim.key(), true),
+            meta(a.vault.key(), true),
+            meta(a.mint.key(), false),
+            meta(a.gas_tank.key(), true),
+            meta(claimer, false),
+            meta(a.claimer_token.key(), true),
+            meta(a.crown.key(), true),
+            meta(a.config.key(), false),
+            meta(a.token_program.key(), false),
+            meta(a.associated_token_program.key(), false),
+            meta(a.system_program.key(), false),
+        ]),
+        callback_args: None,
+    });
+    let identity_bump = [ctx.bumps.program_identity];
+    // The GasTank pays the request fee, so the grabber only pays the network fee.
+    invoke_signed(
+        &ix,
+        &[
+            a.gas_tank.to_account_info(),
+            a.program_identity.to_account_info(),
+            a.oracle_queue.to_account_info(),
+            a.system_program.to_account_info(),
+            a.slot_hashes.to_account_info(),
+        ],
+        &[&[IDENTITY, &identity_bump], gas_seeds],
+    )?;
+
+    emit!(GrabReserved { packet: packet_key, claimer, device_key: args.device_key, index });
     Ok(())
 }
