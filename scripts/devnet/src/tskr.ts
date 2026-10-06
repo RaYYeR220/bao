@@ -1,14 +1,8 @@
 /** tSKR: a devnet stand-in for SKR (classic SPL, 6 decimals) used by the Playground faucet. */
 import { address, generateKeyPairSigner, type Address, type KeyPairSigner } from '@solana/kit';
 import { getCreateAccountInstruction } from '@solana-program/system';
-import {
-  TOKEN_PROGRAM_ADDRESS,
-  findAssociatedTokenPda,
-  getCreateAssociatedTokenIdempotentInstruction,
-  getInitializeMint2Instruction,
-  getMintSize,
-  getMintToInstruction,
-} from '@solana-program/token';
+import { TOKEN_PROGRAM_ADDRESS, getInitializeMint2Instruction, getMintSize } from '@solana-program/token';
+import { getMintTestTokenInstructions } from '@bao/sdk/devnet-admin';
 import { explorer, loadKeypair, readOut, rpc, send, writeOut } from './env';
 
 export const TSKR_DECIMALS = 6;
@@ -35,14 +29,8 @@ export async function createTskrMint(authority: KeyPairSigner): Promise<Address>
 
 /** Mints `amount` base units of tSKR to `owner`, creating the owner's ATA if needed. */
 export async function mintTskr(authority: KeyPairSigner, mint: Address, owner: Address, amount: bigint) {
-  const [ata] = await findAssociatedTokenPda({ owner, mint, tokenProgram: TOKEN_PROGRAM_ADDRESS });
-  const sig = await send(
-    [
-      getCreateAssociatedTokenIdempotentInstruction({ payer: authority, ata, owner, mint }),
-      getMintToInstruction({ mint, token: ata, mintAuthority: authority, amount }),
-    ],
-    authority,
-  );
+  const { ata, instructions } = await getMintTestTokenInstructions({ authority, mint, owner, amount });
+  const sig = await send(instructions, authority);
   return { ata, signature: sig };
 }
 

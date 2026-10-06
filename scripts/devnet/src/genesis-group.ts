@@ -8,19 +8,14 @@
 import { address, generateKeyPairSigner, some, type Address, type KeyPairSigner } from '@solana/kit';
 import { getCreateAccountInstruction } from '@solana-program/system';
 import {
-  AuthorityType,
   TOKEN_2022_PROGRAM_ADDRESS,
   extension,
-  findAssociatedTokenPda,
-  getCreateAssociatedTokenIdempotentInstruction,
   getInitializeMintInstruction,
-  getInitializeTokenGroupMemberInstruction,
   getMintSize,
-  getMintToInstruction,
   getPostInitializeInstructionsForMintExtensions,
   getPreInitializeInstructionsForMintExtensions,
-  getSetAuthorityInstruction,
 } from '@solana-program/token-2022';
+import { genesisMemberRentSpace, getMintGenesisMemberInstructions } from '@bao/sdk/devnet-admin';
 import { explorer, loadKeypair, readOut, rpc, send, writeOut } from './env';
 
 async function rentFor(space: number) {
@@ -61,51 +56,10 @@ export async function createGenesisGroup(authority: KeyPairSigner): Promise<Addr
 /** Mints one test Genesis token to `owner`. `authority` is the group update authority. */
 export async function mintGenesisMember(authority: KeyPairSigner, group: Address, owner: Address) {
   const member = await generateKeyPairSigner();
-  const pre = [
-    extension('GroupMemberPointer', { authority: some(authority.address), memberAddress: some(member.address) }),
-    extension('MetadataPointer', { authority: some(authority.address), metadataAddress: some(group) }),
-  ];
-  const full = [
-    ...pre,
-    extension('TokenGroupMember', { mint: member.address, group, memberNumber: 0n }),
-  ];
-  const [tokenAccount] = await findAssociatedTokenPda({ owner, mint: member.address, tokenProgram: TOKEN_2022_PROGRAM_ADDRESS });
-  const sig = await send(
-    [
-      getCreateAccountInstruction({
-        payer: authority,
-        newAccount: member,
-        lamports: await rentFor(getMintSize(full)),
-        space: getMintSize(pre),
-        programAddress: TOKEN_2022_PROGRAM_ADDRESS,
-      }),
-      ...getPreInitializeInstructionsForMintExtensions(member.address, pre),
-      getInitializeMintInstruction({ mint: member.address, decimals: 0, mintAuthority: authority.address }),
-      getInitializeTokenGroupMemberInstruction({
-        member: member.address,
-        memberMint: member.address,
-        memberMintAuthority: authority,
-        group,
-        groupUpdateAuthority: authority,
-      }),
-      getCreateAssociatedTokenIdempotentInstruction({
-        payer: authority,
-        ata: tokenAccount,
-        owner,
-        mint: member.address,
-        tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
-      }),
-      getMintToInstruction({ mint: member.address, token: tokenAccount, mintAuthority: authority, amount: 1n }),
-      getSetAuthorityInstruction({
-        owned: member.address,
-        owner: authority,
-        authorityType: AuthorityType.MintTokens,
-        newAuthority: null,
-      }),
-    ],
-    authority,
-  );
-  return { mint: member.address, tokenAccount, signature: sig };
+  const lamports = await rentFor(genesisMemberRentSpace(authority.address, member.address, group));
+  const { mint, tokenAccount, instructions } = await getMintGenesisMemberInstructions({ authority, member, group, owner, lamports });
+  const sig = await send(instructions, authority);
+  return { mint, tokenAccount, signature: sig };
 }
 
 async function main() {

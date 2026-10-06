@@ -1,0 +1,40 @@
+{
+  "name": "web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "keys": "tsx scripts/keys.ts",
+    "e2e": "tsx scripts/e2e-devnet.ts"
+  },
+  "dependencies": {
+    "@bao/sdk": "workspace:*",
+    "@electric-sql/pglite": "^0.5.8",
+    "@noble/hashes": "^1.8.0",
+    "@solana-program/system": "0.13.0",
+    "@solana-program/token": "0.15.0",
+    "@solana-program/token-2022": "0.15.0",
+    "@solana/kit": "7.1.1",
+    "@solana/wallet-standard-util": "^1.2.0",
+    "jose": "^6.2.12",
+    "next": "^16.4.0",
+    "pg": "^8.23.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

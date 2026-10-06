@@ -4,6 +4,10 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./devnet-admin": "./src/devnet-admin.ts"
+  },
   "scripts": {
     "generate": "node codama.mjs",
     "test": "vitest run",
@@ -11,6 +15,8 @@
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",
+    "@solana-program/system": "0.13.0",
+    "@solana-program/token": "0.15.0",
     "@solana-program/token-2022": "0.15.0",
     "@solana/kit": "7.1.1"
   },
