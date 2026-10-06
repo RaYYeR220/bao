@@ -1,7 +1,9 @@
 import {
   appendTransactionMessageInstructions,
+  compileTransaction,
   createTransactionMessage,
   getBase58Decoder,
+  getBase64EncodedWireTransaction,
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -41,6 +43,29 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 export class WalletRejectedError extends Error {}
 
 /**
+ * Runs the transaction against the cluster before the wallet opens. A program refusal (not a
+ * Seeker, already grabbed, sold out…) comes back with its error code and logs, without asking
+ * the user to sign something that cannot land.
+ */
+export async function preflight(client: SolanaClient, feePayer: Address, instructions: Instruction[]) {
+  const { value: latestBlockhash } = await client.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send()
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(feePayer, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+    (m) => appendTransactionMessageInstructions([getSetComputeUnitPriceInstruction({ microLamports: 10_000n }), ...instructions], m),
+  )
+  const wire = getBase64EncodedWireTransaction(compileTransaction(message))
+  const { value } = await client.rpc
+    .simulateTransaction(wire, { encoding: 'base64', sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' })
+    .send()
+  if (value.err) {
+    console.log(`preflight refused: ${JSON.stringify(value.err)} | ${(value.logs ?? []).slice(-12).join(' | ')}`)
+    throw new TransactionFailedError(null, value.err, value.logs ?? [])
+  }
+}
+
+/**
  * Signs and sends `instructions` through the Mobile Wallet Adapter (Seed Vault on a Seeker).
  * The blockhash is fetched inside the wallet session, after (re)authorization, so a slow
  * biometric confirmation cannot outlive it.
@@ -51,6 +76,7 @@ export async function sendWithWallet(
   feePayer: Address,
   instructions: Instruction[],
 ): Promise<Signature> {
+  await preflight(client, feePayer, instructions)
   try {
     const signature = await transact(async (mw) => {
       const { chain, identity } = wallet
@@ -63,10 +89,12 @@ export async function sendWithWallet(
       }
       if (cached) await wallet.store.persist({ ...cached, authToken: auth.auth_token })
 
+      // Finalized, not confirmed: wallets preflight against finalized state, where a blockhash
+      // only a few seconds old is still unknown ("Blockhash not found").
       const {
         context: { slot },
         value: latestBlockhash,
-      } = await client.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send()
+      } = await client.rpc.getLatestBlockhash({ commitment: 'finalized' }).send()
       const message = pipe(
         createTransactionMessage({ version: 0 }),
         (m) => setTransactionMessageFeePayer(feePayer, m),
@@ -110,6 +138,7 @@ export class TransactionFailedError extends Error {
   constructor(
     readonly signature: Signature | null,
     readonly detail: unknown,
+    readonly logs: readonly string[] = [],
   ) {
     super(describeProgramError(detail))
   }
