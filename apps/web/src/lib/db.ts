@@ -465,6 +465,21 @@ export class Store {
     );
   }
 
+  /** Inserts an event-only mirror unless the packet is already known (the account read is better). */
+  async insertPacketIfMissing(m: PacketMirror, status: PacketStatus): Promise<boolean> {
+    if (await this.getPacket(m.address)) {
+      if (m.createSignature) {
+        await this.sql.query('update packets set create_signature = coalesce(create_signature, $2) where address = $1', [
+          m.address,
+          m.createSignature,
+        ]);
+      }
+      return false;
+    }
+    await this.upsertPacketMirror(m, status);
+    return true;
+  }
+
   async registerPacket(
     address: string,
     meta: { message: string | null; skin: string | null; circleId: string | null; snapshotRoot: string | null; codeHint: string | null },
@@ -617,6 +632,17 @@ export class Store {
         g.at,
       ],
     );
+  }
+
+  /** PaidOut names the claimer, not the device; settle that claimer's won share of this amount. */
+  async markPaid(packet: string, claimer: string, amount: string, signature: string): Promise<number> {
+    const rows = await this.sql.query(
+      `update grabs set status = 'paid', payout_signature = coalesce(payout_signature, $4), updated_at = now()
+       where packet = $1 and claimer = $2 and (amount = $3::numeric or amount is null) and status <> 'paid'
+       returning packet`,
+      [packet, claimer, amount, signature],
+    );
+    return rows.length;
   }
 
   /** A stale reservation was cancelled on-chain at `slot`; a newer re-grab is kept. */
