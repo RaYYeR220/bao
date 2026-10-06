@@ -2,8 +2,6 @@
  * All database access. `Sql` is the only thing that knows about the driver: node-postgres
  * against Supabase (DATABASE_URL) or an embedded PGlite for local runs and tests.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
 import type { GrabStatus, PacketStatus } from '@bao/sdk';
 import { env } from './env';
 import { log } from './log';
@@ -52,30 +50,6 @@ export async function connectPglite(dir?: string): Promise<Sql> {
   };
 }
 
-export function migrationsDir(): string {
-  let dir = process.cwd();
-  for (let i = 0; i < 5; i++) {
-    const candidate = join(dir, 'supabase', 'migrations');
-    if (existsSync(candidate)) return candidate;
-    dir = dirname(dir);
-  }
-  return resolve(process.cwd(), '../../supabase/migrations');
-}
-
-/** Applies supabase/migrations/*.sql that this database has not seen (local runs only). */
-export async function migrate(sql: Sql, dir = migrationsDir()): Promise<string[]> {
-  await sql.exec('create table if not exists bao_migrations (name text primary key, applied_at timestamptz not null default now())');
-  const done = new Set((await sql.query<{ name: string }>('select name from bao_migrations')).map((r) => r.name));
-  const applied: string[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
-    if (done.has(file)) continue;
-    await sql.exec(readFileSync(join(dir, file), 'utf8'));
-    await sql.query('insert into bao_migrations (name) values ($1)', [file]);
-    applied.push(file);
-  }
-  return applied;
-}
-
 let shared: Promise<Store> | null = null;
 
 /** The process-wide store; falls back to an in-memory PGlite when DATABASE_URL is unset. */
@@ -86,6 +60,7 @@ export function getStore(): Promise<Store> {
       if (DATABASE_URL) return new Store(await connectPg(DATABASE_URL));
       log.once('db.fallback_pglite', { note: 'DATABASE_URL unset; using embedded PGlite', dir: PGLITE_DIR ?? 'memory' });
       const sql = await connectPglite(PGLITE_DIR);
+      const { migrate } = await import('./migrate');
       await migrate(sql);
       return new Store(sql);
     })();

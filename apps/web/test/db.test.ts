@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { migrate, type Store } from '@/lib/db';
+import type { Store } from '@/lib/db';
+import { migrate } from '@/lib/migrate';
 import { A, freshStore, mirror, wipe } from './helpers';
 
 let store: Store;

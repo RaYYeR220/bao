@@ -1,4 +1,5 @@
-import { connectPglite, migrate, Store } from '@/lib/db';
+import { connectPglite, Store } from '@/lib/db';
+import { migrate } from '@/lib/migrate';
 import type { PacketMirror } from '@/lib/types';
 
 process.env.BAO_SILENT_LOGS ??= '1';

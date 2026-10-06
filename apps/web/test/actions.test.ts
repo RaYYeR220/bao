@@ -115,7 +115,10 @@ describe('solana actions', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     const tx = getTransactionDecoder().decode(Buffer.from(body.transaction, 'base64'));
-    const message = getCompiledTransactionMessageDecoder().decode(tx.messageBytes);
+    const message = getCompiledTransactionMessageDecoder().decode(tx.messageBytes) as unknown as {
+      staticAccounts: string[];
+      instructions: { programAddressIndex: number; data?: Uint8Array }[];
+    };
     expect(message.staticAccounts[0]).toBe(A.bob);
     expect(Object.values(tx.signatures)).toEqual([null]);
     const ix = message.instructions[0];
