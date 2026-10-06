@@ -8,7 +8,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { maybeAskForPush } from '@/features/bao/data-access/push'
-import { WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
+import { humanError, WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
 import { baoApi, useApiState, useCircles, useSession } from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn } from '@/features/bao/data-access/use-bao-sign-in'
 import { CircleSeal, SEAL_GLYPHS } from '@/features/bao/ui/circle-seal'
@@ -38,7 +38,7 @@ export default function CirclesScreen() {
       const r = await signIn.mutateAsync()
       if (!r.serverReachable) setSignInNote('The Bao server is unreachable right now. Circles will be here when it is back.')
     } catch (e) {
-      if (!(e instanceof WalletRejectedError)) setSignInNote(e instanceof Error ? e.message : 'The wallet did not answer.')
+      if (!(e instanceof WalletRejectedError)) setSignInNote(humanError(e))
     }
   }
 

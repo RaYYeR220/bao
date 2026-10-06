@@ -16,7 +16,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { $onboarded } from '@/features/bao/data-access/prefs'
-import { WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
+import { humanError, WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
 import { ApiUnavailableError } from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn, useFaucet } from '@/features/bao/data-access/use-bao-sign-in'
 import { shortAddress } from '@/features/bao/format'
@@ -209,7 +209,7 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
       play('soft')
     } catch (e) {
       if (e instanceof WalletRejectedError || /reject|declin|cancel/i.test(String(e))) setError('No problem. Connect whenever you are ready.')
-      else setError(e instanceof Error ? e.message : 'The wallet did not answer.')
+      else setError(humanError(e))
     }
   }
 
