@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ClaimStatus, PAYOUT_DISCRIMINATOR, SplitMode, getClaimRecordEncoder, getPacketEncoder } from '@bao/sdk';
 import { payoutClaim } from '@/lib/claims';
 import type { Store } from '@/lib/db';
-import { base64Account, fakeRpc } from './fake-rpc';
+import { base64Account, fakeRpc, packetBytes } from './fake-rpc';
 import { A, freshStore } from './helpers';
 
 let store: Store;
@@ -36,7 +36,7 @@ function rpcWith(status: ClaimStatus | null) {
   }
   accounts.set(
     A.p1,
-    b64(
+    packetBytes(
       getPacketEncoder().encode({
         sender: address(A.alice),
         id: 1n,

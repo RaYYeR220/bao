@@ -14,8 +14,8 @@ import {
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
-import { buildGrab, fetchMaybeClaimRecord, fetchMaybePacket, findClaimPda, findGenesisToken, hexToBytes } from '@bao/sdk';
-import { packetStatus, modeName } from './chain';
+import { buildGrab, fetchMaybeClaimRecord, findClaimPda, findGenesisToken, hexToBytes } from '@bao/sdk';
+import { fetchPacketAccount, modeName, packetStatus } from './chain';
 import { proofFor } from './circles';
 import type { Store } from './db';
 import { baseUrl } from './env';
@@ -42,9 +42,9 @@ export const actionError = (e: unknown) =>
 
 async function loadPacket(rpc: SolanaRpc, packet: string) {
   if (!isAddress(packet)) throw new HttpError(400, 'not a packet address');
-  const account = await fetchMaybePacket(rpc, toAddress(packet), { commitment: 'confirmed' });
-  if (!account.exists) throw new HttpError(404, 'This packet is gone (closed or never existed)');
-  return account.data;
+  const account = await fetchPacketAccount(rpc, toAddress(packet));
+  if (!account) throw new HttpError(404, 'This packet is gone (closed or never existed)');
+  return account;
 }
 
 export async function grabActionMetadata(rpc: SolanaRpc, packet: string, now = Math.floor(Date.now() / 1000)) {

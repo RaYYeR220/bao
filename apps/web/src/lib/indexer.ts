@@ -5,8 +5,8 @@
  * Every write is an idempotent upsert, so replays and out-of-order delivery are harmless.
  */
 import { address, signature as toSignature, type Address, type Signature } from '@solana/kit';
-import { BAO_PROGRAM_ADDRESS, fetchMaybePacket } from '@bao/sdk';
-import { eventsFromLogs, mirrorFromAccount, mirrorFromEvent, packetStatus, randomnessHex, type BaoEvent } from './chain';
+import { BAO_PROGRAM_ADDRESS } from '@bao/sdk';
+import { eventsFromLogs, fetchPacketAccount, mirrorFromAccount, mirrorFromEvent, packetStatus, randomnessHex, type BaoEvent } from './chain';
 import type { Store } from './db';
 import { env } from './env';
 import { log, errorMessage } from './log';
@@ -58,10 +58,10 @@ export async function syncPacket(deps: IndexerDeps, packet: string): Promise<{ f
   const now = (deps.now ?? nowSecs)();
   let found = false;
   try {
-    const account = await fetchMaybePacket(deps.rpc, address(packet), { commitment: 'confirmed' });
-    if (account.exists) {
+    const account = await fetchPacketAccount(deps.rpc, address(packet));
+    if (account) {
       found = true;
-      const mirror = mirrorFromAccount(packet, account.data, await mintDecimals(deps.rpc, account.data.mint));
+      const mirror = mirrorFromAccount(packet, account, await mintDecimals(deps.rpc, account.mint));
       const known = await deps.store.getPacket(packet);
       await deps.store.upsertPacketMirror(mirror, packetStatus({ ...mirror, reserved: mirror.reserved ?? 0, status: known?.status }, now));
     }

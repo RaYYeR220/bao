@@ -29,3 +29,10 @@ export const base64Account = (data: string, owner = '111111111111111111111111111
   rentEpoch: 0n,
   space: BigInt(Buffer.from(data, 'base64').length),
 });
+
+/** On-chain packet accounts are allocated at their maximum size; pad compact encodings to match. */
+export function packetBytes(encoded: ArrayLike<number>, size = 379): string {
+  const out = new Uint8Array(size);
+  out.set(Uint8Array.from(encoded));
+  return Buffer.from(out).toString('base64');
+}

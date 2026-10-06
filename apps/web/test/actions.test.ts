@@ -11,7 +11,7 @@ import { GET, OPTIONS, POST } from '@/app/api/actions/grab/[packet]/route';
 import { setStore, type Store } from '@/lib/db';
 import { resetRateLimits } from '@/lib/http';
 import { setRpcs } from '@/lib/rpc';
-import { base64Account, fakeRpc } from './fake-rpc';
+import { base64Account, fakeRpc, packetBytes } from './fake-rpc';
 import { A, freshStore } from './helpers';
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -49,7 +49,7 @@ function put(addr: string, over: Partial<Packet>) {
     gasBump: 255,
     ...over,
   } as never);
-  accounts.set(addr, Buffer.from(data).toString('base64'));
+  accounts.set(addr, packetBytes(data));
 }
 
 let store: Store;

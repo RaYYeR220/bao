@@ -15,7 +15,7 @@ import { issueSession } from '@/lib/auth';
 import { setStore, type Store } from '@/lib/db';
 import { resetRateLimits } from '@/lib/http';
 import { setRpcs } from '@/lib/rpc';
-import { base64Account, fakeRpc } from './fake-rpc';
+import { base64Account, fakeRpc, packetBytes } from './fake-rpc';
 import { A, freshStore } from './helpers';
 
 const TSKR = 'aveV2LBQt6Bck1nsju3md5k223uxQNULjDvW6QcmCCr';
@@ -55,7 +55,7 @@ function packetAccount(root: Uint8Array, message: string | null, startsAt = 1_00
     vaultBump: 255,
     gasBump: 255,
   });
-  return Buffer.from(data).toString('base64');
+  return packetBytes(data);
 }
 
 const rpc = fakeRpc({

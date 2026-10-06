@@ -3,6 +3,7 @@
  * mirrored into database rows.
  */
 import {
+  fetchEncodedAccount,
   getAddressDecoder,
   getBooleanDecoder,
   getBytesDecoder,
@@ -22,12 +23,24 @@ import {
   BAO_PROGRAM_ADDRESS,
   SplitMode,
   getAudienceDecoder,
+  getPacketDecoder,
   getSplitModeDecoder,
   type Audience,
   type Packet,
   type PacketStatus,
 } from '@bao/sdk';
+import type { SolanaRpc } from './rpc';
 import type { PacketMirror, PacketRecord } from './types';
+
+/** Allocated size of a Packet account in the deployed layout (older devnet layouts differ). */
+export const PACKET_SIZE = 379;
+
+/** The packet account in the current layout, or null when missing or from an older program version. */
+export async function fetchPacketAccount(rpc: SolanaRpc, address: Address): Promise<Packet | null> {
+  const account = await fetchEncodedAccount(rpc, address, { commitment: 'confirmed' });
+  if (!account.exists || account.data.length !== PACKET_SIZE) return null;
+  return getPacketDecoder().decode(account.data);
+}
 
 const addr = getAddressDecoder();
 const u16 = getU16Decoder();

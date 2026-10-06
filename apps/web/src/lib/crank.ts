@@ -20,6 +20,7 @@ import {
   type ClaimRecord,
   type Packet,
 } from '@bao/sdk';
+import { PACKET_SIZE } from './chain';
 import type { Store } from './db';
 import { pollProgram, type PollResult } from './indexer';
 import { errorMessage, log } from './log';
@@ -27,7 +28,7 @@ import { pushRainStarting } from './push';
 import { sendAndConfirm, type SolanaRpc } from './rpc';
 
 /** Account sizes of the deployed layout; older layouts on devnet are skipped. */
-export const PACKET_SIZE = 379;
+export { PACKET_SIZE };
 export const CLAIM_SIZE = 124;
 export const STALE_SLOTS = 300n;
 export const MAX_CLAIMS_PER_TX = 20;
