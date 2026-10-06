@@ -53,3 +53,13 @@ export function normalizeCode(code: string): Uint8Array {
 export function codeHash(code: string, packet: Address): Uint8Array {
   return sha256(new Uint8Array([...normalizeCode(code), ...addressBytes.encode(packet)]));
 }
+
+export const bytesToHex = (bytes: ArrayLike<number>) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+
+export function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (clean.length % 2 !== 0 || /[^0-9a-f]/i.test(clean)) throw new Error('invalid hex');
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}

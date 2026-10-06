@@ -7,8 +7,14 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "package": "com.anonymous.mobile",
-      "predictiveBackGestureEnabled": false
+      "package": "app.getbao",
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.NFC",
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "experiments": {
       "reactCompiler": true,
@@ -18,7 +24,7 @@
     "ios": {
       "icon": "./assets/expo.icon"
     },
-    "name": "Mobile",
+    "name": "Bao",
     "orientation": "portrait",
     "plugins": [
       [
@@ -39,11 +45,66 @@
           "backgroundColor": "#208AEF"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-font",
+      "expo-audio",
+      "expo-quick-actions",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Bao uses the camera to scan packet QR codes.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C8102E"
+        }
+      ],
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Bao uses NFC to hand a red packet to a phone you tap.",
+          "selectIdentifiers": [],
+          "systemCodes": []
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "BaoPackets",
+              "label": "Bao packets",
+              "description": "Packets waiting for you",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildArchs": [
+              "arm64-v8a",
+              "x86_64"
+            ],
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      "./plugins/with-gradle-tuning"
     ],
-    "scheme": "mobile",
-    "slug": "mobile",
-    "userInterfaceStyle": "automatic",
+    "scheme": "bao",
+    "slug": "bao",
+    "userInterfaceStyle": "dark",
     "web": {
       "favicon": "./assets/images/favicon.png",
       "output": "static"

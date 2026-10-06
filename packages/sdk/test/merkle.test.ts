@@ -35,3 +35,12 @@ describe('code word', () => {
     expect(hex(codeHash('  Gongxi Facai ', packet))).toBe('f6f18b227fe26ec4e28d48947f0915062bb252e4a235204327aa5c3cfd1f2527');
   });
 });
+
+describe('hex helpers', () => {
+  it('round-trips and rejects bad input', async () => {
+    const { bytesToHex, hexToBytes } = await import('../src/merkle');
+    expect(bytesToHex(hexToBytes('00ff10'))).toBe('00ff10');
+    expect(() => hexToBytes('abc')).toThrow();
+    expect(() => hexToBytes('zz')).toThrow();
+  });
+});

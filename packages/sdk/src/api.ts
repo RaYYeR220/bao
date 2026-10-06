@@ -169,6 +169,11 @@ export interface Endpoints {
   'POST /api/circles/:id/snapshot': { body: Record<string, never>; res: { root: string; members: Base58[] } };
   'GET /api/users/:address': { res: UserView & { sent: PacketView[]; grabs: GrabView[]; crowns: number } };
   'POST /api/push/register': { body: { fcmToken: string }; res: { ok: true } };
+  /** Pays a won Lucky share right away (permissionless instruction, server pays the fee). */
+  'POST /api/claims/:address/payout': {
+    body: Record<string, never>;
+    res: { status: 'paid' | 'already-paid' | 'not-won'; signature: string | null };
+  };
 }
 
 type Path<K> = K extends `${string} ${infer P}` ? P : never;

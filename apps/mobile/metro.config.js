@@ -10,6 +10,13 @@ const config = getDefaultConfig(__dirname)
 // Drop watch folders that don't exist (e.g. when apps/mobile is installed standalone with npm).
 config.watchFolders = (config.watchFolders ?? []).filter((folder) => fs.existsSync(folder))
 
+// The shared SDK lives in packages/sdk and is linked with `file:`. Watch it, and resolve every
+// import (the SDK's too) from this app's node_modules so @solana/kit exists exactly once.
+const sdkRoot = path.resolve(__dirname, '../../packages/sdk')
+config.watchFolders.push(sdkRoot)
+config.resolver.nodeModulesPaths = [path.resolve(__dirname, 'node_modules')]
+config.resolver.disableHierarchicalLookup = true
+
 // Apply uniwind modifications before exporting
 const uniwindConfig = withUniwindConfig(config, {
   // relative path to your global.css file
