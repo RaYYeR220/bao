@@ -1,0 +1,7 @@
+apps/mobile
+programs
+target
+tests
+.anchor
+**/node_modules
+**/.next
