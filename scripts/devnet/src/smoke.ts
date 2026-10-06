@@ -56,6 +56,8 @@ async function grabLucky(claimer: KeyPairSigner, packet: Address, mint: Address,
 
 async function main() {
   const admin = await loadKeypair();
+  // tSKR and the test genesis group are minted by the faucet key (see rotate-authorities.ts)
+  const mintAuthority = await loadKeypair(process.env.BAO_MINT_AUTHORITY || undefined);
   const { genesisGroup, tskrMint } = readOut() as { genesisGroup: Address; tskrMint: Address };
 
   const sender = await generateKeyPairSigner();
@@ -63,8 +65,8 @@ async function main() {
   const bot = await generateKeyPairSigner();
   const secondWallet = await generateKeyPairSigner();
   for (const w of [sender, grabber, bot, secondWallet]) await airdropIfLow(w.address, 30_000_000n, admin);
-  await mintTskr(admin, tskrMint, sender.address, 100_000_000n);
-  const minted = await mintGenesisMember(admin, genesisGroup, grabber.address);
+  await mintTskr(mintAuthority, tskrMint, sender.address, 100_000_000n);
+  const minted = await mintGenesisMember(mintAuthority, genesisGroup, grabber.address);
   record('genesis_mint_to_grabber', minted.signature);
 
   // 1. drop a packet
