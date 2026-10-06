@@ -1,9 +1,11 @@
 pub mod constants;
 pub mod error;
 pub mod events;
+pub mod gas;
 pub mod instructions;
 pub mod audience;
 pub mod math;
+pub mod mint_safety;
 pub mod sgt;
 pub mod state;
 
@@ -25,5 +27,9 @@ pub mod bao {
 
     pub fn update_config(ctx: Context<UpdateConfig>, args: UpdateConfigArgs) -> Result<()> {
         instructions::config::handle_update_config(ctx, args)
+    }
+
+    pub fn create_packet(ctx: Context<CreatePacket>, args: CreatePacketArgs) -> Result<()> {
+        instructions::create_packet::handle_create_packet(ctx, args)
     }
 }

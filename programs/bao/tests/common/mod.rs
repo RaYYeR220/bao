@@ -121,6 +121,261 @@ impl Harness {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Tokens and packets
+// ---------------------------------------------------------------------------
+
+use bao::state::{Audience, SplitMode};
+use spl_pod::optional_keys::OptionalNonZeroPubkey;
+use spl_token_2022_interface::extension::{
+    metadata_pointer::MetadataPointer,
+    transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+    BaseStateWithExtensionsMut, ExtensionType, StateWithExtensionsMut,
+};
+use spl_token_2022_interface::state::{Account as T22Account, AccountState, Mint as T22Mint};
+use spl_token_group_interface::state::TokenGroupMember;
+
+pub const TOKEN: Pubkey = anchor_spl::token::ID;
+pub const TOKEN_2022: Pubkey = anchor_spl::token_2022::ID;
+pub const ATA_PROGRAM: Pubkey = anchor_spl::associated_token::ID;
+pub const TEST_GROUP: Pubkey = Pubkey::new_from_array([42u8; 32]);
+
+pub fn ata(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
+    anchor_spl::associated_token::get_associated_token_address_with_program_id(owner, mint, &TOKEN)
+}
+
+pub fn ata_with(owner: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Pubkey {
+    anchor_spl::associated_token::get_associated_token_address_with_program_id(owner, mint, token_program)
+}
+
+pub fn packet_pdas(sender: &Pubkey, id: u64) -> (Pubkey, Pubkey, Pubkey) {
+    let packet = Pubkey::find_program_address(&[bao::PACKET_SEED, sender.as_ref(), &id.to_le_bytes()], &bao::ID).0;
+    let vault = Pubkey::find_program_address(&[bao::VAULT_SEED, packet.as_ref()], &bao::ID).0;
+    let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
+    (packet, vault, gas)
+}
+
+pub fn claim_pda(packet: &Pubkey, device_key: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[bao::CLAIM_SEED, packet.as_ref(), device_key.as_ref()], &bao::ID).0
+}
+
+pub fn crown_pda(packet: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[bao::CROWN_SEED, packet.as_ref()], &bao::ID).0
+}
+
+/// Classic SPL mint (82 bytes) laid out by hand.
+fn spl_mint_bytes(authority: &Pubkey, decimals: u8) -> Vec<u8> {
+    let mut d = vec![0u8; 82];
+    d[0..4].copy_from_slice(&1u32.to_le_bytes());
+    d[4..36].copy_from_slice(authority.as_ref());
+    d[44] = decimals;
+    d[45] = 1;
+    d
+}
+
+/// Classic SPL token account (165 bytes) laid out by hand.
+fn spl_account_bytes(mint: &Pubkey, owner: &Pubkey, amount: u64) -> Vec<u8> {
+    let mut d = vec![0u8; 165];
+    d[0..32].copy_from_slice(mint.as_ref());
+    d[32..64].copy_from_slice(owner.as_ref());
+    d[64..72].copy_from_slice(&amount.to_le_bytes());
+    d[108] = 1; // AccountState::Initialized
+    d
+}
+
+impl Harness {
+    /// Config initialized by the upgrade authority: test genesis group, 1% fee, 10_000 lamport crank reward.
+    pub fn ready() -> Self {
+        let mut h = Self::new();
+        let admin = h.admin();
+        h.set_upgrade_authority(&admin.pubkey());
+        h.send(&[Self::init_config_ix(&admin.pubkey(), TEST_GROUP, 100)], &admin).unwrap();
+        h
+    }
+
+    fn put(&mut self, key: Pubkey, owner: Pubkey, data: Vec<u8>) {
+        let lamports = self.svm.minimum_balance_for_rent_exemption(data.len());
+        self.svm
+            .set_account(key, Account { lamports, data, owner, executable: false, rent_epoch: 0 })
+            .unwrap();
+    }
+
+    /// Classic SPL mint; also creates the admin (treasury) ATA so fees have a destination.
+    pub fn make_spl_mint(&mut self, decimals: u8) -> Pubkey {
+        let mint = Pubkey::new_unique();
+        let authority = self.admin.pubkey();
+        self.put(mint, TOKEN, spl_mint_bytes(&authority, decimals));
+        self.fund_tokens(&mint, &authority, 0);
+        mint
+    }
+
+    /// Sets the owner ATA balance to `amount`, creating the ATA if needed.
+    pub fn fund_tokens(&mut self, mint: &Pubkey, owner: &Pubkey, amount: u64) -> Pubkey {
+        let a = ata(owner, mint);
+        self.put(a, TOKEN, spl_account_bytes(mint, owner, amount));
+        a
+    }
+
+    /// Token-2022 mint carrying a transfer fee: the program must refuse it.
+    pub fn make_t22_mint_with_transfer_fee(&mut self, decimals: u8) -> Pubkey {
+        let mint = Pubkey::new_unique();
+        let space = ExtensionType::try_calculate_account_len::<T22Mint>(&[ExtensionType::TransferFeeConfig]).unwrap();
+        let mut data = vec![0u8; space];
+        {
+            let mut s = StateWithExtensionsMut::<T22Mint>::unpack_uninitialized(&mut data).unwrap();
+            let fee = s.init_extension::<TransferFeeConfig>(true).unwrap();
+            fee.newer_transfer_fee.transfer_fee_basis_points = 100u16.into();
+            s.base.decimals = decimals;
+            s.base.is_initialized = true;
+            s.pack_base();
+            s.init_account_type().unwrap();
+        }
+        self.put(mint, TOKEN_2022, data);
+        let treasury = self.admin.pubkey();
+        self.fund_t22_tokens(&mint, &treasury, 0);
+        mint
+    }
+
+    pub fn fund_t22_tokens(&mut self, mint: &Pubkey, owner: &Pubkey, amount: u64) -> Pubkey {
+        let a = ata_with(owner, mint, &TOKEN_2022);
+        let space = ExtensionType::try_calculate_account_len::<T22Account>(&[ExtensionType::TransferFeeAmount]).unwrap();
+        let mut data = vec![0u8; space];
+        {
+            let mut s = StateWithExtensionsMut::<T22Account>::unpack_uninitialized(&mut data).unwrap();
+            s.init_extension::<TransferFeeAmount>(true).unwrap();
+            s.base.mint = mint.to_bytes().into();
+            s.base.owner = owner.to_bytes().into();
+            s.base.amount = amount;
+            s.base.state = AccountState::Initialized;
+            s.pack_base();
+            s.init_account_type().unwrap();
+        }
+        self.put(a, TOKEN_2022, data);
+        a
+    }
+
+    /// Token amount of a token account of either program (offset 64).
+    pub fn token_balance(&self, key: &Pubkey) -> u64 {
+        let acc = self.svm.get_account(key).expect("token account missing");
+        u64::from_le_bytes(acc.data[64..72].try_into().unwrap())
+    }
+
+    pub fn token_balance_or_zero(&self, key: &Pubkey) -> u64 {
+        match self.svm.get_account(key) {
+            Some(a) if a.data.len() >= 72 => u64::from_le_bytes(a.data[64..72].try_into().unwrap()),
+            _ => 0,
+        }
+    }
+
+    /// A mint shaped like a Seeker Genesis Token (member of `group`, metadata pointer = `metadata`)
+    /// held by `owner` in a Token-2022 account.
+    pub fn make_member_mint(&mut self, group: &Pubkey, metadata: &Pubkey, owner: &Pubkey) -> (Pubkey, Pubkey) {
+        let mint = Pubkey::new_unique();
+        let space = ExtensionType::try_calculate_account_len::<T22Mint>(&[
+            ExtensionType::MetadataPointer,
+            ExtensionType::TokenGroupMember,
+        ])
+        .unwrap();
+        let mut data = vec![0u8; space];
+        {
+            let mut s = StateWithExtensionsMut::<T22Mint>::unpack_uninitialized(&mut data).unwrap();
+            let mp = s.init_extension::<MetadataPointer>(true).unwrap();
+            mp.metadata_address = OptionalNonZeroPubkey::try_from(Some(metadata.to_bytes().into())).unwrap();
+            let m = s.init_extension::<TokenGroupMember>(true).unwrap();
+            m.mint = mint.to_bytes().into();
+            m.group = group.to_bytes().into();
+            m.member_number = 1u64.into();
+            s.base.decimals = 0;
+            s.base.supply = 1;
+            s.base.is_initialized = true;
+            s.pack_base();
+            s.init_account_type().unwrap();
+        }
+        self.put(mint, TOKEN_2022, data);
+        let ta = Pubkey::new_unique();
+        let tspace = ExtensionType::try_calculate_account_len::<T22Account>(&[]).unwrap();
+        let mut tdata = vec![0u8; tspace];
+        {
+            let mut s = StateWithExtensionsMut::<T22Account>::unpack_uninitialized(&mut tdata).unwrap();
+            s.base.mint = mint.to_bytes().into();
+            s.base.owner = owner.to_bytes().into();
+            s.base.amount = 1;
+            s.base.state = AccountState::Initialized;
+            s.pack_base();
+            s.init_account_type().unwrap();
+        }
+        self.put(ta, TOKEN_2022, tdata);
+        (mint, ta)
+    }
+
+    pub fn make_sgt(&mut self, group: &Pubkey, owner: &Pubkey) -> (Pubkey, Pubkey) {
+        self.make_member_mint(group, group, owner)
+    }
+
+    /// Moves a Token-2022 token account to a new owner, as when the genesis token moves between wallets of one person.
+    pub fn move_t22_token(&mut self, token_account: &Pubkey, new_owner: &Pubkey) {
+        let mut acc: Account = self.svm.get_account(token_account).unwrap();
+        acc.data[32..64].copy_from_slice(new_owner.as_ref());
+        self.svm.set_account(*token_account, acc).unwrap();
+    }
+
+    pub fn warp_seconds(&mut self, secs: i64) {
+        let mut clock: anchor_lang::prelude::Clock = self.svm.get_sysvar();
+        clock.unix_timestamp += secs;
+        self.svm.set_sysvar(&clock);
+    }
+
+    pub fn warp_slots(&mut self, slots: u64) {
+        let clock: anchor_lang::prelude::Clock = self.svm.get_sysvar();
+        self.svm.warp_to_slot(clock.slot + slots);
+    }
+}
+
+pub fn create_args(id: u64, total: u64, shares: u16, mode: SplitMode, audience: Audience, seeker_only: bool) -> bao::CreatePacketArgs {
+    bao::CreatePacketArgs { id, total, shares, mode, audience, seeker_only, expires_in: 86_400, message_hash: [7u8; 32] }
+}
+
+/// `create_packet` for a classic SPL mint. `parent_crown` continues a Luck-King chain.
+pub fn create_packet_ix(h: &Harness, sender: &Pubkey, mint: &Pubkey, args: bao::CreatePacketArgs, parent_crown: Option<Pubkey>) -> Instruction {
+    create_packet_ix_with(h, sender, mint, &TOKEN, args, parent_crown)
+}
+
+pub fn create_packet_ix_with(
+    h: &Harness,
+    sender: &Pubkey,
+    mint: &Pubkey,
+    token_program: &Pubkey,
+    args: bao::CreatePacketArgs,
+    parent_crown: Option<Pubkey>,
+) -> Instruction {
+    let (packet, vault, gas) = packet_pdas(sender, args.id);
+    let crown_refund = parent_crown.and_then(|c| {
+        h.svm.get_account(&c).filter(|a| a.lamports > 0).map(|_| {
+            let crown: bao::state::Crown = h.account(&c);
+            crown.refund_to
+        })
+    });
+    Instruction::new_with_bytes(
+        bao::ID,
+        &bao::instruction::CreatePacket { args }.data(),
+        bao::accounts::CreatePacket {
+            sender: *sender,
+            config: Harness::config_pda(),
+            packet,
+            mint: *mint,
+            sender_token: ata_with(sender, mint, token_program),
+            vault,
+            gas_tank: gas,
+            treasury_token: Some(ata_with(&h.admin.pubkey(), mint, token_program)),
+            parent_crown,
+            parent_crown_refund: crown_refund.or(parent_crown.map(|_| *sender)),
+            token_program: *token_program,
+            system_program: SYSTEM_PROGRAM,
+        }
+        .to_account_metas(None),
+    )
+}
+
 /// Asserts that the transaction failed with the given program error.
 pub fn assert_err(res: TransactionResult, code: bao::error::BaoError) {
     let failed = match res {
