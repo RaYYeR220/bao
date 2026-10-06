@@ -376,6 +376,68 @@ pub fn create_packet_ix_with(
     )
 }
 
+// ---------------------------------------------------------------------------
+// Grabs
+// ---------------------------------------------------------------------------
+
+/// Circle snapshot: Merkle root and one proof per member, same algorithm as the program.
+pub fn merkle_tree(members: &[Pubkey]) -> ([u8; 32], Vec<Vec<[u8; 32]>>) {
+    let mut level: Vec<[u8; 32]> = members.iter().map(bao::audience::merkle_leaf).collect();
+    let mut proofs: Vec<Vec<[u8; 32]>> = vec![vec![]; members.len()];
+    let mut pos: Vec<usize> = (0..members.len()).collect();
+    while level.len() > 1 {
+        let next: Vec<[u8; 32]> = level
+            .chunks(2)
+            .map(|p| if p.len() == 2 { bao::audience::hash_pair(&p[0], &p[1]) } else { p[0] })
+            .collect();
+        for (i, p) in pos.iter_mut().enumerate() {
+            let sib = *p ^ 1;
+            if sib < level.len() {
+                proofs[i].push(level[sib]);
+            }
+            *p /= 2;
+        }
+        level = next;
+    }
+    (level[0], proofs)
+}
+
+pub fn grab_args(device_key: Pubkey, proof: Vec<[u8; 32]>, code: Option<Vec<u8>>) -> bao::GrabArgs {
+    bao::GrabArgs { device_key, proof, code }
+}
+
+/// `grab_equal` for a classic SPL packet. `sgt` = (genesis mint, genesis token account).
+pub fn grab_equal_ix(
+    claimer: &Pubkey,
+    packet: &Pubkey,
+    mint: &Pubkey,
+    args: bao::GrabArgs,
+    sgt: Option<(Pubkey, Pubkey)>,
+) -> Instruction {
+    let vault = Pubkey::find_program_address(&[bao::VAULT_SEED, packet.as_ref()], &bao::ID).0;
+    let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
+    Instruction::new_with_bytes(
+        bao::ID,
+        &bao::instruction::GrabEqual { args: args.clone() }.data(),
+        bao::accounts::GrabEqual {
+            claimer: *claimer,
+            config: Harness::config_pda(),
+            packet: *packet,
+            mint: *mint,
+            vault,
+            gas_tank: gas,
+            claim: claim_pda(packet, &args.device_key),
+            claimer_token: ata(claimer, mint),
+            sgt_mint: sgt.map(|s| s.0),
+            sgt_token: sgt.map(|s| s.1),
+            token_program: TOKEN,
+            associated_token_program: ATA_PROGRAM,
+            system_program: SYSTEM_PROGRAM,
+        }
+        .to_account_metas(None),
+    )
+}
+
 /// Asserts that the transaction failed with the given program error.
 pub fn assert_err(res: TransactionResult, code: bao::error::BaoError) {
     let failed = match res {

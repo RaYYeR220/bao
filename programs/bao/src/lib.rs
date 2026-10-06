@@ -32,4 +32,8 @@ pub mod bao {
     pub fn create_packet(ctx: Context<CreatePacket>, args: CreatePacketArgs) -> Result<()> {
         instructions::create_packet::handle_create_packet(ctx, args)
     }
+
+    pub fn grab_equal(ctx: Context<GrabEqual>, args: GrabArgs) -> Result<()> {
+        instructions::grab::handle_grab_equal(ctx, args)
+    }
 }
