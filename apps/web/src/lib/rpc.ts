@@ -4,12 +4,14 @@
  */
 import { setDefaultResultOrder } from 'node:dns';
 import {
+  SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR,
   appendTransactionMessageInstructions,
   createDefaultRpcTransport,
   createSolanaRpcFromTransport,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
+  isSolanaError,
   pipe,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -45,6 +47,14 @@ export function mainnetUrl(): string {
 }
 
 const RETRIABLE = /429|Too Many Requests|fetch failed|ECONNRESET|ETIMEDOUT|socket hang up|502|503|504/i;
+const RETRIABLE_STATUS = new Set([429, 502, 503, 504]);
+
+/** Production builds of kit strip error messages, so look at the HTTP status in the error context too. */
+export function isRetriable(e: unknown): boolean {
+  if (isSolanaError(e, SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR)) return RETRIABLE_STATUS.has(e.context.statusCode);
+  const text = String((e as Error)?.message ?? e) + String((e as { cause?: unknown })?.cause ?? '');
+  return RETRIABLE.test(text);
+}
 
 export function createRpc(url: string, maxAttempts = 6): SolanaRpc {
   const base = createDefaultRpcTransport({ url });
@@ -53,8 +63,7 @@ export function createRpc(url: string, maxAttempts = 6): SolanaRpc {
       try {
         return await base(config);
       } catch (e) {
-        const text = String((e as Error)?.message ?? e) + String((e as { cause?: unknown })?.cause ?? '');
-        if (!RETRIABLE.test(text) || attempt >= maxAttempts) throw e;
+        if (!isRetriable(e) || attempt >= maxAttempts) throw e;
         await new Promise((r) => setTimeout(r, Math.min(8_000, 400 * 2 ** attempt)));
       }
     }
