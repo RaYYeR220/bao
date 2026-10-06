@@ -2,8 +2,8 @@ import { useEffect } from 'react'
 import {
   Easing,
   SensorType,
+  useAnimatedReaction,
   useAnimatedSensor,
-  useDerivedValue,
   useReducedMotion,
   useSharedValue,
   withRepeat,
@@ -24,25 +24,29 @@ export { useReducedMotion }
  */
 export function useTiltGleam(base = 0.5): SharedValue<number> {
   const reduced = useReducedMotion()
-  const sensor = useAnimatedSensor(SensorType.ACCELEROMETER, { interval: 16 })
+  const sensor = useAnimatedSensor(SensorType.ACCELEROMETER, { interval: 40 })
   const drift = useSharedValue(0)
-  const smooth = useSharedValue(base)
+  const gleam = useSharedValue(base)
 
   useEffect(() => {
     if (reduced) return
     drift.value = withRepeat(withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }), -1, true)
   }, [drift, reduced])
 
-  return useDerivedValue(() => {
-    if (reduced) return base
-    const { x, y } = sensor.sensor.value
-    // Android reports m/s²; tilting left/right moves x, forward/back moves y.
-    const tx = Math.max(-1, Math.min(1, x / 9.81))
-    const ty = Math.max(-1, Math.min(1, (y - 6.5) / 9.81))
-    const target = base - tx * 0.32 + ty * 0.18 + (drift.value - 0.5) * 0.08
-    smooth.value += (target - smooth.value) * 0.12
-    return smooth.value
-  })
+  useAnimatedReaction(
+    () => (reduced ? null : { x: sensor.sensor.value.x, y: sensor.sensor.value.y, d: drift.value }),
+    (v) => {
+      if (!v) return
+      // Android reports m/s²; tilting left/right moves x, forward/back moves y.
+      const tx = Math.max(-1, Math.min(1, v.x / 9.81))
+      const ty = Math.max(-1, Math.min(1, (v.y - 6.5) / 9.81))
+      const target = base - tx * 0.32 + ty * 0.18 + (v.d - 0.5) * 0.08
+      gleam.value += (target - gleam.value) * 0.18
+    },
+    [reduced, base],
+  )
+
+  return gleam
 }
 
 /** A 0..1 loop for idle shimmer (unsealing), paused under reduced motion. */
