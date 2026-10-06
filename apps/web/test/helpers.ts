@@ -2,6 +2,7 @@ import { connectPglite, migrate, Store } from '@/lib/db';
 import type { PacketMirror } from '@/lib/types';
 
 process.env.BAO_SILENT_LOGS ??= '1';
+process.env.BAO_OFFLINE ??= '1';
 
 /** A migrated in-memory database. */
 export async function freshStore(): Promise<Store> {
