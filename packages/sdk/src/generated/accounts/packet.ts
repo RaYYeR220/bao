@@ -90,6 +90,8 @@ export type Packet = {
   /** Crank reward snapshotted from the config at creation; it is pre-funded in the GasTank. */
   crankReward: bigint;
   createdAt: bigint;
+  /** Grabs open at this time (scheduled rains); equals `created_at` for immediate packets. */
+  startsAt: bigint;
   expiresAt: bigint;
   messageHash: ReadonlyUint8Array;
   parent: Option<Address>;
@@ -125,6 +127,8 @@ export type PacketArgs = {
   /** Crank reward snapshotted from the config at creation; it is pre-funded in the GasTank. */
   crankReward: number | bigint;
   createdAt: number | bigint;
+  /** Grabs open at this time (scheduled rains); equals `created_at` for immediate packets. */
+  startsAt: number | bigint;
   expiresAt: number | bigint;
   messageHash: ReadonlyUint8Array;
   parent: OptionOrNullable<Address>;
@@ -159,6 +163,7 @@ export function getPacketEncoder(): Encoder<PacketArgs> {
       ["sgtGroup", getAddressEncoder()],
       ["crankReward", getU64Encoder()],
       ["createdAt", getI64Encoder()],
+      ["startsAt", getI64Encoder()],
       ["expiresAt", getI64Encoder()],
       ["messageHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["parent", getOptionEncoder(getAddressEncoder())],
@@ -195,6 +200,7 @@ export function getPacketDecoder(): Decoder<Packet> {
     ["sgtGroup", getAddressDecoder()],
     ["crankReward", getU64Decoder()],
     ["createdAt", getI64Decoder()],
+    ["startsAt", getI64Decoder()],
     ["expiresAt", getI64Decoder()],
     ["messageHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["parent", getOptionDecoder(getAddressDecoder())],

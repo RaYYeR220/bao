@@ -78,6 +78,10 @@ export const BAO_ERROR__WIN_NOT_PAID = 0x178d; // 6029
 export const BAO_ERROR__WRONG_REQUEST = 0x178e; // 6030
 /** AddressInUse: Address is held by another program */
 export const BAO_ERROR__ADDRESS_IN_USE = 0x178f; // 6031
+/** NotStarted: Packet has not started yet */
+export const BAO_ERROR__NOT_STARTED = 0x1790; // 6032
+/** BadStart: Start must be within the next 7 days */
+export const BAO_ERROR__BAD_START = 0x1791; // 6033
 
 export type BaoError =
   | typeof BAO_ERROR__ADDRESS_IN_USE
@@ -85,6 +89,7 @@ export type BaoError =
   | typeof BAO_ERROR__BAD_DEVICE_KEY
   | typeof BAO_ERROR__BAD_EXPIRY
   | typeof BAO_ERROR__BAD_SHARES
+  | typeof BAO_ERROR__BAD_START
   | typeof BAO_ERROR__BAD_TREASURY
   | typeof BAO_ERROR__CROWN_ACTIVE
   | typeof BAO_ERROR__EXPIRED
@@ -95,6 +100,7 @@ export type BaoError =
   | typeof BAO_ERROR__NOT_LUCK_KING
   | typeof BAO_ERROR__NOT_PENDING
   | typeof BAO_ERROR__NOT_STALE
+  | typeof BAO_ERROR__NOT_STARTED
   | typeof BAO_ERROR__NOT_WON
   | typeof BAO_ERROR__OPEN_CLAIMS
   | typeof BAO_ERROR__OPEN_MUST_BE_SEEKER_ONLY
@@ -121,6 +127,7 @@ if (process.env.NODE_ENV !== "production") {
     [BAO_ERROR__BAD_DEVICE_KEY]: `Device key does not match the grab`,
     [BAO_ERROR__BAD_EXPIRY]: `Expiry must be between 1 hour and 7 days`,
     [BAO_ERROR__BAD_SHARES]: `Shares must be between 1 and 200`,
+    [BAO_ERROR__BAD_START]: `Start must be within the next 7 days`,
     [BAO_ERROR__BAD_TREASURY]: `Treasury token account missing or wrong`,
     [BAO_ERROR__CROWN_ACTIVE]: `Crown not expired`,
     [BAO_ERROR__EXPIRED]: `Packet expired`,
@@ -131,6 +138,7 @@ if (process.env.NODE_ENV !== "production") {
     [BAO_ERROR__NOT_LUCK_KING]: `Only the Luck King of the parent packet can continue the chain`,
     [BAO_ERROR__NOT_PENDING]: `Claim is not pending`,
     [BAO_ERROR__NOT_STALE]: `Claim is not stale yet`,
+    [BAO_ERROR__NOT_STARTED]: `Packet has not started yet`,
     [BAO_ERROR__NOT_WON]: `Claim has no unpaid win`,
     [BAO_ERROR__OPEN_CLAIMS]: `Claim records must be closed first`,
     [BAO_ERROR__OPEN_MUST_BE_SEEKER_ONLY]: `Open packets must be Seeker-only`,

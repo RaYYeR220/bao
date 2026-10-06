@@ -87,6 +87,7 @@ async function main() {
     expiresIn: 3_600n,
     messageHash: new Uint8Array(32),
     maxFeeBps: 100,
+    startsAt: 0n,
   });
   record('packet', packet);
   record('create_packet', await send([create], sender));

@@ -3,6 +3,7 @@ export * from './math';
 export * from './merkle';
 export * from './pda';
 export * from './sgt';
+export * from './api';
 import devnet from './devnet.json';
 
 /** Public devnet deployment (written by scripts/devnet). */

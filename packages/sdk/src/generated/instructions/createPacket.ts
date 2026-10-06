@@ -140,6 +140,8 @@ export type CreatePacketInstructionData = {
   messageHash: ReadonlyUint8Array;
   /** Highest protocol fee the sender accepts; protects against a fee change racing the transaction. */
   maxFeeBps: number;
+  /** Unix time grabs open (a scheduled rain); 0 opens immediately. */
+  startsAt: bigint;
 };
 
 export type CreatePacketInstructionDataArgs = {
@@ -153,6 +155,8 @@ export type CreatePacketInstructionDataArgs = {
   messageHash: ReadonlyUint8Array;
   /** Highest protocol fee the sender accepts; protects against a fee change racing the transaction. */
   maxFeeBps: number;
+  /** Unix time grabs open (a scheduled rain); 0 opens immediately. */
+  startsAt: number | bigint;
 };
 
 export function getCreatePacketInstructionDataEncoder(): Encoder<CreatePacketInstructionDataArgs> {
@@ -168,6 +172,7 @@ export function getCreatePacketInstructionDataEncoder(): Encoder<CreatePacketIns
       ["expiresIn", getI64Encoder()],
       ["messageHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["maxFeeBps", getU16Encoder()],
+      ["startsAt", getI64Encoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_PACKET_DISCRIMINATOR }),
   );
@@ -185,6 +190,7 @@ export function getCreatePacketInstructionDataDecoder(): Decoder<CreatePacketIns
     ["expiresIn", getI64Decoder()],
     ["messageHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["maxFeeBps", getU16Decoder()],
+    ["startsAt", getI64Decoder()],
   ]);
 }
 
@@ -235,6 +241,7 @@ export type CreatePacketAsyncInput<
   expiresIn: CreatePacketInstructionDataArgs["expiresIn"];
   messageHash: CreatePacketInstructionDataArgs["messageHash"];
   maxFeeBps: CreatePacketInstructionDataArgs["maxFeeBps"];
+  startsAt: CreatePacketInstructionDataArgs["startsAt"];
 };
 
 export async function getCreatePacketInstructionAsync<
@@ -410,6 +417,7 @@ export type CreatePacketInput<
   expiresIn: CreatePacketInstructionDataArgs["expiresIn"];
   messageHash: CreatePacketInstructionDataArgs["messageHash"];
   maxFeeBps: CreatePacketInstructionDataArgs["maxFeeBps"];
+  startsAt: CreatePacketInstructionDataArgs["startsAt"];
 };
 
 export function getCreatePacketInstruction<
