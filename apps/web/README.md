@@ -17,6 +17,7 @@ Mainnet is read, never written: `.skr` names (AllDomains) and real Seeker Genesi
 | Push (FCM HTTP v1) | `src/lib/push.ts`, `/api/push/register` |
 | Solana Actions | `src/lib/actions.ts`, `/actions.json`, `/api/actions/grab/:packet` |
 | Link pages | `/p/:packet` (+ Open Graph image), `/.well-known/assetlinks.json`, `/` |
+| Devnet RPC proxy (allowlisted methods, keeps the Helius key server-side) | `src/lib/rpc-proxy.ts`, `POST /api/rpc` |
 | Database | `src/lib/db.ts` (all SQL), `../../supabase/migrations` |
 
 The request and response shapes are the `Endpoints` contract in `packages/sdk/src/api.ts`.
@@ -68,6 +69,7 @@ Checks:
 
 ```sh
 pnpm --filter web test          # unit + route tests on PGlite with recorded devnet/mainnet fixtures
+LIVE_TESTS=1 pnpm --filter web test   # adds a real crank pass on devnet (payout, close_claims, close_packet)
 pnpm --filter web typecheck
 pnpm --filter web build
 BASE_URL=http://localhost:3000 CRON_SECRET=... pnpm --filter web e2e   # full loop on real devnet
