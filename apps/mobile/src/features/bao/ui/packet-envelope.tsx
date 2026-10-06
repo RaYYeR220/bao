@@ -35,12 +35,16 @@ export function PacketEnvelope({
   const amountSize = (packet.total.length > 9 ? 56 : 74) * s
   const spent = tone === 'ash'
   const sub = grabbed
-    ? `YOU GOT ${formatAmount(grabbed, packet.token.decimals)}`
+    ? width < 150
+      ? 'OPENED'
+      : `YOU GOT ${formatAmount(grabbed, packet.token.decimals)}`
     : spent
       ? packet.status === 'expired'
         ? 'EXPIRED'
         : 'ALL GRABBED'
-      : `${packet.token.symbol} · ${packet.shares} ${packet.shares === 1 ? 'SHARE' : 'SHARES'}`
+      : width < 150
+        ? packet.token.symbol
+        : `${packet.token.symbol} · ${packet.shares} ${packet.shares === 1 ? 'SHARE' : 'SHARES'}`
   return (
     <EnvelopeFace
       width={width}
@@ -49,7 +53,7 @@ export function PacketEnvelope({
       ticks={{ total: packet.shares, left: sharesLeft(packet) }}
       sealState={spent || grabbed ? 'cracked' : 'closed'}
     >
-      <View style={[styles.face, { top: (222 / 402) * width * (402 / 230) }]} pointerEvents="none">
+      <View style={[styles.face, { top: (212 / 230) * width }]} pointerEvents="none">
         <T
           style={{
             fontFamily: font.display,

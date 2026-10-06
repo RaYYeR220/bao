@@ -88,7 +88,7 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
   }, [detail.startsAt, now, opened])
   const scheduled = !opened && detail.startsAt > now
   const spent = detail.status === 'emptied' || detail.status === 'expired'
-  const alreadyMine = !!mine.data && mine.data.data.status !== 0 && phase.kind === 'idle'
+  const alreadyMine = !!mine.data && mine.data.data.status !== 0 && (phase.kind === 'idle' || (phase.kind === 'refused' && phase.code === 6016))
   const needsCode = detail.audience === 'code' && !code
 
   // shake progress: thirds of the foil ring, drained if the shaking stops
@@ -96,7 +96,9 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
   const [steps, setSteps] = useState(0)
   const [trembleKey, setTrembleKey] = useState(0)
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const canShake = phase.kind === 'idle' && !scheduled && !spent && !alreadyMine && !mine.isLoading
+  // only once we know whether this phone already grabbed (unknowable until a wallet is connected)
+  const claimKnown = !wallet.account || mine.isFetched
+  const canShake = phase.kind === 'idle' && !scheduled && !spent && !alreadyMine && claimKnown
 
   const step = useCallback(() => {
     if (!canShake) return
@@ -166,7 +168,8 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
       setBurst((b) => b + 1)
       play('shimmer')
       buzz('success')
-      void maybeAskForPush()
+      // ask for notifications once the moment has landed, not on top of it
+      setTimeout(() => void maybeAskForPush(), 4500)
     }
   }, [phase.kind])
 

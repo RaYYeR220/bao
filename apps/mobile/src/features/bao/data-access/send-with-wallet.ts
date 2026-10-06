@@ -60,7 +60,7 @@ export async function preflight(client: SolanaClient, feePayer: Address, instruc
     .simulateTransaction(wire, { encoding: 'base64', sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' })
     .send()
   if (value.err) {
-    console.log(`preflight refused: ${JSON.stringify(value.err)} | ${(value.logs ?? []).slice(-12).join(' | ')}`)
+    console.log(`preflight refused: ${safeJson(value.err)} | ${(value.logs ?? []).slice(-12).join(' | ')}`)
     throw new TransactionFailedError(null, value.err, value.logs ?? [])
   }
 }
@@ -145,8 +145,7 @@ export class TransactionFailedError extends Error {
 
   /** Bao program error code (6000+) if the program refused the transaction. */
   get code(): number | null {
-    const custom = (this.detail as { InstructionError?: [number, { Custom?: number }] })?.InstructionError?.[1]?.Custom
-    return typeof custom === 'number' ? custom : null
+    return customCode(this.detail)
   }
 }
 
@@ -179,11 +178,20 @@ const BAO_ERRORS: Record<number, string> = {
   [BAO_ERROR__NOT_STARTED]: 'This rain has not started yet.',
 }
 
+/** RPC errors arrive with bigint fields from @solana/kit; JSON.stringify cannot take those. */
+export const safeJson = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? Number(x) : x))
+
+function customCode(detail: unknown): number | null {
+  const custom = (detail as { InstructionError?: [unknown, { Custom?: number | bigint }] })?.InstructionError?.[1]?.Custom
+  return typeof custom === 'number' || typeof custom === 'bigint' ? Number(custom) : null
+}
+
 export function describeProgramError(detail: unknown): string {
-  const custom = (detail as { InstructionError?: [number, { Custom?: number }] })?.InstructionError?.[1]?.Custom
-  if (typeof custom === 'number' && BAO_ERRORS[custom]) return BAO_ERRORS[custom]
+  const custom = customCode(detail)
+  if (custom !== null && BAO_ERRORS[custom]) return BAO_ERRORS[custom]
   if (custom === 1) return 'Not enough tSKR in this wallet.'
-  return `The network refused the transaction (${JSON.stringify(detail)}).`
+  if (typeof detail === 'string') return `The network refused the transaction (${detail}).`
+  return `The network refused the transaction (${safeJson(detail)}).`
 }
 
 /** Turns wallet, network and RPC failures into one calm sentence for the screen. */

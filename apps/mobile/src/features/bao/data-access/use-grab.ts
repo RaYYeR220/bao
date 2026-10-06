@@ -131,6 +131,9 @@ export function useGrab(packetAddress: string, code?: string) {
       void queryClient.invalidateQueries({ queryKey: ['feed'] })
       void queryClient.invalidateQueries({ queryKey: ['packet', packetAddress] })
       void queryClient.invalidateQueries({ queryKey: ['balances'] })
+      void queryClient.invalidateQueries({ queryKey: ['my-claim'] })
+      void queryClient.invalidateQueries({ queryKey: ['my-claims'] })
+      void queryClient.invalidateQueries({ queryKey: ['history'] })
       if (won) {
         try {
           const res = await baoApi.call('POST /api/claims/:address/payout', { params: { address: claim } }, { timeoutMs: 20_000 })

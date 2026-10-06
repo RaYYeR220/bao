@@ -36,7 +36,7 @@ function CountUp({ amount, decimals, run, size }: { amount: bigint; decimals: nu
   }, [amount, reduced, run])
   return (
     <T
-      style={{ fontFamily: font.display, fontSize: size, lineHeight: size * 1.08, letterSpacing: -2, color: color.kuro950, fontVariant: ['tabular-nums', 'lining-nums'] }}
+      style={{ fontFamily: font.display, fontSize: size, lineHeight: size * 1.08, letterSpacing: -1, paddingLeft: 2, color: color.kuro950, fontVariant: ['tabular-nums', 'lining-nums'] }}
       maxFontSizeMultiplier={1}
       numberOfLines={1}
       adjustsFontSizeToFit
@@ -114,7 +114,7 @@ export function ResultCard({
         <T variant="caps" style={{ color: color.paperInk3, fontSize: 11 }}>
           {kicker}
         </T>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 2, maxWidth: width * (isKing ? 0.66 : 0.9) }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 2, maxWidth: width * 0.86 }}>
           <View style={{ flexShrink: 1 }}>
             <CountUp amount={amount} decimals={decimals} run={landed} size={74 * k} />
           </View>
@@ -126,8 +126,8 @@ export function ResultCard({
         </View>
       </View>
       {isKing ? (
-        <Animated.View style={[styles.seal, { right: 16 * k, top: height * 0.38, width: 98 * k, height: 98 * k }, stampStyle]} pointerEvents="none">
-          <LuckKingSeal size={98 * k} />
+        <Animated.View style={[styles.seal, { right: 14 * k, top: height * 0.47, width: 96 * k, height: 96 * k }, stampStyle]} pointerEvents="none">
+          <LuckKingSeal size={96 * k} />
         </Animated.View>
       ) : null}
       <View style={[styles.post, { paddingHorizontal: 24 * k, paddingBottom: 20 * k }]}>

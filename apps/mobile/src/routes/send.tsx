@@ -231,8 +231,8 @@ export default function SendScreen() {
             <Animated.View key="s1" entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(200)} style={{ gap: space[4] }}>
               <AudienceRow
                 icon="rain"
-                title="Public rain"
-                body="The public feed. Always Seeker-only, so only real phones can grab."
+                title="Public"
+                body="The public feed, now or as a scheduled rain. Always Seeker-only, so only real phones can grab."
                 on={audience === 'public'}
                 onPress={() => setAudience('public')}
               />
@@ -254,7 +254,7 @@ export default function SendScreen() {
 
               {audience === 'public' ? (
                 <Animated.View entering={FadeIn} style={styles.block}>
-                  <T variant="bodyStrong">When does it rain?</T>
+                  <T variant="bodyStrong">When does it open?</T>
                   <View style={styles.chipsWrap}>
                     {RAIN_IN.map((r) => (
                       <Chip key={r.min} label={r.label} on={rainIn === r.min} onPress={() => setRainIn(r.min)} />
@@ -356,7 +356,7 @@ export default function SendScreen() {
                   onChangeText={(t) => setMessage(t.slice(0, 80))}
                   placeholder="A line for the envelope, optional"
                   placeholderTextColor={color.gofun44}
-                  style={[styles.input, { fontFamily: font.displayItalic, fontSize: 19 }]}
+                  style={[styles.input, { fontFamily: font.displayItalic, fontSize: 19, paddingLeft: space[4] + 2 }]}
                   maxLength={80}
                   accessibilityLabel="Message"
                 />

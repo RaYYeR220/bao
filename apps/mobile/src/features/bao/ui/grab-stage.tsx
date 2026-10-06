@@ -216,7 +216,6 @@ export function GrabStage({
     const ty = shift.value * dOpen + settle.value * (envTranslateF - 0)
     return {
       transform: [{ translateX: deny.value }, { translateY: ty }, { scale: sc }, { rotate: `${tremble.value - 2.5 * (1 - shift.value)}deg` }],
-      opacity: interpolate(settle.value, [0, 1], [1, 0.92]),
     }
   })
 

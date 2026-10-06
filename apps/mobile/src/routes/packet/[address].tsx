@@ -80,11 +80,24 @@ export default function PacketScreen() {
           {q.data?.source === 'chain' ? (
             <Note icon="link">Read straight from Solana devnet. Names come back when the Bao server is reachable.</Note>
           ) : null}
-          {detail.status === 'live' ? <FoilButton label="Open the packet" icon="envelope" onPress={() => router.push(`/grab/${detail.address}`)} /> : null}
+          {detail.status === 'live' || detail.status === 'scheduled' ? <OpenButton detail={detail} /> : null}
           <ExplorerLink label="Packet account on the explorer" url={explorerAddress(detail.address)} tone="muted" />
         </ScrollView>
       )}
     </View>
+  )
+}
+
+function OpenButton({ detail }: { detail: PacketDetail }) {
+  const { account } = useMobileWallet()
+  const genesis = useGenesisToken(account?.address)
+  const mine = detail.grabs.some((g) => g.claimer === account?.address || g.deviceKey === genesis.data?.mint)
+  return (
+    <FoilButton
+      label={mine ? 'See your grab' : detail.status === 'scheduled' ? 'Wait at the door' : 'Open the packet'}
+      icon="envelope"
+      onPress={() => router.push(`/grab/${detail.address}`)}
+    />
   )
 }
 
@@ -113,10 +126,14 @@ function Summary({ detail }: { detail: PacketDetail }) {
             {detail.token.symbol}
           </T>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <T style={{ fontFamily: font.displayItalic, fontSize: 17, color: color.gofun }}>from {name}</T>
-          {detail.seekerOnly ? <SgtBadge /> : null}
-        </View>
+        <T style={{ fontFamily: font.displayItalic, fontSize: 18, color: color.gofun }} numberOfLines={1}>
+          from {name}
+        </T>
+        {detail.seekerOnly ? (
+          <View style={{ alignSelf: 'flex-start' }}>
+            <SgtBadge label="Seeker-only" />
+          </View>
+        ) : null}
         <T variant="meta">
           {detail.mode === 'lucky' ? 'Lucky split' : 'Equal split'} ·{' '}
           {detail.audience === 'open' ? 'Public' : detail.audience === 'circle' ? 'Circle' : 'Code word'}

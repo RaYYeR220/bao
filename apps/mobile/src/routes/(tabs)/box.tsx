@@ -74,9 +74,9 @@ export default function BoxScreen() {
         ) : (
           <>
             <View style={styles.stats}>
-              <Stat label="Grabbed" value={formatAmount(receivedTotal, 6)} sub={`${received.length} packets`} />
+              <Stat label="Grabbed" value={formatAmount(receivedTotal, 6)} sub={`${received.length} ${received.length === 1 ? 'packet' : 'packets'}`} />
               <View style={styles.vr} />
-              <Stat label="Given" value={formatAmount(sentTotal, 6)} sub={`${sent.length} packets`} />
+              <Stat label="Given" value={formatAmount(sentTotal, 6)} sub={`${sent.length} ${sent.length === 1 ? 'packet' : 'packets'}`} />
               <View style={styles.vr} />
               <Stat label="Crowns" value={data ? String(data.crowns) : '–'} sub="運氣王" cjk />
             </View>
