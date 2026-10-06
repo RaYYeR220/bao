@@ -40,4 +40,12 @@ pub mod bao {
     pub fn grab_lucky(ctx: Context<GrabLucky>, args: GrabArgs) -> Result<()> {
         instructions::grab::handle_grab_lucky(ctx, args)
     }
+
+    pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32]) -> Result<()> {
+        instructions::vrf_callback::handle_vrf_callback(ctx, randomness)
+    }
+
+    pub fn cancel_stale(ctx: Context<CancelStale>) -> Result<()> {
+        instructions::cancel_stale::handle_cancel_stale(ctx)
+    }
 }

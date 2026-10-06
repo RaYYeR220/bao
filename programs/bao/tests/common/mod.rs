@@ -504,6 +504,41 @@ pub fn grab_lucky_ix(claimer: &Pubkey, packet: &Pubkey, mint: &Pubkey, args: bao
     )
 }
 
+/// The callback the VRF oracle delivers for one claim.
+pub fn vrf_callback_ix(packet: &Pubkey, claim: &Pubkey, mint: &Pubkey, claimer: &Pubkey, randomness: [u8; 32]) -> Instruction {
+    let vault = Pubkey::find_program_address(&[bao::VAULT_SEED, packet.as_ref()], &bao::ID).0;
+    let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
+    Instruction::new_with_bytes(
+        bao::ID,
+        &bao::instruction::VrfCallback { randomness }.data(),
+        bao::accounts::VrfCallback {
+            vrf_program_identity: vrf_identity(),
+            packet: *packet,
+            claim: *claim,
+            vault,
+            mint: *mint,
+            gas_tank: gas,
+            claimer: *claimer,
+            claimer_token: ata(claimer, mint),
+            crown: crown_pda(packet),
+            config: Harness::config_pda(),
+            token_program: TOKEN,
+            associated_token_program: ATA_PROGRAM,
+            system_program: SYSTEM_PROGRAM,
+        }
+        .to_account_metas(None),
+    )
+}
+
+pub fn cancel_stale_ix(caller: &Pubkey, packet: &Pubkey, claim: &Pubkey) -> Instruction {
+    let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
+    Instruction::new_with_bytes(
+        bao::ID,
+        &bao::instruction::CancelStale {}.data(),
+        bao::accounts::CancelStale { caller: *caller, packet: *packet, claim: *claim, gas_tank: gas }.to_account_metas(None),
+    )
+}
+
 /// Asserts that the transaction failed with the given program error.
 pub fn assert_err(res: TransactionResult, code: bao::error::BaoError) {
     let failed = match res {
