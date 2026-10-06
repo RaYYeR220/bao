@@ -11,7 +11,7 @@ export default defineConfig({
     testTimeout: 30_000,
     // every file boots its own in-memory Postgres
     hookTimeout: 60_000,
-    // live devnet checks only run when asked for
-    exclude: process.env.DEVNET_TESTS ? [] : ['test/**/*.devnet.test.ts'],
+    // tests against live devnet run only when asked for: LIVE_TESTS=1
+    exclude: process.env.LIVE_TESTS ? [] : ['test/**/*.live.test.ts'],
   },
 });

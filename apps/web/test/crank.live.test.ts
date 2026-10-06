@@ -1,5 +1,5 @@
 /**
- * A real crank pass on devnet (run with DEVNET_TESTS=1). Setup: a one-share Lucky packet that a
+ * A real crank pass on devnet (run with LIVE_TESTS=1). Setup: a one-share Lucky packet that a
  * holder of a fresh test Genesis token grabs; once the VRF callback lands, the crank must select
  * the won share for payout (and nothing for cancel), pay it, and on the next pass close the
  * finished packet (open packets also pay the protocol fee on top of the total). Needs ~/.config/solana/id.json (tSKR + Genesis authority, funds the wallets)
