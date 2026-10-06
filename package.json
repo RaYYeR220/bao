@@ -1,0 +1,9 @@
+{
+  "name": "bao",
+  "private": true,
+  "scripts": {
+    "build:program": "anchor build --tools-version v1.52 --arch v0",
+    "test:program": "anchor build --tools-version v1.52 --arch v0 && cargo test -p bao",
+    "test": "pnpm -r --if-present test"
+  }
+}
