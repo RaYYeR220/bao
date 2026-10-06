@@ -1,3 +1,7 @@
 {
-  "programId": "DifXuyhEu3r7sgXQjgCokyikQFcYCYD2cwhjNyU7j6XR"
+  "programId": "DifXuyhEu3r7sgXQjgCokyikQFcYCYD2cwhjNyU7j6XR",
+  "genesisGroup": "BuRJQxYkL43H3MmgmZmRuC1GCDFc1hSkEu2t1mxiDgwK",
+  "configPda": "JCtfrDrv2ha714adGaRDQMj92txd24nucXWw7bA5FWTA",
+  "treasury": "4EtAFmWtCzMxyUku7NofttEPLDWniigFAEL7KmCeCYKo",
+  "tskrMint": "aveV2LBQt6Bck1nsju3md5k223uxQNULjDvW6QcmCCr"
 }

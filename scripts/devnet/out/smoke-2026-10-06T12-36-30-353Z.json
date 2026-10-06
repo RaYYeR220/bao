@@ -1,0 +1,13 @@
+{
+  "genesis_mint_to_grabber": "5QY5wxzWdLEtn8fp2s6bkKHJDaV5YtVJjJrVFqiqZDyrjjWj2bLSZ3gm6xdVny7YEwBy5FA6d8ywTZKXk6yNFNfy",
+  "packet": "Emeadd17DtR5g5mfFxdrZG2Rtn4M9BHFurkECj6KZuKB",
+  "create_packet": "5Ug3tFG4M6fzRDnxtwknpkwv95SvTm25R7MDWsgV2FjjVyxHwTgvcPuAj59CS6ZFRgeRHy69JEHBeVhPczdF6hiq",
+  "grab_lucky": "JbrenHzaBrYWdstHv4WWT9VDwfFNfkSFhbDUDUJEZDqUN9N9NAKUstHgKk1w6jZ3nisnZc83bgXo1ZELKke9C5h",
+  "vrf_latency_ms": 2200,
+  "lucky_amount": 781684,
+  "vrf_callback": "4nTDuhc3TtbuChmq6UJ5ZorHJt8piKURo1EdMXcKbZXta3XocnMWjxRbY2iEkto3gLAxouzKoMeW7j3VWra5MsQC",
+  "refused_no_genesis": "2iHnEnDaJ71N2B2BwEboZxx4iqKJapSKBhtPDaKxo2bp4cxebGMWgXr6RzNpRToPkJwFTBUxqyzeVJfgpQJ2rHKS",
+  "refused_no_genesis_error": "{\"InstructionError\":[0,{\"Custom\":6013}]}",
+  "move_genesis_to_second_wallet": "5W4Eiu6Ka7Uz6PYtHjAFWsssGwjAVZK63pnHeUfKc57xABuMEvNiSQb1TXxALqoZfia5XavHBjPVVjKTLzJPdyMy",
+  "refused_same_device": "2WNPS9NLoKfb6XA7355w9EJ6oCSNYfEvDBSzSqeH7a2BXwMdak5o1p75sCkoEhZ7DeuCbBsfd1rRTgL1nVPyQnFj"
+}

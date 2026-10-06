@@ -1,0 +1,25 @@
+{
+  "name": "@bao/devnet-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "genesis": "tsx src/genesis-group.ts",
+    "tskr": "tsx src/tskr.ts",
+    "init-config": "tsx src/init-config.ts",
+    "smoke": "tsx src/smoke.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bao/sdk": "workspace:*",
+    "@noble/hashes": "^1.8.0",
+    "@solana-program/system": "0.13.0",
+    "@solana-program/token": "0.15.0",
+    "@solana-program/token-2022": "0.15.0",
+    "@solana/kit": "7.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}
