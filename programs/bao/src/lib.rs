@@ -48,4 +48,16 @@ pub mod bao {
     pub fn cancel_stale(ctx: Context<CancelStale>) -> Result<()> {
         instructions::cancel_stale::handle_cancel_stale(ctx)
     }
+
+    pub fn close_claims<'info>(ctx: Context<'info, CloseClaims<'info>>) -> Result<()> {
+        instructions::close::handle_close_claims(ctx)
+    }
+
+    pub fn close_packet(ctx: Context<ClosePacket>) -> Result<()> {
+        instructions::close::handle_close_packet(ctx)
+    }
+
+    pub fn close_crown(ctx: Context<CloseCrown>) -> Result<()> {
+        instructions::close::handle_close_crown(ctx)
+    }
 }

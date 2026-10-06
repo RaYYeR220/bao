@@ -539,6 +539,46 @@ pub fn cancel_stale_ix(caller: &Pubkey, packet: &Pubkey, claim: &Pubkey) -> Inst
     )
 }
 
+pub fn close_claims_ix(caller: &Pubkey, packet: &Pubkey, claims: &[Pubkey]) -> Instruction {
+    let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
+    let mut metas = bao::accounts::CloseClaims { caller: *caller, packet: *packet, gas_tank: gas }.to_account_metas(None);
+    metas.extend(claims.iter().map(|c| anchor_lang::solana_program::instruction::AccountMeta::new(*c, false)));
+    Instruction::new_with_bytes(bao::ID, &bao::instruction::CloseClaims {}.data(), metas)
+}
+
+pub fn close_packet_ix(caller: &Pubkey, packet: &Pubkey, sender: &Pubkey, mint: &Pubkey) -> Instruction {
+    let vault = Pubkey::find_program_address(&[bao::VAULT_SEED, packet.as_ref()], &bao::ID).0;
+    let gas = Pubkey::find_program_address(&[bao::GAS_SEED, packet.as_ref()], &bao::ID).0;
+    Instruction::new_with_bytes(
+        bao::ID,
+        &bao::instruction::ClosePacket {}.data(),
+        bao::accounts::ClosePacket {
+            caller: *caller,
+            packet: *packet,
+            sender: *sender,
+            mint: *mint,
+            vault,
+            sender_token: ata(sender, mint),
+            gas_tank: gas,
+            crown: crown_pda(packet),
+            config: Harness::config_pda(),
+            token_program: TOKEN,
+            associated_token_program: ATA_PROGRAM,
+            system_program: SYSTEM_PROGRAM,
+        }
+        .to_account_metas(None),
+    )
+}
+
+pub fn close_crown_ix(caller: &Pubkey, crown_of_packet: &Pubkey, refund_to: &Pubkey) -> Instruction {
+    Instruction::new_with_bytes(
+        bao::ID,
+        &bao::instruction::CloseCrown {}.data(),
+        bao::accounts::CloseCrown { caller: *caller, crown: crown_pda(crown_of_packet), refund_to: *refund_to }
+            .to_account_metas(None),
+    )
+}
+
 /// Asserts that the transaction failed with the given program error.
 pub fn assert_err(res: TransactionResult, code: bao::error::BaoError) {
     let failed = match res {
