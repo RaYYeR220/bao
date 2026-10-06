@@ -10,12 +10,20 @@ const config = getDefaultConfig(__dirname)
 // Drop watch folders that don't exist (e.g. when apps/mobile is installed standalone with npm).
 config.watchFolders = (config.watchFolders ?? []).filter((folder) => fs.existsSync(folder))
 
-// The shared SDK lives in packages/sdk and is linked with `file:`. Watch it, and resolve every
-// import (the SDK's too) from this app's node_modules so @solana/kit exists exactly once.
+// The shared SDK lives in packages/sdk and is linked with `file:`. Watch it, and resolve the
+// SDK's package imports from this app's node_modules so @solana/kit exists exactly once.
+// Packages keep normal (hierarchical) lookup for their own nested dependencies.
 const sdkRoot = path.resolve(__dirname, '../../packages/sdk')
+const appEntry = path.join(__dirname, 'index.js')
 config.watchFolders.push(sdkRoot)
 config.resolver.nodeModulesPaths = [path.resolve(__dirname, 'node_modules')]
-config.resolver.disableHierarchicalLookup = true
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const fromSdk = context.originModulePath.startsWith(sdkRoot + path.sep)
+  if (fromSdk && !moduleName.startsWith('.') && !path.isAbsolute(moduleName)) {
+    return context.resolveRequest({ ...context, originModulePath: appEntry }, moduleName, platform)
+  }
+  return context.resolveRequest(context, moduleName, platform)
+}
 
 // Apply uniwind modifications before exporting
 const uniwindConfig = withUniwindConfig(config, {
