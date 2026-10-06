@@ -40,8 +40,8 @@ export interface ChainSnapshot {
 }
 
 export interface CrankPlan {
-  payouts: { claim: Address; packet: Address; claimer: Address; mint: Address; tokenProgram: Address }[];
-  cancels: { claim: Address; packet: Address }[];
+  payouts: { claim: Address; packet: Address; claimer: Address; mint: Address; tokenProgram: Address; amount: bigint }[];
+  cancels: { claim: Address; packet: Address; deviceKey: Address }[];
   closes: { packet: Address; sender: Address; mint: Address; tokenProgram: Address; claimBatches: Address[][] }[];
 }
 
@@ -75,9 +75,16 @@ export function planCrank(s: ChainSnapshot, limits: CrankLimits = DEFAULT_LIMITS
     const packet = packets.get(c.data.packet);
     if (!packet) continue;
     if (c.data.status === ClaimStatus.Won) {
-      payouts.push({ claim: c.address, packet: c.data.packet, claimer: c.data.claimer, mint: packet.mint, tokenProgram: packet.tokenProgram });
+      payouts.push({
+        claim: c.address,
+        packet: c.data.packet,
+        claimer: c.data.claimer,
+        mint: packet.mint,
+        tokenProgram: packet.tokenProgram,
+        amount: c.data.amount,
+      });
     } else if (c.data.status === ClaimStatus.Pending && s.slot > c.data.requestedSlot + STALE_SLOTS) {
-      cancels.push({ claim: c.address, packet: c.data.packet });
+      cancels.push({ claim: c.address, packet: c.data.packet, deviceKey: c.data.deviceKey });
     }
   }
 
@@ -168,10 +175,10 @@ export interface CrankReport {
   slot: string | null;
   steps: {
     snapshot: StepResult<{ packets: number; claims: number }>;
+    reconcile: StepResult<{ claims: number }>;
     payouts: StepResult<ItemResults>;
     cancels: StepResult<ItemResults>;
     closes: StepResult<ItemResults>;
-    reconcile: StepResult<{ claims: number }>;
     rains: StepResult<{ pushed: string[] }>;
     indexer: StepResult<PollResult>;
   };
@@ -228,43 +235,6 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
     return out;
   };
 
-  const payouts = await step('payouts', async () => {
-    const p = plan as CrankPlan | null;
-    if (!p) return empty;
-    return each(p.payouts, (x) => x.claim, async (x, signer) =>
-      send(deps.rpc, [await buildPayout({ payer: signer, packet: x.packet, claim: x.claim, claimer: x.claimer, mint: x.mint, tokenProgram: x.tokenProgram })], signer),
-    );
-  });
-
-  const cancels = await step('cancels', async () => {
-    const p = plan as CrankPlan | null;
-    if (!p) return empty;
-    return each(p.cancels, (x) => x.claim, async (x, signer) =>
-      send(deps.rpc, [await getCancelStaleInstructionAsync({ caller: signer, packet: x.packet, claim: x.claim })], signer),
-    );
-  });
-
-  const closes = await step('closes', async () => {
-    const p = plan as CrankPlan | null;
-    if (!p) return empty;
-    return each(p.closes, (x) => x.packet, async (x, signer) => {
-      for (const batch of x.claimBatches) {
-        const ix = await getCloseClaimsInstructionAsync({ caller: signer, packet: x.packet });
-        await send(deps.rpc, [withRemaining(ix, batch)], signer);
-      }
-      const [senderToken] = await findAssociatedTokenPda({ owner: x.sender, mint: x.mint, tokenProgram: x.tokenProgram });
-      const close = await getClosePacketInstructionAsync({
-        caller: signer,
-        packet: x.packet,
-        sender: x.sender,
-        mint: x.mint,
-        senderToken,
-        tokenProgram: x.tokenProgram,
-      });
-      return send(deps.rpc, [close], signer);
-    });
-  });
-
   // events can be missed (webhook gaps, truncated logs); claim accounts are the truth
   const reconcile = await step('reconcile', async () => {
     const s = snapshot as ChainSnapshot | null;
@@ -289,6 +259,48 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
     return { claims: n };
   });
 
+  const payouts = await step('payouts', async () => {
+    const p = plan as CrankPlan | null;
+    if (!p) return empty;
+    return each(p.payouts, (x) => x.claim, async (x, signer) => {
+      const ix = await buildPayout({ payer: signer, packet: x.packet, claim: x.claim, claimer: x.claimer, mint: x.mint, tokenProgram: x.tokenProgram });
+      const signature = await send(deps.rpc, [ix], signer);
+      await deps.store.markPaid(x.packet, x.claimer, x.amount.toString(), signature);
+      return signature;
+    });
+  });
+
+  const cancels = await step('cancels', async () => {
+    const p = plan as CrankPlan | null;
+    if (!p) return empty;
+    return each(p.cancels, (x) => x.claim, async (x, signer) => {
+      const signature = await send(deps.rpc, [await getCancelStaleInstructionAsync({ caller: signer, packet: x.packet, claim: x.claim })], signer);
+      await deps.store.cancelGrab(x.packet, x.deviceKey, Number.MAX_SAFE_INTEGER);
+      return signature;
+    });
+  });
+
+  const closes = await step('closes', async () => {
+    const p = plan as CrankPlan | null;
+    if (!p) return empty;
+    return each(p.closes, (x) => x.packet, async (x, signer) => {
+      for (const batch of x.claimBatches) {
+        const ix = await getCloseClaimsInstructionAsync({ caller: signer, packet: x.packet });
+        await send(deps.rpc, [withRemaining(ix, batch)], signer);
+      }
+      const [senderToken] = await findAssociatedTokenPda({ owner: x.sender, mint: x.mint, tokenProgram: x.tokenProgram });
+      const close = await getClosePacketInstructionAsync({
+        caller: signer,
+        packet: x.packet,
+        sender: x.sender,
+        mint: x.mint,
+        senderToken,
+        tokenProgram: x.tokenProgram,
+      });
+      return send(deps.rpc, [close], signer);
+    });
+  });
+
   const rains = await step('rains', async () => {
     const now = (deps.now ?? (() => Math.floor(Date.now() / 1000)))();
     const due = await deps.store.rainsStartingBefore(now + 60);
@@ -300,7 +312,7 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
     ? { ok: true, ms: 0, result: { seen: 0, processed: 0, events: 0, cursor: null } }
     : await step('indexer', () => pollProgram({ store: deps.store, rpc: deps.rpc }));
 
-  const steps = { snapshot: snapshotStep, payouts, cancels, closes, reconcile, rains, indexer };
+  const steps = { snapshot: snapshotStep, reconcile, payouts, cancels, closes, rains, indexer };
   const s = snapshot as ChainSnapshot | null;
   return { ok: Object.values(steps).every((x) => x.ok), slot: s ? s.slot.toString() : null, steps };
 }

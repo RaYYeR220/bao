@@ -88,8 +88,8 @@ describe('planCrank', () => {
         ],
       ),
     );
-    expect(plan.payouts).toEqual([{ claim: A.p2, packet: A.p1, claimer: A.bob, mint: A.mint, tokenProgram: TOKEN }]);
-    expect(plan.cancels).toEqual([{ claim: A.p3, packet: A.p1 }]);
+    expect(plan.payouts).toEqual([{ claim: A.p2, packet: A.p1, claimer: A.bob, mint: A.mint, tokenProgram: TOKEN, amount: 40n }]);
+    expect(plan.cancels).toEqual([{ claim: A.p3, packet: A.p1, deviceKey: A.carol }]);
     expect(plan.closes).toEqual([]);
   });
 
@@ -192,9 +192,10 @@ describe('runCrank', () => {
     expect(report.steps.reconcile.result).toEqual({ claims: 2 });
     expect(report.steps.rains.result?.pushed).toEqual([A.p4]);
     expect(pushes).toEqual(['rain_starting']);
-    expect((await store.grabsOf(A.p1)).map((g) => [g.claimer, g.status])).toEqual([
-      [A.bob, 'won'],
-      [A.carol, 'pending'],
+    // the payout settled bob's row; the failed cancel left carol's reservation in place
+    expect((await store.grabsOf(A.p1)).map((g) => [g.claimer, g.status, g.payoutSignature])).toEqual([
+      [A.bob, 'paid', 'sig1'],
+      [A.carol, 'pending', null],
     ]);
     setPushTransport(undefined);
   });
