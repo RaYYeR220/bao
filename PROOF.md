@@ -32,9 +32,17 @@ Recorded in [`scripts/devnet/out/smoke-2026-10-06T20-14-40-518Z.json`](scripts/d
 | A wallet with no Seeker Genesis Token tries to grab | [refused on-chain](https://explorer.solana.com/tx/5p1KGbsMX1FJoqRhcoNoocq3aspt9PfpM8ttuDGs6uemNj9HWusJLsdqEBzFHjXgK2cvvPAJs8qpBgPTotaoKEr5?cluster=devnet) with `NotASeeker` (error 6013) |
 | The same Genesis token is [moved to a second wallet](https://explorer.solana.com/tx/2L5BJpxTgA5aRXpZDmiiwfuUML5A9i4336vpJGvXKwDs4vmkmQzSG2yG8Jur9LHTBikeiRbmeEXrCoCJT8SRyKSr?cluster=devnet), which tries again | [refused on-chain](https://explorer.solana.com/tx/4zd1bxFH6k9LAsLo2mtTp7aHMAnv614WNPMs7cbHQcDyt5zfpfZsFutTRHWZX2rNyY5MUYyrXi5BrdxJWpe7z9hk?cluster=devnet) with `AlreadyGrabbedOnThisDevice` (error 6016) |
 
+## Real Seeker Genesis Tokens
+
+The devnet program checks a test group so anyone can try Bao without a Seeker. The check itself is proven
+against real mainnet data: `programs/bao/tests/test_mainnet_genesis.rs` loads the account of a real Seeker
+Genesis Token mint ([`5mXbkqKz…6oUKLj`](https://explorer.solana.com/address/5mXbkqKz883aufhAsx3p5Z1NcvD2ppZbdTTznM6oUKLj),
+member of the Seeker Genesis group `GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te`) byte for byte, and shows that
+a packet configured for the real group accepts it while a packet configured for any other group refuses it.
+
 ## Tests
 
-`cargo test -p bao` runs 74 tests against the compiled program in LiteSVM:
+`cargo test -p bao` runs 76 tests against the compiled program in LiteSVM:
 
 | Suite | Tests | Covers |
 |---|---|---|
@@ -44,6 +52,7 @@ Recorded in [`scripts/devnet/out/smoke-2026-10-06T20-14-40-518Z.json`](scripts/d
 | `test_grab` | 12 | device binding (same token from a second wallet, someone else's token, fake group, wrong metadata pointer), circles, code words, sold out, expiry |
 | `test_lucky` | 13 | VRF reservation, callbacks out of order, forged callbacks, stale requests, payout |
 | `test_close` | 6 | refunds, crank reward, Luck-King crowns and chains |
+| `test_mainnet_genesis` | 2 | a real mainnet Seeker Genesis Token mint passes for the real group and fails for another |
 | `test_hardening` | 16 | pre-funded PDA griefing, self-sabotaged payouts, config changes that must not reach live packets, every denied Token-2022 extension, a full Token-2022 life cycle, scheduled rains |
 
 `pnpm --filter @bao/sdk test` runs the TypeScript SDK tests, including a vector pinned on both sides so the
