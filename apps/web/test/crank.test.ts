@@ -222,3 +222,23 @@ describe('runCrank', () => {
     expect(report.ok).toBe(true);
   });
 });
+
+describe('crank time budget', () => {
+  it('defers work once the budget is spent', async () => {
+    const store = await freshStore();
+    const claims: [string, ClaimRecord][] = [A.p2, A.p3].map((a, i) => [a, claim(A.p1, A.bob, ClaimStatus.Won, { index: i })]);
+    const rpc = fakeRpc({
+      getSlot: () => SLOT,
+      getProgramAccounts: (_p, cfg) => {
+        const size = Number((cfg as { filters: { dataSize?: bigint }[] }).filters[0].dataSize);
+        return size === PACKET_SIZE
+          ? [{ pubkey: A.p1, account: base64Account(Buffer.from(getPacketEncoder().encode(packet())).toString('base64')) }]
+          : claims.map(([a, d]) => ({ pubkey: a, account: base64Account(Buffer.from(getClaimRecordEncoder().encode(d)).toString('base64')) }));
+      },
+    });
+    const send = (async () => 'sig') as never;
+    const report = await runCrank({ store, rpc, crank: { address: address(A.dave) } as never, send, skipIndexer: true, budgetMs: -1 });
+    expect(report.steps.payouts.result).toEqual({ done: [], failed: [], deferred: [A.p2, A.p3] });
+    await store.sql.close();
+  });
+});

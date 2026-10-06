@@ -52,7 +52,9 @@ export interface CrankLimits {
   closes: number;
 }
 
-const DEFAULT_LIMITS: CrankLimits = { payouts: 15, cancels: 10, closes: 5 };
+const DEFAULT_LIMITS: CrankLimits = { payouts: 10, cancels: 5, closes: 3 };
+/** Stop starting new transactions after this long, so a tick fits a 60 s function. */
+const DEFAULT_BUDGET_MS = 40_000;
 
 const chunk = <T>(items: T[], size: number): T[][] => {
   const out: T[][] = [];
@@ -162,6 +164,8 @@ export interface CrankDeps {
   limits?: CrankLimits;
   /** Skips the indexer poll (tests). */
   skipIndexer?: boolean;
+  /** Time after which no new transaction is started (the rest waits for the next tick). */
+  budgetMs?: number;
 }
 
 interface StepResult<T> {
@@ -188,6 +192,7 @@ export interface CrankReport {
 interface ItemResults {
   done: { target: string; signature: string }[];
   failed: { target: string; error: string }[];
+  deferred?: string[];
 }
 
 async function step<T>(name: string, fn: () => Promise<T>): Promise<StepResult<T>> {
@@ -209,6 +214,7 @@ const withRemaining = (ix: Instruction, accounts: Address[]): Instruction => ({
 export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
   const send = deps.send ?? sendAndConfirm;
   const crank = deps.crank;
+  const deadline = Date.now() + (deps.budgetMs ?? DEFAULT_BUDGET_MS);
   let snapshot: ChainSnapshot | null = null;
   let plan: CrankPlan | null = null;
   const empty: ItemResults = { done: [], failed: [] };
@@ -227,6 +233,10 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
       return out;
     }
     for (const item of items) {
+      if (Date.now() > deadline) {
+        (out.deferred ??= []).push(target(item));
+        continue;
+      }
       try {
         out.done.push({ target: target(item), signature: await run(item, crank) });
       } catch (e) {
