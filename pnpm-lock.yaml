@@ -80,6 +80,12 @@ importers:
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
+      '@solana-program/system':
+        specifier: 0.13.0
+        version: 0.13.0(@solana/kit@7.1.1(typescript@5.9.3))
+      '@solana-program/token':
+        specifier: 0.15.0
+        version: 0.15.0(@solana/kit@7.1.1(typescript@5.9.3))
       '@solana-program/token-2022':
         specifier: 0.15.0
         version: 0.15.0(@solana/kit@7.1.1(typescript@5.9.3))(@solana/sysvars@7.1.1(typescript@5.9.3))
