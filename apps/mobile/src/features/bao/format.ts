@@ -24,6 +24,10 @@ export const shortAddress = (a: string | null | undefined, n = 4) => (a ? `${a.s
 export const displayName = (skr: string | null | undefined, address: string | null | undefined) =>
   skr ? skr : shortAddress(address)
 
+/** A packet's place in a Luck King chain, counted from 1: "#2 in alice.skr’s chain". */
+export const chainPlace = (place: number, starter?: string | null) =>
+  `#${place} in ${starter ? `${starter}’s` : 'a'} chain`
+
 /** "04:12" under an hour, "2h 14m" under a day, "3d 4h" beyond. */
 export function countdown(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds))

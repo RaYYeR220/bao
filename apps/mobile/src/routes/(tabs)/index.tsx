@@ -19,9 +19,9 @@ import Svg, { Circle, Path } from 'react-native-svg'
 
 import { $onboarded } from '@/features/bao/data-access/prefs'
 import { useCircles } from '@/features/bao/data-access/use-bao-api'
-import { useFeedData, useMyClaims } from '@/features/bao/data-access/use-bao-data'
+import { useChainStarter, useFeedData, useMyClaims } from '@/features/bao/data-access/use-bao-data'
 import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
-import { displayName, formatAmount, plural, sharesLeft } from '@/features/bao/format'
+import { chainPlace, displayName, formatAmount, plural, sharesLeft } from '@/features/bao/format'
 import { PacketEnvelope } from '@/features/bao/ui/packet-envelope'
 import { RainStrip } from '@/features/bao/ui/rain-strip'
 import { Backdrop } from '@/ui/backdrop'
@@ -432,11 +432,17 @@ function Meta({ packet, grabbed }: { packet: PacketView; grabbed?: string | null
   const left = sharesLeft(packet)
   const now = useNow(5_000)
   const opensLater = packet.startsAt > now
+  // a packet sent by a Luck King continues a chain: its place, and whose chain once that is known
+  const inChain = packet.chainDepth >= 1
+  const starter = useChainStarter(inChain ? packet.chainRoot : undefined).data
+  const chain = inChain
+    ? chainPlace(packet.chainDepth + 1, starter ? displayName(starter.senderSkr, starter.sender) : null)
+    : null
   return (
     <Pressable
       onPress={() => router.push(`/packet/${packet.address}`)}
       accessibilityRole="button"
-      accessibilityLabel={`Details of ${name}'s packet`}
+      accessibilityLabel={`Details of ${name}'s packet${chain ? `, ${chain}` : ''}`}
       style={styles.meta}
     >
       <View style={styles.metaRow}>
@@ -467,12 +473,19 @@ function Meta({ packet, grabbed }: { packet: PacketView; grabbed?: string | null
             {left} of {packet.shares}
           </T>{' '}
           shares left · {packet.mode === 'lucky' ? 'Lucky split' : 'Equal split'}
-          {packet.chainDepth > 0 ? ` · #${packet.chainDepth + 1} in a chain` : ''}
         </T>
         <T variant="meta" style={opensLater ? { color: color.kin300 } : undefined}>
           {opensLater ? 'until it rains' : 'until it closes'}
         </T>
       </View>
+      {chain ? (
+        <View style={styles.chain}>
+          <Icon name="crown" size={14} />
+          <T variant="capsSmall" style={{ color: color.kin300, flexShrink: 1 }} numberOfLines={1}>
+            {chain}
+          </T>
+        </View>
+      ) : null}
       {packet.message ? (
         <T
           style={{ fontFamily: font.displayItalic, fontSize: 15, lineHeight: 20, color: color.gofun64, marginTop: 8 }}
@@ -577,6 +590,7 @@ const styles = StyleSheet.create({
   meta: { paddingHorizontal: space[5] },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   who: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  chain: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 18 },
   dot: { height: 1, width: 10 },
 })

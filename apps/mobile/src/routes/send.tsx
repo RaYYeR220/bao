@@ -29,7 +29,7 @@ import {
   useDropPacket,
   type DropInput,
 } from '@/features/bao/data-access/use-drop-packet'
-import { clockTime, displayName, explorerTx, formatAmount } from '@/features/bao/format'
+import { chainPlace, clockTime, displayName, explorerTx, formatAmount } from '@/features/bao/format'
 import { isCircleId, isPacketAddress } from '@/features/bao/links'
 import { Backdrop } from '@/ui/backdrop'
 import { useNow } from '@/ui/countdown'
@@ -123,7 +123,7 @@ export default function SendScreen() {
   const chainPending = !!params.parent && crown.isFetched && !holdsCrown
   const chainLabel =
     parentDetail && holdsCrown
-      ? `#${parentDetail.chainDepth + 2} in ${displayName(parentDetail.senderSkr, parentDetail.sender)}’s chain`
+      ? chainPlace(parentDetail.chainDepth + 2, displayName(parentDetail.senderSkr, parentDetail.sender))
       : null
 
   const envW = step === 2 ? Math.min(width * 0.34, 132) : Math.min(width * 0.22, 92)

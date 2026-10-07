@@ -111,6 +111,29 @@ export function useHistory(owner: string | undefined) {
   })
 }
 
+/**
+ * Who started a Luck King chain: the sender of its root packet. A feed packet only carries the
+ * root's address and its own depth, so the name is looked up once per chain (it never changes);
+ * a root that is closed and unknown to the server stays unnamed and is asked again in a minute.
+ */
+export function useChainStarter(root: string | undefined) {
+  const { client } = useAppCluster()
+  return useQuery({
+    queryKey: ['chain-starter', root],
+    queryFn: async (): Promise<{ sender: string; senderSkr: string | null } | null> => {
+      try {
+        const packet = await baoApi.call('GET /api/packets/:address', { params: { address: root! } })
+        return { sender: packet.sender, senderSkr: packet.senderSkr }
+      } catch {
+        const packet = (await fetchPackets(client.rpc as never, [address(root!)])).get(root!)
+        return packet ? { sender: packet.sender, senderSkr: null } : null
+      }
+    },
+    enabled: !!root,
+    staleTime: (query) => (query.state.data ? Infinity : 60_000),
+  })
+}
+
 export function useBalances(owner: string | undefined) {
   const { client } = useAppCluster()
   return useQuery({
