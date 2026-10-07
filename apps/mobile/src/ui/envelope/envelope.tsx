@@ -3,22 +3,25 @@ import {
   Canvas,
   Circle,
   Group,
+  Image,
   LinearGradient,
   Path,
   RadialGradient,
+  Rect,
   RoundedRect,
   Shader,
   Skia,
   Text as SkText,
   useFont,
+  useTexture,
   vec,
 } from '@shopify/react-native-skia'
 import { useMemo, type ReactNode } from 'react'
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { PixelRatio, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated'
 
 import { color, foilPositions, foilStops, type EnvelopeTone } from '../tokens'
-import { artFor, framePath, outlinePath, seamPath, tickPaths } from './foil-art'
+import { artFor, flapPath, framePath, outlinePath, pocketPath, seamPath, tickPaths } from './foil-art'
 import { ENV, SEAM_Y, lacquerEffect, toneUniforms, tones } from './lacquer-shader'
 
 const { W, H, A } = ENV
@@ -35,6 +38,11 @@ const FoilGradient = ({ horizontal = false, opacity = 1 }: { horizontal?: boolea
     positions={foilPositions}
   />
 )
+
+const clamp01 = (v: number) => {
+  'worklet'
+  return Math.max(0, Math.min(1, v))
+}
 
 const withAlpha = (hex: string, a: number) =>
   `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`
@@ -55,7 +63,11 @@ export interface LacquerProps {
   style?: StyleProp<ViewStyle>
 }
 
-/** One lacquer layer of the envelope, drawn by the shared shader plus its foil linework. */
+/**
+ * One lacquer layer of the envelope. The urushi shader, deboss, grain and foil linework are
+ * baked once into a texture; each frame only the specular band (and the waiting shimmer) is
+ * drawn over it, so tilting the phone costs two gradients rather than a full shader pass.
+ */
 export function Lacquer({
   width,
   tone,
@@ -70,67 +82,136 @@ export function Lacquer({
   style,
 }: LacquerProps) {
   const s = width / W
+  const height = heightUnits * s
+  const pr = PixelRatio.get()
   const spec = tones[tone]
-  const base = useMemo(() => toneUniforms(tone), [tone])
-  const uniforms = useDerivedValue(() => ({
-    ...base,
-    u_scale: s,
-    u_gleam: gleam.value,
-    u_gleamA: gleamA,
-    u_part: part,
-    u_shimmer: shimmer ? shimmer.value : 0,
-    u_time: time ? time.value * 2.8 : 0,
-  }))
-  const tickSet = useMemo(() => (ticks ? tickPaths(ticks.total, ticks.left) : null), [ticks])
-  const showPocketArt = part === 0 || part === 1
-  const showFlapArt = part === 0 || part === 2
-  const foilA = spec.foilOpacity
+  const tickKey = ticks ? `${ticks.total}:${ticks.left}` : ''
+  const size = useMemo(() => ({ width: Math.ceil(width * pr), height: Math.ceil(height * pr) }), [width, height, pr])
+
+  const texture = useTexture(<LacquerArt tone={tone} part={part} scale={s * pr} ticks={ticks} art={art} />, size, [
+    tone,
+    part,
+    s,
+    pr,
+    tickKey,
+    art,
+    size,
+  ])
+
+  const clip = part === 1 ? pocketPath : part === 2 ? flapPath : outlinePath
+  const strength = part >= 3 ? 0.35 : 1
+  const glossColors = useMemo(
+    () => [
+      'rgba(255,255,255,0)',
+      `rgba(255,233,224,${0.1 * strength})`,
+      `rgba(255,246,238,${gleamA * strength})`,
+      `rgba(255,233,224,${0.08 * strength})`,
+      'rgba(255,255,255,0)',
+    ],
+    [gleamA, strength],
+  )
+  const glossPositions = useDerivedValue(() => {
+    const g = gleam.value
+    return [clamp01(g - 0.2), clamp01(g - 0.05), clamp01(g), clamp01(g + 0.035), clamp01(g + 0.16)]
+  })
+  const shimmerPositions = useDerivedValue(() => {
+    const t = time ? time.value : 0
+    const centre = ((t * 0.98) % 1) * 1.6 - 0.3
+    return [clamp01(centre - 0.09), clamp01(centre), clamp01(centre + 0.09)]
+  })
+  const shimmerColors = useDerivedValue(() => {
+    const a = (shimmer ? shimmer.value : 0) * 0.22 * strength
+    return ['rgba(255,240,230,0)', `rgba(255,240,230,${a})`, 'rgba(255,240,230,0)']
+  })
 
   return (
-    <Canvas style={[{ width, height: heightUnits * s }, style]} pointerEvents="none">
-      <Group transform={[{ scale: s }]}>
-        <RoundedRect x={0} y={0} width={W} height={H} r={6}>
-          <Shader source={lacquerEffect!} uniforms={uniforms} />
-        </RoundedRect>
-        {showPocketArt && art ? (
-          <>
-            <Path
-              path={artFor(tone)}
-              style="stroke"
-              strokeWidth={0.9}
-              strokeCap="round"
-              opacity={tone === 'ash' ? 0.35 : 0.85}
-            >
-              <FoilGradient />
-            </Path>
-            <Path path={framePath} style="stroke" strokeWidth={0.7} opacity={tone === 'ash' ? 0.25 : 0.55}>
-              <FoilGradient />
-            </Path>
-          </>
-        ) : null}
-        {showFlapArt ? (
-          <>
-            <Path path={seamPath} style="stroke" strokeWidth={1.1} opacity={foilA}>
-              <FoilGradient horizontal />
-            </Path>
-            {tickSet ? (
-              <>
-                <Path path={tickSet.gold} style="stroke" strokeWidth={1.2} color={color.kin300} opacity={foilA} />
-                <Path path={tickSet.dark} style="stroke" strokeWidth={1} color="rgba(0,0,0,0.4)" />
-              </>
-            ) : null}
-          </>
-        ) : null}
-        {part === 3 ? (
-          <Path path={liningEdge} style="stroke" strokeWidth={0.7} opacity={0.5}>
-            <FoilGradient horizontal />
-          </Path>
-        ) : null}
-        {part !== 4 && part !== 3 ? (
-          <Path path={outlinePath} style="stroke" strokeWidth={1} color="rgba(255,205,195,0.16)" />
+    <Canvas style={[{ width, height }, style]} pointerEvents="none">
+      <Image image={texture} x={0} y={0} width={width} height={height} fit="fill" />
+      <Group transform={[{ scale: s }]} clip={clip}>
+        <Rect x={0} y={0} width={W} height={H} blendMode="screen">
+          <LinearGradient start={vec(0, 0)} end={vec(W, H)} colors={glossColors} positions={glossPositions} />
+        </Rect>
+        {shimmer ? (
+          <Rect x={0} y={0} width={W} height={H} blendMode="screen">
+            <LinearGradient start={vec(0, 0)} end={vec(W, H)} colors={shimmerColors} positions={shimmerPositions} />
+          </Rect>
         ) : null}
       </Group>
     </Canvas>
+  )
+}
+
+/** The static part of a lacquer layer, rendered once into a texture. */
+function LacquerArt({
+  tone,
+  part,
+  scale,
+  ticks,
+  art,
+}: {
+  tone: EnvelopeTone
+  part: LacquerPart
+  scale: number
+  ticks?: { total: number; left: number }
+  art: boolean
+}) {
+  const spec = tones[tone]
+  const uniforms = {
+    ...toneUniforms(tone),
+    u_scale: scale,
+    u_gleam: -5,
+    u_gleamA: 0,
+    u_part: part,
+    u_shimmer: 0,
+    u_time: 0,
+  }
+  const tickSet = ticks ? tickPaths(ticks.total, ticks.left) : null
+  const showPocketArt = part === 0 || part === 1
+  const showFlapArt = part === 0 || part === 2
+  const foilA = spec.foilOpacity
+  return (
+    <Group transform={[{ scale }]}>
+      <RoundedRect x={0} y={0} width={W} height={H} r={6}>
+        <Shader source={lacquerEffect!} uniforms={uniforms} />
+      </RoundedRect>
+      {showPocketArt && art ? (
+        <>
+          <Path
+            path={artFor(tone)}
+            style="stroke"
+            strokeWidth={0.9}
+            strokeCap="round"
+            opacity={tone === 'ash' ? 0.35 : 0.85}
+          >
+            <FoilGradient />
+          </Path>
+          <Path path={framePath} style="stroke" strokeWidth={0.7} opacity={tone === 'ash' ? 0.25 : 0.55}>
+            <FoilGradient />
+          </Path>
+        </>
+      ) : null}
+      {showFlapArt ? (
+        <>
+          <Path path={seamPath} style="stroke" strokeWidth={1.1} opacity={foilA}>
+            <FoilGradient horizontal />
+          </Path>
+          {tickSet ? (
+            <>
+              <Path path={tickSet.gold} style="stroke" strokeWidth={1.2} color={color.kin300} opacity={foilA} />
+              <Path path={tickSet.dark} style="stroke" strokeWidth={1} color="rgba(0,0,0,0.4)" />
+            </>
+          ) : null}
+        </>
+      ) : null}
+      {part === 3 ? (
+        <Path path={liningEdge} style="stroke" strokeWidth={0.7} opacity={0.5}>
+          <FoilGradient horizontal />
+        </Path>
+      ) : null}
+      {part !== 4 && part !== 3 ? (
+        <Path path={outlinePath} style="stroke" strokeWidth={1} color="rgba(255,205,195,0.16)" />
+      ) : null}
+    </Group>
   )
 }
 
