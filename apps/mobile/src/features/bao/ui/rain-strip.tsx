@@ -10,7 +10,7 @@ import { T } from '@/ui/text'
 import { color, font, radius, space } from '@/ui/tokens'
 
 import { $reminders } from '../data-access/prefs'
-import { formatAmount } from '../format'
+import { formatAmount, plural } from '../format'
 
 /** Upcoming public rains: amount, shares and a live countdown; tap to wait at the door. */
 export function RainStrip({ rains }: { rains: PacketView[] }) {
@@ -21,7 +21,7 @@ export function RainStrip({ rains }: { rains: PacketView[] }) {
         <Pressable
           key={r.address}
           accessibilityRole="button"
-          accessibilityLabel={`Rain of ${formatAmount(r.total, r.token.decimals)} ${r.token.symbol} for ${r.shares} Seekers`}
+          accessibilityLabel={`Rain of ${formatAmount(r.total, r.token.decimals)} ${r.token.symbol} for ${plural(r.shares, 'Seeker')}`}
           accessibilityHint="Opens the rain"
           onPress={() => {
             buzz('select')
@@ -42,7 +42,7 @@ export function RainStrip({ rains }: { rains: PacketView[] }) {
               {formatAmount(r.total, r.token.decimals)} <T style={styles.sym}>{r.token.symbol}</T>
             </T>
             <T variant="meta" style={{ fontSize: 12 }}>
-              {r.shares} Seekers
+              {plural(r.shares, 'Seeker')}
             </T>
           </View>
           {reminders[r.address] ? <Icon name="bell" size={16} tone="jade" /> : null}

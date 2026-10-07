@@ -21,7 +21,7 @@ import { $onboarded } from '@/features/bao/data-access/prefs'
 import { useCircles } from '@/features/bao/data-access/use-bao-api'
 import { useFeedData, useMyClaims } from '@/features/bao/data-access/use-bao-data'
 import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
-import { displayName, formatAmount, sharesLeft } from '@/features/bao/format'
+import { displayName, formatAmount, plural, sharesLeft } from '@/features/bao/format'
 import { PacketEnvelope } from '@/features/bao/ui/packet-envelope'
 import { RainStrip } from '@/features/bao/ui/rain-strip'
 import { Backdrop } from '@/ui/backdrop'
@@ -389,7 +389,7 @@ function CarouselItem({
         router.push(`/grab/${packet.address}`)
       }}
       accessibilityRole="button"
-      accessibilityLabel={`${packet.mode === 'lucky' ? 'Lucky' : 'Equal'} packet from ${name}, ${formatAmount(packet.total, packet.token.decimals)} ${packet.token.symbol}, ${sharesLeft(packet)} of ${packet.shares} shares left${grabbed ? ', you already grabbed this one' : ''}`}
+      accessibilityLabel={`${packet.mode === 'lucky' ? 'Lucky' : 'Equal'} packet from ${name}, ${formatAmount(packet.total, packet.token.decimals)} ${packet.token.symbol}, ${sharesLeft(packet)} of ${plural(packet.shares, 'share')} left${grabbed ? ', you already grabbed this one' : ''}`}
       accessibilityHint="Opens the packet"
       style={{ width: itemW, alignItems: 'center' }}
     >

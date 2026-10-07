@@ -133,7 +133,9 @@ function Summary({ detail }: { detail: PacketDetail }) {
       : detail.status === 'live'
         ? `Live · ${left} of ${detail.shares} left · closes in ${countdown(detail.expiresAt - now)}`
         : detail.status === 'emptied'
-          ? `All ${detail.shares} shares grabbed`
+          ? detail.shares === 1
+            ? 'The one share is grabbed'
+            : `All ${detail.shares} shares grabbed`
           : detail.status === 'expired'
             ? `Expired · ${formatAmount(detail.remaining, detail.token.decimals)} ${detail.token.symbol} goes back to ${name}`
             : 'Closed and swept'

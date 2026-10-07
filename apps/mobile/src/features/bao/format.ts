@@ -16,6 +16,9 @@ export function formatAmount(base: string | bigint | null | undefined, decimals 
   return `${neg ? '-' : ''}${wholeStr}${frac ? `.${frac}` : ''}`
 }
 
+/** A count with its noun: "1 packet", "3 packets" (pass `many` for irregular plurals). */
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+
 export const shortAddress = (a: string | null | undefined, n = 4) => (a ? `${a.slice(0, n)}…${a.slice(-n)}` : '')
 
 export const displayName = (skr: string | null | undefined, address: string | null | undefined) =>

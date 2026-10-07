@@ -21,6 +21,7 @@ import {
   explorerTx,
   formatAmount,
   ordinal,
+  plural,
   sharesLeft,
   shortAddress,
 } from '@/features/bao/format'
@@ -224,7 +225,7 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
     const soFar = finished ? '' : ' so far'
     if (detail.mode === 'equal') return `an equal share of ${packetLine}`
     if (detail.shares === 1) return `all of ${packetLine}`
-    if (bigger === 0) return `biggest of ${count} ${count === 1 ? 'grab' : 'grabs'}${soFar} in ${packetLine}`
+    if (bigger === 0) return `biggest of ${plural(count, 'grab')}${soFar} in ${packetLine}`
     return `${ordinal(bigger + 1)} of ${count}${soFar} in ${packetLine}`
   }, [decimals, detail, name, result, symbol])
 
@@ -575,7 +576,7 @@ function Bottom({
     content = (
       <View style={{ gap: space[3] }}>
         <T variant="body" style={{ textAlign: 'center' }}>
-          A public rain for {detail.shares} Seekers. Shaking opens the moment it starts.
+          A public rain for {plural(detail.shares, 'Seeker')}. Shaking opens the moment it starts.
         </T>
         <FoilButton
           label={on ? 'Reminder set' : 'Remind me when it opens'}

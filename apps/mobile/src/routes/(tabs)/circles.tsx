@@ -11,6 +11,7 @@ import { maybeAskForPush } from '@/features/bao/data-access/push'
 import { humanError, isWalletCancel } from '@/features/bao/data-access/send-with-wallet'
 import { apiErrorMessage, baoApi, useApiState, useCircles, useSession } from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn } from '@/features/bao/data-access/use-bao-sign-in'
+import { plural } from '@/features/bao/format'
 import { CircleSeal, SEAL_GLYPHS } from '@/features/bao/ui/circle-seal'
 import { Backdrop } from '@/ui/backdrop'
 import { buzz, play } from '@/ui/feedback'
@@ -156,7 +157,7 @@ function CircleRow({ c, i }: { c: CircleSummary; i: number }) {
       <Pressable
         onPress={() => router.push(`/circle/${c.id}`)}
         accessibilityRole="button"
-        accessibilityLabel={`${c.name}, ${c.memberCount} members, ${c.livePackets} live packets`}
+        accessibilityLabel={`${c.name}, ${plural(c.memberCount, 'member')}, ${plural(c.livePackets, 'live packet')}`}
         style={({ pressed }) => [styles.row, { opacity: pressed ? 0.8 : 1 }]}
       >
         <CircleSeal glyph={c.emoji} />
@@ -165,7 +166,7 @@ function CircleRow({ c, i }: { c: CircleSummary; i: number }) {
             {c.name}
           </T>
           <T variant="meta">
-            {c.memberCount} {c.memberCount === 1 ? 'member' : 'members'}
+            {plural(c.memberCount, 'member')}
             {c.livePackets ? (
               <T variant="meta" style={{ color: color.jade300 }}>
                 {' '}

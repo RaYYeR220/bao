@@ -8,6 +8,7 @@ import { maybeAskForPush } from '@/features/bao/data-access/push'
 import { ApiUnavailableError, apiErrorMessage, baoApi, useSession } from '@/features/bao/data-access/use-bao-api'
 import { humanError, isWalletCancel } from '@/features/bao/data-access/send-with-wallet'
 import { useBaoSignIn } from '@/features/bao/data-access/use-bao-sign-in'
+import { plural } from '@/features/bao/format'
 import { isInviteCode } from '@/features/bao/links'
 import { CircleSeal } from '@/features/bao/ui/circle-seal'
 import { buzz, play } from '@/ui/feedback'
@@ -73,7 +74,7 @@ export default function JoinScreen() {
                 You are in {c.name}
               </T>
               <T variant="meta" style={{ color: color.paperInk2 }}>
-                {c.memberCount} {c.memberCount === 1 ? 'member' : 'members'} · {c.livePackets} live
+                {plural(c.memberCount, 'member')} · {c.livePackets} live
               </T>
               <FoilButton
                 label="Open the circle"

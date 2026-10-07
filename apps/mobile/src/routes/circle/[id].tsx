@@ -8,7 +8,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useCircle } from '@/features/bao/data-access/use-bao-api'
-import { displayName, formatAmount } from '@/features/bao/format'
+import { displayName, formatAmount, plural } from '@/features/bao/format'
 import { inviteLink, isCircleId } from '@/features/bao/links'
 import { BadLink } from '@/features/bao/ui/bad-link'
 import { CircleSeal } from '@/features/bao/ui/circle-seal'
@@ -100,7 +100,7 @@ export default function CircleScreen() {
               {c.name}
             </T>
             <T variant="meta">
-              {c.memberCount} {c.memberCount === 1 ? 'member' : 'members'} · {c.livePackets} live
+              {plural(c.memberCount, 'member')} · {c.livePackets} live
             </T>
           </Animated.View>
 
@@ -132,7 +132,9 @@ export default function CircleScreen() {
                 >
                   <Icon name="crown" size={18} />
                   <View style={{ flex: 1 }}>
-                    <T variant="bodyStrong">{ch.depth === 0 ? 'A chain begins' : `${ch.depth + 1} packets long`}</T>
+                    <T variant="bodyStrong">
+                      {ch.depth === 0 ? 'A chain begins' : `${plural(ch.depth + 1, 'packet')} long`}
+                    </T>
                     <T variant="meta">
                       {ch.lastKing ? `Now with ${displayName(ch.lastKingSkr, ch.lastKing)}` : 'Waiting for its king'}
                     </T>

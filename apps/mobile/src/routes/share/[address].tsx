@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { packetLink } from '@/features/bao/data-access/bao-config'
 import { usePacketData } from '@/features/bao/data-access/use-bao-data'
-import { explorerTx, formatAmount } from '@/features/bao/format'
+import { explorerTx, formatAmount, plural } from '@/features/bao/format'
 import { isPacketAddress, isSignature } from '@/features/bao/links'
 import { BadLink } from '@/features/bao/ui/bad-link'
 import { PacketEnvelope } from '@/features/bao/ui/packet-envelope'
@@ -109,7 +109,7 @@ function SharePacket({ address }: { address: string }) {
             </T>
             <T variant="body" style={{ fontSize: 14, lineHeight: 20 }}>
               {detail
-                ? `${formatAmount(detail.total, detail.token.decimals)} ${detail.token.symbol} in ${detail.shares} ${detail.shares === 1 ? 'share' : 'shares'}. ${
+                ? `${formatAmount(detail.total, detail.token.decimals)} ${detail.token.symbol} in ${plural(detail.shares, 'share')}. ${
                     detail.audience === 'code'
                       ? 'Tell them the word in person; it is never stored.'
                       : detail.audience === 'circle'

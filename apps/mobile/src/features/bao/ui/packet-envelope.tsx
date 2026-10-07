@@ -8,7 +8,7 @@ import { tones } from '@/ui/envelope/lacquer-shader'
 import { T } from '@/ui/text'
 import { font, isSkin, type EnvelopeTone } from '@/ui/tokens'
 
-import { clockTime, formatAmount, sharesLeft } from '../format'
+import { clockTime, formatAmount, plural, sharesLeft } from '../format'
 
 export function toneFor(p: Pick<PacketView, 'skin' | 'status'>): EnvelopeTone {
   if (p.status === 'emptied' || p.status === 'expired' || p.status === 'closed') return 'ash'
@@ -46,10 +46,10 @@ export function PacketEnvelope({
         ? 'EXPIRED'
         : 'ALL GRABBED'
       : rainAt && width >= 150
-        ? `RAIN AT ${clockTime(rainAt)} · ${packet.shares} SHARES`
+        ? `RAIN AT ${clockTime(rainAt)} · ${plural(packet.shares, 'SHARE')}`
         : width < 150
           ? packet.token.symbol
-          : `${packet.token.symbol} · ${packet.shares} ${packet.shares === 1 ? 'SHARE' : 'SHARES'}`
+          : `${packet.token.symbol} · ${plural(packet.shares, 'SHARE')}`
   return (
     <EnvelopeFace
       width={width}

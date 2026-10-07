@@ -7,7 +7,7 @@ import Animated, { FadeIn, FadeInDown, useSharedValue } from 'react-native-reani
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useHistory } from '@/features/bao/data-access/use-bao-data'
-import { displayName, formatAmount, sharesLeft, timeAgo } from '@/features/bao/format'
+import { displayName, formatAmount, plural, sharesLeft, timeAgo } from '@/features/bao/format'
 import { toneFor } from '@/features/bao/ui/packet-envelope'
 import { Backdrop } from '@/ui/backdrop'
 import { EnvelopeFace } from '@/ui/envelope/envelope'
@@ -82,17 +82,9 @@ export default function BoxScreen() {
         ) : (
           <>
             <View style={styles.stats}>
-              <Stat
-                label="Grabbed"
-                value={formatAmount(receivedTotal, 6)}
-                sub={`${received.length} ${received.length === 1 ? 'packet' : 'packets'}`}
-              />
+              <Stat label="Grabbed" value={formatAmount(receivedTotal, 6)} sub={plural(received.length, 'packet')} />
               <View style={styles.vr} />
-              <Stat
-                label="Given"
-                value={formatAmount(sentTotal, 6)}
-                sub={`${sent.length} ${sent.length === 1 ? 'packet' : 'packets'}`}
-              />
+              <Stat label="Given" value={formatAmount(sentTotal, 6)} sub={plural(sent.length, 'packet')} />
               <View style={styles.vr} />
               <Stat label="Crowns" value={data ? String(data.crowns) : '–'} sub="運氣王" cjk />
             </View>
