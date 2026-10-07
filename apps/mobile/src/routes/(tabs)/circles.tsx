@@ -243,7 +243,7 @@ function JoinSheet({ visible, onClose }: { visible: boolean; onClose: () => void
     <Sheet visible={visible} onClose={onClose} kicker="Join" title="Enter the invite code">
       <TextInput
         value={code}
-        onChangeText={(t) => setCode(t.replace(/\s/g, ''))}
+        onChangeText={(t) => setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 64))}
         placeholder="e.g. RADIANT8"
         placeholderTextColor={color.gofun44}
         autoCapitalize="characters"
@@ -257,7 +257,7 @@ function JoinSheet({ visible, onClose }: { visible: boolean; onClose: () => void
         disabled={code.length < 3}
         onPress={() => {
           onClose()
-          router.push(`/join/${encodeURIComponent(code)}`)
+          router.push(`/join/${code}`)
         }}
       />
     </Sheet>
