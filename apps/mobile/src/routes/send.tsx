@@ -14,18 +14,29 @@ import Animated, { FadeIn, FadeInRight, FadeOutLeft } from 'react-native-reanima
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { TSKR_DECIMALS } from '@/features/bao/data-access/bao-config'
-import { humanError, TransactionFailedError, WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
+import {
+  ConfirmTimeoutError,
+  humanError,
+  isWalletCancel,
+  TransactionFailedError,
+} from '@/features/bao/data-access/send-with-wallet'
 import { useApiState, useCircles, useSession } from '@/features/bao/data-access/use-bao-api'
 import { useBalances, useCrown, usePacketData } from '@/features/bao/data-access/use-bao-data'
-import { toBaseUnits, useDropPacket, type DropInput } from '@/features/bao/data-access/use-drop-packet'
-import { clockTime, displayName, formatAmount } from '@/features/bao/format'
+import {
+  MAX_SHARES,
+  MIN_SHARES,
+  toBaseUnits,
+  useDropPacket,
+  type DropInput,
+} from '@/features/bao/data-access/use-drop-packet'
+import { clockTime, displayName, explorerTx, formatAmount } from '@/features/bao/format'
 import { isCircleId, isPacketAddress } from '@/features/bao/links'
 import { Backdrop } from '@/ui/backdrop'
 import { useNow } from '@/ui/countdown'
 import { EnvelopeFace } from '@/ui/envelope/envelope'
 import { buzz, play } from '@/ui/feedback'
 import { Icon, type IconName } from '@/ui/icon'
-import { FoilButton, Note, RoundButton, TextButton } from '@/ui/kit'
+import { ExplorerLink, FoilButton, Note, RoundButton, TextButton } from '@/ui/kit'
 import { useTiltGleam } from '@/ui/motion'
 import { T } from '@/ui/text'
 import { color, font, radius, skins, space, type SkinName } from '@/ui/tokens'
@@ -43,6 +54,16 @@ const RAIN_IN: { min: number; label: string }[] = [
   { min: 60, label: 'In 1 hour' },
   { min: 180, label: 'In 3 hours' },
 ]
+
+/** Keeps the amount field a plain decimal: digits, one point, at most TSKR_DECIMALS decimals. */
+function cleanAmount(text: string) {
+  const [whole, ...rest] = text
+    .replace(/,/g, '.')
+    .replace(/[^0-9.]/g, '')
+    .split('.')
+  const amount = rest.length ? `${whole}.${rest.join('').slice(0, TSKR_DECIMALS)}` : whole
+  return amount.slice(0, 12)
+}
 
 export default function SendScreen() {
   const insets = useSafeAreaInsets()
@@ -76,7 +97,8 @@ export default function SendScreen() {
   const [expiry, setExpiry] = useState(24)
   const [message, setMessage] = useState('')
   const [skin, setSkin] = useState<SkinName>('shu')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; signature: string | null } | null>(null)
+  const sending = useRef(false)
   const amountRef = useRef<TextInput>(null)
   const now = useNow(15_000)
 
@@ -90,7 +112,7 @@ export default function SendScreen() {
   const balance = balances.data?.tskr ?? null
   const short = total !== null && balance !== null && total > balance
   const tooSmall = total !== null && total < BigInt(shares)
-  const step1Ok = total !== null && total > 0n && !tooSmall && shares >= 1 && shares <= 200
+  const step1Ok = total !== null && total > 0n && !tooSmall && shares >= MIN_SHARES && shares <= MAX_SHARES
   const circleAvailable = !!session && apiState !== 'down'
   const step2Ok =
     audience === 'public' ? true : audience === 'circle' ? !!circleId && circleAvailable : code.trim().length >= 2
@@ -107,6 +129,8 @@ export default function SendScreen() {
   const envW = step === 2 ? Math.min(width * 0.34, 132) : Math.min(width * 0.22, 92)
 
   async function submit() {
+    if (sending.current) return
+    sending.current = true
     setError(null)
     const input: DropInput = {
       amountUi: amount,
@@ -130,11 +154,18 @@ export default function SendScreen() {
       const res = await drop.mutateAsync(input)
       buzz('success')
       play('stamp')
+      // the share screen shows the drop signature with its explorer link
       router.replace({ pathname: '/share/[address]', params: { address: res.packet, sig: res.signature, fresh: '1' } })
     } catch (e) {
-      if (e instanceof WalletRejectedError) return
+      // closing the wallet is a change of mind, not an error
+      if (isWalletCancel(e)) return
       buzz('error')
-      setError(e instanceof TransactionFailedError ? e.message : humanError(e))
+      setError({
+        message: e instanceof TransactionFailedError ? e.message : humanError(e),
+        signature: e instanceof ConfirmTimeoutError ? e.signature : null,
+      })
+    } finally {
+      sending.current = false
     }
   }
 
@@ -216,15 +247,7 @@ export default function SendScreen() {
                   <TextInput
                     ref={amountRef}
                     value={amount}
-                    onChangeText={(t) =>
-                      setAmount(
-                        t
-                          .replace(',', '.')
-                          .replace(/[^0-9.]/g, '')
-                          .replace(/(\..*)\./g, '$1')
-                          .slice(0, 12),
-                      )
-                    }
+                    onChangeText={(t) => setAmount(cleanAmount(t))}
                     keyboardType="decimal-pad"
                     selectTextOnFocus
                     style={styles.amount}
@@ -254,7 +277,7 @@ export default function SendScreen() {
                     <T variant="bodyStrong">Shares</T>
                     <T variant="meta">How many people can grab</T>
                   </View>
-                  <Stepper value={shares} onChange={setShares} min={1} max={200} />
+                  <Stepper value={shares} onChange={setShares} min={MIN_SHARES} max={MAX_SHARES} />
                 </View>
                 <TickRuler shares={shares} />
                 {tooSmall ? (
@@ -470,9 +493,10 @@ export default function SendScreen() {
               ) : null}
               {error ? (
                 <Note tone="shu" icon="info">
-                  {error}
+                  {error.message}
                 </Note>
               ) : null}
+              {error?.signature ? <ExplorerLink label="Drop tx" url={explorerTx(error.signature)} /> : null}
             </Animated.View>
           ) : null}
         </ScrollView>

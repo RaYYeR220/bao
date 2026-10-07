@@ -6,9 +6,14 @@ import { useMobileWallet } from '@wallet-ui/react-native-kit'
 import { useAppCluster } from '@/features/cluster/data-access/cluster-provider'
 
 import { TREASURY, TSKR_DECIMALS, TSKR_MINT } from './bao-config'
+import { fetchBalances } from './chain'
 import { rememberPacketMeta } from './prefs'
 import { confirmSignature, sendWithWallet } from './send-with-wallet'
 import { ApiUnavailableError, baoApi } from './use-bao-api'
+
+/** Share bounds of the program (programs/bao/src/constants.rs: 1..=MAX_SHARES). */
+export const MIN_SHARES = 1
+export const MAX_SHARES = 200
 
 export interface DropInput {
   amountUi: string
@@ -28,12 +33,22 @@ export interface DropInput {
   decimals?: number
 }
 
-/** Parses "12.5" into base units without floating point. */
+/** Largest amount a packet holds: the program stores amounts as u64. */
+const U64_MAX = 2n ** 64n - 1n
+
+/**
+ * Parses "12.5" (or "12,5") into base units with string math, never floating point:
+ * "0.1" at 6 decimals is exactly 100000n. More decimals than the token has is an error,
+ * not a silent rounding.
+ */
 export function toBaseUnits(amountUi: string, decimals: number): bigint {
-  const [whole, frac = ''] = amountUi.trim().split('.')
-  if (!/^\d+$/.test(whole || '0') || !/^\d*$/.test(frac)) throw new Error('Enter a number')
-  const padded = (frac + '0'.repeat(decimals)).slice(0, decimals)
-  return BigInt(whole || '0') * 10n ** BigInt(decimals) + BigInt(padded || '0')
+  const m = /^(\d*)(?:[.,](\d*))?$/.exec(amountUi.trim())
+  if (!m || (!m[1] && !m[2])) throw new Error('Enter a number')
+  const [, whole, frac = ''] = m
+  if (frac.length > decimals) throw new Error(`At most ${decimals} decimals`)
+  const units = BigInt(whole || '0') * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, '0') || '0')
+  if (units > U64_MAX) throw new Error('That amount is too large')
+  return units
 }
 
 export function useDropPacket() {
@@ -45,7 +60,14 @@ export function useDropPacket() {
       const account = wallet.account ?? (await wallet.connect())
       const mint = input.mint ?? TSKR_MINT
       const total = toBaseUnits(input.amountUi, input.decimals ?? TSKR_DECIMALS)
+      if (!Number.isInteger(input.shares) || input.shares < MIN_SHARES || input.shares > MAX_SHARES)
+        throw new Error(`Shares must be between ${MIN_SHARES} and ${MAX_SHARES}.`)
       if (total < BigInt(input.shares)) throw new Error('Put in at least one unit per share')
+      if (mint === TSKR_MINT) {
+        // read the balance fresh: never ask the wallet to sign a packet it cannot fund
+        const { tskr } = await fetchBalances(client.rpc as never, account.address)
+        if (total > tskr) throw new Error('This wallet holds less tSKR than the packet. Get test tokens first.')
+      }
 
       let audience: AudienceInput
       let snapshotRoot: string | undefined
