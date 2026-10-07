@@ -351,7 +351,8 @@ export function humanError(error: unknown): string {
     )
   )
     return 'No Solana wallet on this phone yet. Install one (Seed Vault on a Seeker) and try again.'
-  if (/network request failed|failed to fetch|ENOTFOUND|ECONN/i.test(text))
+  // "fetch failed: …" is how Expo's fetch (the global one) reports a request that got no answer
+  if (/network request failed|failed to fetch|fetch failed|ENOTFOUND|ECONN/i.test(text))
     return 'Solana devnet did not answer. Check the connection and try again.'
   if (error instanceof TransactionExpiredError || /blockhash not found|BlockhashNotFound/i.test(text))
     return 'The transaction took too long to sign. Try again.'
