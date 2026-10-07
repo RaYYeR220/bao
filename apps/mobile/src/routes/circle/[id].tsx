@@ -125,7 +125,7 @@ export default function CircleScreen() {
                 >
                   <Icon name="crown" size={18} />
                   <View style={{ flex: 1 }}>
-                    <T variant="bodyStrong">{ch.depth + 1} packets long</T>
+                    <T variant="bodyStrong">{ch.depth === 0 ? 'A chain begins' : `${ch.depth + 1} packets long`}</T>
                     <T variant="meta">
                       {ch.lastKing ? `Now with ${displayName(ch.lastKingSkr, ch.lastKing)}` : 'Waiting for its king'}
                     </T>
