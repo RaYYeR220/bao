@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { packetLink } from '@/features/bao/data-access/bao-config'
 import { $reminders } from '@/features/bao/data-access/prefs'
 import { maybeAskForPush } from '@/features/bao/data-access/push'
+import { useCircles } from '@/features/bao/data-access/use-bao-api'
 import { useMyClaim, usePacketData } from '@/features/bao/data-access/use-bao-data'
 import { useGrab, type GrabPhase } from '@/features/bao/data-access/use-grab'
 import { useShakeSteps } from '@/features/bao/data-access/use-shake'
@@ -346,6 +347,8 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
 }
 
 function Header({ detail, name, top }: { detail: PacketDetail; name: string; top: number }) {
+  const circles = useCircles()
+  const circleName = circles.data?.find((c) => c.id === detail.circleId)?.name
   const where =
     detail.audience === 'open'
       ? detail.startsAt > detail.createdAt + 5
@@ -353,7 +356,7 @@ function Header({ detail, name, top }: { detail: PacketDetail; name: string; top
         : 'Public'
       : detail.audience === 'code'
         ? 'Code word'
-        : 'Circle'
+        : (circleName ?? 'Circle')
   return (
     <View style={[styles.header, { paddingTop: top + 10 }]}>
       <RoundButton icon="close" label="Close" onPress={close} />
