@@ -89,11 +89,13 @@ export const BAD_LINK_PATH = '/not-a-bao-link'
 
 /**
  * Incoming system links → a safe in-app path. Valid Bao links are rebuilt from their validated
- * parts (no query string survives); Bao-looking links that fail validation, and links to other
- * hosts, land on the not-found screen; anything else (app launch, shortcuts) passes through.
+ * parts; Bao-looking links that fail validation, and links to other hosts, land on the not-found
+ * screen; anything else (app launch, bao://send, bao://scan) passes through. No query string from
+ * outside survives: the router never parses untrusted percent-encoding.
  */
 export function systemPathFor(path: string): string {
   const { link, linkish } = parse(path)
   if (link) return hrefFor(link)
-  return linkish ? BAD_LINK_PATH : path
+  if (linkish) return BAD_LINK_PATH
+  return /^(bao|https):\/\//i.test(path) ? path.replace(/[?#].*$/, '') : path
 }
