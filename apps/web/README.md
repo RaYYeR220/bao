@@ -16,7 +16,7 @@ Mainnet is read, never written: `.skr` names (AllDomains) and real Seeker Genesi
 | Crank (and house rain) | `src/lib/crank.ts`, `src/lib/house-rain.ts`, `/api/cron/tick`, `/api/claims/:address/payout` |
 | Push (FCM HTTP v1) | `src/lib/push.ts`, `/api/push/register` |
 | Solana Actions | `src/lib/actions.ts`, `/actions.json`, `/api/actions/grab/:packet`, `/api/actions/create` |
-| Link pages | `/p/:packet` (+ Open Graph image), `/.well-known/assetlinks.json`, `/` |
+| Pages | `/` (landing), `/p/:packet` (packet link), each with an Open Graph image; `/.well-known/assetlinks.json`; `src/ui/*`, `src/app/globals.css` |
 | Devnet RPC proxy (allowlisted methods, keeps the Helius key server-side) | `src/lib/rpc-proxy.ts`, `POST /api/rpc` |
 | Database | `src/lib/db.ts` (all SQL), `../../supabase/migrations` |
 
@@ -115,6 +115,37 @@ until the grab is indexed as paid, and checks the feed.
    on one of those channels with one tag for both (`<kind>:<packet>`, also `data.tag`), plus
    `data.kind`, `data.packet`, `data.url = bao://packet/<address>`. The app verifies App Links for
    `https://<host>/p/*` once `ANDROID_CERT_SHA256` is set.
+
+## Pages
+
+Both pages use the app's Lacquer Box look: the colours of `apps/mobile/src/ui/tokens.ts` as CSS
+custom properties in `src/app/globals.css` (and in `src/ui/tokens.ts` for the images), plain CSS,
+no UI library.
+
+- `/` is the landing page. It is static and re-rendered every five minutes (`revalidate = 300`) for
+  the "On devnet so far" numbers: packets, grabs and tSKR paid to grabbers, one query
+  (`Store.totals`). The block is left out when there is no database to read, the read fails or takes
+  longer than 2.5 s, or nothing was dropped yet. Screenshots are JPEGs in `public/shots` with fixed
+  dimensions, so nothing shifts while they load; the page ships no client component.
+- `/p/:packet` is the packet link, rendered on demand. It draws four states: live (shares left and
+  a countdown to the close), a scheduled rain (countdown to the opening), emptied, and expired; a
+  closed packet shows as whichever of the last two it ended as. An unknown or malformed address
+  answers 404 with its own page (`not-found.tsx`), and a failed read shows `error.tsx`. The
+  envelope is an inline SVG (`src/ui/envelope.tsx`) in the sender's skin, grey once spent. The
+  countdown is the only client component: when it reaches zero it asks the server again, so a rain
+  turns live without a reload. "Open in Bao" is the `bao://packet/<address>` deep link (the https
+  link itself opens the app through App Links once verified); "Get the Android app" goes to the
+  latest GitHub release.
+- Fonts on the pages: Bodoni Moda (with its optical-size axis) and Instrument Sans (with its width
+  axis) through `next/font/google`, fetched at build time and self-hosted. Noto Serif TC is the
+  app's 8 KB subset through `next/font/local`; from Google it would be 108 unicode-range slices for
+  six glyphs.
+- Open Graph images (`opengraph-image.tsx` next to each page, 1200 by 630) are drawn with `next/og`
+  from the app's TTFs in `assets/fonts` (SIL OFL, licences alongside), read with
+  `readFile(join(process.cwd(), ...))` from literal paths so the build traces them into the two image
+  routes. If they cannot be read the image falls back to the built-in face instead of failing. The
+  Chinese characters available to the images are the ones in that subset: 紅包開運氣王 and ten more.
+  The site image is rendered once at build; a packet's image is rendered per request.
 
 ## Notes
 

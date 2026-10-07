@@ -1,27 +1,37 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { countdownText } from '@/lib/countdown';
 
-function format(seconds: number) {
-  const s = Math.max(0, seconds);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h >= 48) return `${Math.floor(h / 24)} days`;
-  return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}:${String(sec).padStart(2, '0')}`;
-}
-
-/** Ticks down to `target` (unix seconds); the server renders the first frame. */
-export function Countdown({ label, target, initial }: { label: string; target: number; initial: string }) {
-  const [text, setText] = useState(initial);
+/**
+ * Ticks down to `target` (unix seconds). The server renders the first frame (`initial`); when the
+ * time is up the page asks the server again, so a rain turns live and a packet turns expired
+ * without a reload.
+ */
+export function Countdown({ target, initial, label, done }: { target: number; initial: string; label: string; done: string }) {
+  const router = useRouter();
+  const [left, setLeft] = useState<number | null>(null);
   useEffect(() => {
+    let asked = 0;
     const tick = () => {
-      const left = target - Math.floor(Date.now() / 1000);
-      setText(left > 0 ? `${label} ${format(left)}` : 'Refresh to see the latest');
+      const seconds = target - Math.floor(Date.now() / 1000);
+      setLeft(seconds);
+      // once at zero, then every five seconds for half a minute in case the clocks disagree
+      if (seconds <= 0 && seconds % 5 === 0 && asked < 6) {
+        asked++;
+        router.refresh();
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [label, target]);
-  return <span suppressHydrationWarning>{text}</span>;
+  }, [target, router]);
+  const over = left !== null && left <= 0;
+  return (
+    <p className="countdown" role="timer">
+      <span className="countdown__value">{left === null ? initial : countdownText(left)}</span>
+      <span className="countdown__label">{over ? done : label}</span>
+    </p>
+  );
 }
