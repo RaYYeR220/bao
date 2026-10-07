@@ -11,13 +11,18 @@ export const maxDuration = 60;
 async function tick(req: Request) {
   requireSecret(req, env().CRON_SECRET);
   const d = await deps();
-  const report = await runCrank({ store: d.store, rpc: d.devnet, crank: await loadSigner('crank') });
+  const house = env().HOUSE_RAIN_ENABLED
+    ? { faucet: await loadSigner('faucet'), authority: await loadSigner('mintAuthority') }
+    : null;
+  const report = await runCrank({ store: d.store, rpc: d.devnet, crank: await loadSigner('crank'), house });
+  const houseRain = report.steps.houseRain.result;
   log.info('crank.tick', {
     ok: report.ok,
     slot: report.slot,
     payouts: report.steps.payouts.result?.done.length ?? 0,
     cancels: report.steps.cancels.result?.done.length ?? 0,
     closes: report.steps.closes.result?.done.length ?? 0,
+    houseRain: houseRain ? (houseRain.action === 'dropped' ? houseRain.packet : houseRain.reason) : 'failed',
     indexed: report.steps.indexer.result?.processed ?? 0,
   });
   return json(report, report.ok ? 200 : 207);

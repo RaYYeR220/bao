@@ -1,8 +1,9 @@
 /**
  * The crank (`/api/cron/tick`, every minute): pays won lucky shares, cancels grabs whose
  * randomness never came, winds down finished or expired packets (close_claims in batches,
- * then close_packet), sends rain-start pushes, and runs the indexer. Every step is isolated
- * and idempotent; the crank key signs only permissionless instructions.
+ * then close_packet), sends rain-start pushes, tops up the public feed with a house rain when
+ * enabled, and runs the indexer. Every step is isolated and idempotent; the crank key signs
+ * only permissionless instructions (a house rain is signed by the faucet key).
  */
 import { AccountRole, getBase58Decoder, type Address, type Instruction, type KeyPairSigner } from '@solana/kit';
 import { findAssociatedTokenPda } from '@solana-program/token-2022';
@@ -24,17 +25,16 @@ import {
   type Crown,
   type Packet,
 } from '@bao/sdk';
-import { PACKET_SIZE } from './chain';
+import { CLAIM_SIZE, CROWN_SIZE, PACKET_SIZE } from './chain';
 import type { Store } from './db';
+import { runHouseRain, type HouseRainDeps, type HouseRainResult } from './house-rain';
 import { pollProgram, type PollResult } from './indexer';
 import { errorMessage, log } from './log';
 import { pushRainStarting } from './push';
 import { sendAndConfirm, type SolanaRpc } from './rpc';
 
 /** Account sizes of the deployed layout; older layouts on devnet are skipped. */
-export { PACKET_SIZE };
-export const CLAIM_SIZE = 124;
-export const CROWN_SIZE = 155;
+export { CLAIM_SIZE, CROWN_SIZE, PACKET_SIZE };
 /** Won shares of an expired packet keep being paid for this long before a close may forfeit them. */
 export const FORFEIT_GRACE_SECS = 3_600;
 export const STALE_SLOTS = 300n;
@@ -188,6 +188,8 @@ export interface CrankDeps {
   skipIndexer?: boolean;
   /** Time after which no new transaction is started (the rest waits for the next tick). */
   budgetMs?: number;
+  /** House-rain signers (and settings, in tests); omitted or null skips the step. */
+  house?: Pick<HouseRainDeps, 'faucet' | 'authority' | 'config' | 'indexRetry'> | null;
 }
 
 interface StepResult<T> {
@@ -209,6 +211,7 @@ export interface CrankReport {
     crowns: StepResult<ItemResults>;
     housekeeping: StepResult<{ prunedNonces: true }>;
     rains: StepResult<{ pushed: string[] }>;
+    houseRain: StepResult<HouseRainResult>;
     indexer: StepResult<PollResult>;
   };
 }
@@ -356,11 +359,18 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
     return { pushed: due.map((r) => r.address) };
   });
 
+  // keeps a couple of public packets live for late installs (house-rain.ts)
+  const houseRain = await step('houseRain', async (): Promise<HouseRainResult> => {
+    if (!deps.house) return { action: 'skipped', reason: 'disabled' };
+    if (Date.now() > deadline) return { action: 'skipped', reason: 'budget' };
+    return runHouseRain({ ...deps.house, store: deps.store, rpc: deps.rpc, send, now: deps.now });
+  });
+
   const indexer = deps.skipIndexer
     ? { ok: true, ms: 0, result: { seen: 0, processed: 0, events: 0, cursor: null } }
     : await step('indexer', () => pollProgram({ store: deps.store, rpc: deps.rpc }));
 
-  const steps = { snapshot: snapshotStep, reconcile, payouts, cancels, closes, crowns, housekeeping, rains, indexer };
+  const steps = { snapshot: snapshotStep, reconcile, payouts, cancels, closes, crowns, housekeeping, rains, houseRain, indexer };
   const s = snapshot as ChainSnapshot | null;
   return { ok: Object.values(steps).every((x) => x.ok), slot: s ? s.slot.toString() : null, steps };
 }

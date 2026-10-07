@@ -24,6 +24,7 @@ export const TABLES = [
   'push_receipts',
   'faucet_claims',
   'indexer_cursor',
+  'house_rain',
 ];
 
 export async function wipe(store: Store) {

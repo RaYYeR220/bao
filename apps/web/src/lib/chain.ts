@@ -34,6 +34,8 @@ import type { PacketMirror, PacketRecord } from './types';
 
 /** Allocated size of a Packet account in the deployed layout (older devnet layouts differ). */
 export const PACKET_SIZE = 379;
+export const CLAIM_SIZE = 124;
+export const CROWN_SIZE = 155;
 
 /** The packet account in the current layout, or null when missing or from an older program version. */
 export async function fetchPacketAccount(rpc: SolanaRpc, address: Address): Promise<Packet | null> {

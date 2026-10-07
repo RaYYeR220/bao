@@ -223,15 +223,23 @@ export class Store {
     );
   }
 
-  /** Cached `.skr` names only; never triggers a chain read. */
+  /** Cached `.skr` names, or a server label (the house sender's "Bao") first; never triggers a chain read. */
   async skrNames(addresses: string[]): Promise<Map<string, string>> {
     const unique = [...new Set(addresses.filter(Boolean))];
     if (unique.length === 0) return new Map();
-    const rows = await this.sql.query<{ address: string; skr_name: string }>(
-      'select address, skr_name from users where address = any($1::text[]) and skr_name is not null',
+    const rows = await this.sql.query<{ address: string; name: string }>(
+      `select address, coalesce(label, skr_name) as name from users
+       where address = any($1::text[]) and coalesce(label, skr_name) is not null`,
       [unique],
     );
-    return new Map(rows.map((r) => [r.address, r.skr_name]));
+    return new Map(rows.map((r) => [r.address, r.name]));
+  }
+
+  async setLabel(address: string, label: string | null) {
+    await this.sql.query('insert into users (address, label) values ($1, $2) on conflict (address) do update set label = $2', [
+      address,
+      label,
+    ]);
   }
 
   // ---------- sign-in nonces ----------
@@ -735,6 +743,55 @@ export class Store {
        where address = $1`,
       [address, r.sol, r.tskr, r.genesisMint, r.genesisSignature],
     );
+  }
+
+  // ---------- house rain (0003_house_rain.sql) ----------
+
+  /** Public packets a fresh install can grab now or soon: open, not closed or expired, shares left. */
+  async liveOpenPackets(now: number): Promise<number> {
+    const [r] = await this.sql.query(
+      `select count(*) as n from packets
+       where audience = 'open' and status <> 'closed' and expires_at > $1 and reserved < total_shares`,
+      [now],
+    );
+    return num(r?.n);
+  }
+
+  async houseRain(): Promise<{ claimedAt: number | null; droppedAt: number | null; packet: string | null; drops: number } | null> {
+    const [r] = await this.sql.query("select * from house_rain where id = 'house'");
+    if (!r) return null;
+    return { claimedAt: numOrNull(r.claimed_at), droppedAt: numOrNull(r.dropped_at), packet: strOrNull(r.packet), drops: num(r.drops) };
+  }
+
+  /**
+   * Claims the house-rain slot at `now` unless one was claimed in the last `everySecs`; true only
+   * for one caller per interval, however many ticks race. A claim is never released: a drop that
+   * fails after it waits for the next interval rather than risk sending twice.
+   */
+  async claimHouseRain(now: number, everySecs: number): Promise<boolean> {
+    const rows = await this.sql.query(
+      `insert into house_rain (id, claimed_at) values ('house', $1)
+       on conflict (id) do update set claimed_at = excluded.claimed_at, updated_at = now()
+         where house_rain.claimed_at is null or house_rain.claimed_at <= $1::bigint - $2::bigint
+       returning id`,
+      [now, everySecs],
+    );
+    return rows.length > 0;
+  }
+
+  async recordHouseRain(now: number, packet: string, signature: string) {
+    await this.sql.query(
+      `update house_rain set dropped_at = $1, packet = $2, signature = $3, drops = drops + 1, updated_at = now()
+       where id = 'house'`,
+      [now, packet, signature],
+    );
+  }
+
+  async setCreateSignature(address: string, signature: string) {
+    await this.sql.query('update packets set create_signature = coalesce(create_signature, $2) where address = $1', [
+      address,
+      signature,
+    ]);
   }
 
   // ---------- indexer cursor ----------

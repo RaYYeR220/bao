@@ -36,6 +36,13 @@ const schema = z.object({
   FAUCET_SOL_LAMPORTS: z.coerce.bigint().default(50_000_000n),
   FAUCET_TSKR_UNITS: z.coerce.bigint().default(1_000_000_000n),
   INDEXER_BACKFILL_LIMIT: z.coerce.number().int().positive().default(200),
+  HOUSE_RAIN_ENABLED: optional.transform((v) => v === '1' || v?.toLowerCase() === 'true'),
+  HOUSE_RAIN_MIN_LIVE: z.coerce.number().int().min(1).default(2),
+  HOUSE_RAIN_TSKR: z.coerce.bigint().positive().default(88_000_000n),
+  // the program's share bounds
+  HOUSE_RAIN_SHARES: z.coerce.number().int().min(1).max(200).default(24),
+  HOUSE_RAIN_EVERY_MIN: z.coerce.number().int().min(1).default(30),
+  HOUSE_RAIN_MIN_SOL_LAMPORTS: z.coerce.bigint().nonnegative().default(500_000_000n),
 });
 
 export type Env = z.infer<typeof schema>;

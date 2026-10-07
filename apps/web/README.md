@@ -13,7 +13,7 @@ Mainnet is read, never written: `.skr` names (AllDomains) and real Seeker Genesi
 | Circles, snapshots, proofs | `src/lib/circles.ts`, `/api/circles/**`, `/api/packets/:address/proof` |
 | Packets, feed, widget | `src/lib/packets.ts`, `/api/packets/**`, `/api/feed`, `/api/widget` |
 | Indexer (webhook + poller) | `src/lib/indexer.ts`, `src/lib/chain.ts`, `/api/webhooks/helius` |
-| Crank | `src/lib/crank.ts`, `/api/cron/tick`, `/api/claims/:address/payout` |
+| Crank (and house rain) | `src/lib/crank.ts`, `src/lib/house-rain.ts`, `/api/cron/tick`, `/api/claims/:address/payout` |
 | Push (FCM HTTP v1) | `src/lib/push.ts`, `/api/push/register` |
 | Solana Actions | `src/lib/actions.ts`, `/actions.json`, `/api/actions/grab/:packet` |
 | Link pages | `/p/:packet` (+ Open Graph image), `/.well-known/assetlinks.json`, `/` |
@@ -38,7 +38,7 @@ with a single JSON log line naming what is off.
 | `HELIUS_API_KEY` | recommended | Helius RPC for devnet and mainnet. Without it the public endpoints are used: rate limits, slower `.skr` lookups. |
 | `DEVNET_RPC_URL`, `MAINNET_RPC_URL` | no | Explicit RPC overrides. |
 | `FAUCET_KEYPAIR` / `FAUCET_KEYPAIR_PATH` | for the faucet | Pays the faucet's 0.05 SOL drip. Without it the faucet skips SOL. |
-| `MINT_AUTHORITY_KEYPAIR` / `MINT_AUTHORITY_KEYPAIR_PATH` | for the faucet | tSKR mint authority and test Genesis group update authority (`4EtAF…`). Without it the faucet skips tSKR and Genesis tokens. |
+| `MINT_AUTHORITY_KEYPAIR` / `MINT_AUTHORITY_KEYPAIR_PATH` | for the faucet | tSKR mint authority and test Genesis group update authority (on the devnet deployment the faucet key `5bzV…`, see `scripts/devnet/src/rotate-authorities.ts`). Without it the faucet skips tSKR and Genesis tokens. |
 | `CRANK_KEYPAIR` / `CRANK_KEYPAIR_PATH` | for the crank | Signs payouts, `cancel_stale`, `close_claims`, `close_packet`. Without it those steps and `/api/claims/:address/payout` are disabled (shares stay claimable). |
 | `CRON_SECRET` | for the crank | Bearer secret of `/api/cron/tick`. Without it the endpoint answers 503. |
 | `HELIUS_WEBHOOK_SECRET` | for the webhook | Value of the webhook's `Authorization` header. Without it the endpoint answers 503 and indexing relies on the cron poller (up to a minute behind). |
@@ -47,6 +47,8 @@ with a single JSON log line naming what is off.
 | `ANDROID_CERT_SHA256` | for App Links | Release signing certificate SHA-256 (comma-separated for several). Without it App Links do not verify and links open the web page. |
 | `GENESIS_GROUP`, `TSKR_MINT`, `MAINNET_GENESIS_GROUP`, `MAINNET_SKR_MINT` | no | Deployment addresses; defaults are the devnet deployment and the real Seeker group / SKR. |
 | `FAUCET_SOL_LAMPORTS`, `FAUCET_TSKR_UNITS`, `INDEXER_BACKFILL_LIMIT` | no | Faucet amounts (0.05 SOL, 1,000 tSKR) and how many recent program transactions a fresh indexer backfills (200). |
+| `HOUSE_RAIN_ENABLED` | for the house rain | `1` or `true` turns on the crank's house rain (see Notes): the faucet key keeps public packets in the feed. Needs `FAUCET_KEYPAIR`, plus `MINT_AUTHORITY_KEYPAIR` to mint the tSKR it lacks, and migration `0003_house_rain.sql`. Off by default, so a local server never drops from the shared devnet faucet. |
+| `HOUSE_RAIN_MIN_LIVE`, `HOUSE_RAIN_TSKR`, `HOUSE_RAIN_SHARES`, `HOUSE_RAIN_EVERY_MIN`, `HOUSE_RAIN_MIN_SOL_LAMPORTS` | no | Public packets to keep live (2), tSKR base units per house packet (88,000,000 = 88 tSKR), shares (24), minimum minutes between drops (30), and the SOL the faucet keeps after a drop (500,000,000 = 0.5 SOL; below it the drop is skipped and `house_rain.low_sol` is logged once). |
 
 Keypair variables take a JSON byte array (Solana CLI format) or a base58 secret key. On Vercel use
 the inline variant; locally the `_PATH` variant (a leading `~` is expanded).
@@ -122,6 +124,15 @@ until the grab is indexed as paid, and checks the feed.
   reward), and closes lapsed Luck-King crowns. An unpaid win on an expired packet keeps being paid
   for an hour before a close may forfeit it. Each step is isolated, the tick stops starting new
   transactions after 40 s, and the result is returned as JSON.
+- House rain (`src/lib/house-rain.ts`, a crank step, off unless `HOUSE_RAIN_ENABLED`): when fewer
+  than `HOUSE_RAIN_MIN_LIVE` open packets are live or scheduled with shares left, the faucet key
+  drops one open, Seeker-only, Lucky tSKR packet for 24 h ("Bao house rain"), minting the tSKR it
+  lacks in the same transaction. The `house_rain` row is claimed before sending, so concurrent ticks
+  and retries drop at most once per `HOUSE_RAIN_EVERY_MIN`; a drop that fails after the claim waits
+  for the next interval. The packet is mirrored at once, its sender shows as "Bao" (`users.label`),
+  and it sends no "packet dropped" push. A drop locks about 0.1 SOL of rent and gas budget (devnet
+  rent) until the crank closes it and refunds the faucet; what is spent is mostly the VRF allowance
+  (up to 0.001 SOL per grab).
 - Circle packet messages are returned only to members of that circle (and the sender); the link page
   and signed-out reads show the amount without the message. Note that the anon Realtime policy on
   `packets` still exposes whole rows to holders of the anon key.
