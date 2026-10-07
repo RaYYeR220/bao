@@ -67,6 +67,44 @@ export class ConfirmTimeoutError extends Error {
 // MWA protocol codes: authorization declined (-1) and signing declined (-3)
 const MWA_DECLINED = new Set<number | string>([-1, -3, 'ERROR_SESSION_CLOSED', 'ERROR_ASSOCIATION_CANCELLED'])
 
+/**
+ * The MWA JSON-RPC error code of a wallet refusal, if it is one. The native bridge also puts
+ * it in front of the wallet's own text ("-2/payloads invalid for signing").
+ */
+export function walletErrorCode(error: unknown): number | null {
+  const e = error as { name?: string; code?: unknown; message?: string } | null
+  if (e?.name === 'SolanaMobileWalletAdapterProtocolError' && typeof e.code === 'number') return e.code
+  const m = /^(-\d+)\//.exec(e?.message ?? '')
+  return m ? Number(m[1]) : null
+}
+
+/**
+ * A wallet refusal in words (MWA codes: -1 not authorized, -2 invalid payloads, -3 not signed,
+ * -4 not submitted, -5 too many payloads; wallets also use -5 and below for an unsupported
+ * chain, so that one is read from the text). Null when the error is not a wallet refusal.
+ */
+export function describeWalletError(error: unknown): string | null {
+  const code = walletErrorCode(error)
+  if (code === null) return null
+  const text = (error as { message?: string } | null)?.message ?? ''
+  if (/chain|cluster/i.test(text))
+    return 'The wallet does not support Solana devnet. Switch it to devnet and try again.'
+  switch (code) {
+    case -1:
+      return 'The wallet did not authorize Bao. Connect again and approve Bao in the wallet.'
+    case -2:
+      return 'The wallet could not send this transaction. Give it a few seconds and try again.'
+    case -3:
+      return 'The wallet did not sign it.'
+    case -4:
+      return 'The wallet signed it but could not get it to Solana. Check the connection and try again.'
+    case -100:
+      return 'The wallet could not verify that this is the real Bao app. Update the wallet and try again.'
+    default:
+      return 'The wallet turned the request down. Check that it is set to Solana devnet and try again.'
+  }
+}
+
 /** Whether an error means the user declined or closed the wallet (authorize, sign or SIWS). */
 export function isWalletCancel(error: unknown): boolean {
   if (error instanceof WalletRejectedError) return true
@@ -149,8 +187,8 @@ export async function sendWithWallet(
       // 2. …and only sign as the account this transaction was built for
       if (!authorizedAddresses(auth.accounts).includes(feePayer)) throw new WalletAccountMismatchError()
 
-      // Finalized, not confirmed: wallets preflight against finalized state, where a blockhash
-      // only a few seconds old is still unknown ("Blockhash not found").
+      // A finalized blockhash: every RPC node knows it, whatever commitment the wallet's node
+      // checks against ("Blockhash not found" otherwise).
       const {
         context: { slot },
         value: latestBlockhash,
@@ -165,8 +203,13 @@ export async function sendWithWallet(
             m,
           ),
       )
+      // The wallet sends through its own RPC and preflights there, by default against finalized
+      // state, ~13 s behind the confirmed state Bao just simulated. Tokens from the faucet, a crown
+      // or an account made seconds ago are not there yet, the wallet's preflight fails and it
+      // answers -2 ("payloads invalid"). Ask for confirmed, the state Bao's preflight saw.
       const [signatureBytes] = await mw.signAndSendTransactions({
         minContextSlot: Number(slot),
+        commitment: 'confirmed',
         transactions: [message],
       })
       return getBase58Decoder().decode(signatureBytes) as Signature
@@ -270,6 +313,8 @@ export function describeProgramError(detail: unknown): string {
 
 /** Turns wallet, network and RPC failures into one calm sentence for the screen. */
 export function humanError(error: unknown): string {
+  const wallet = describeWalletError(error)
+  if (wallet) return wallet
   const text = error instanceof Error ? error.message : String(error)
   if (/TimeoutException|timed out waiting/i.test(text))
     return 'The wallet took too long to answer. Open it and try again.'
