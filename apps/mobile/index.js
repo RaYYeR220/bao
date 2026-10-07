@@ -1,4 +1,5 @@
-// index.js — the crypto polyfill must load before anything touches @solana/kit.
+// index.js: the crypto polyfill loads first, before anything else (and so before @solana/kit
+// or the Mobile Wallet Adapter): crypto.getRandomValues, crypto.subtle and Buffer.
 import './polyfill'
 import { registerWidgetTaskHandler } from 'react-native-android-widget'
 
