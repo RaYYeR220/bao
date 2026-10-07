@@ -25,6 +25,24 @@ Recorded in [`scripts/devnet/out/smoke-2026-10-06T20-14-40-518Z.json`](scripts/d
 | 2.3 s later the VRF oracle delivers a proven random value; the program assigns 4.391318 tSKR | [vrf_callback](https://explorer.solana.com/tx/4ZoxoK1p88Q42Uh98JXNXs4mkTJXXhGcXdz8j4m6qLqsrErTP3AQQB5poB9jjh7zg3fVPAHhr4SJA8yXBeCCQ3wb?cluster=devnet) |
 | The share is paid out to the grabber | [payout](https://explorer.solana.com/tx/QJ2rPwPYnQLog9ypjnigzSMAN3YNvRdys6icuEurRRDfSjk7yEVDsfPKK3RfjLfQJod8WTc2cKEPxHcYNfcAPNS?cluster=devnet) |
 
+## From the app
+
+The same flow, driven from the Android app on an emulator with a Mobile Wallet Adapter wallet, against the live
+API at https://getbao.vercel.app. A Lucky, Seeker-only public packet of 88 tSKR
+([`7TX5gMks…TkkQs`](https://explorer.solana.com/address/7TX5gMks2Mb6fCLWCYqo1QbXXNXU5Qx9XH5E2k4TkkQs?cluster=devnet)):
+
+| Step | Transaction |
+|---|---|
+| Sealed in the Send flow with one wallet signature | [create_packet](https://explorer.solana.com/tx/2hUTQuzqY9zDseKuaBAp2MMfVRirpDxUaczD6gUhtB5ik4etNKJMxoqDXCJE4bhaKso3np5wN1i7b2hSEroUQDxQ?cluster=devnet) |
+| Three shakes, then one signature | [grab_lucky](https://explorer.solana.com/tx/3GdtBKYNSvU8juqGCTJ5Q9W79xc5Hn8tT4E1GwMKzbkMuqa9ENew6Jc5Yod9QMzeTYtTNNsPoMXfNnSWFrDaZ58K?cluster=devnet) |
+| The randomness proof lands and the share is drawn | [vrf_callback](https://explorer.solana.com/tx/3bwUMeRdFdrDGgdiSwpTU3RG771wRQceZezGfsB4gNM8QxVFxc2QYa3zoWB4CXJaTqtasCbS2b6hp9xSASByp2mG?cluster=devnet) |
+| The crank pays 48.78 tSKR; the grabber is Luck King so far | [payout](https://explorer.solana.com/tx/33izjfFWSC1W2dUe59wNYwiJAD1G9mtePbs6VDaZKYgrwv7xsWBH5K5rFxrCcjBPPa2Jjw3E2mdDQGDmppfvKpM?cluster=devnet) |
+| A Luck King sends the next packet in the chain ([`F35rWsgt…Ag1U6`](https://explorer.solana.com/address/F35rWsgtqxEzkLiDq8GnjHrdMwP8gdE7ytT4oRqAg1U6?cluster=devnet), chain depth 1) | [create_packet with crown](https://explorer.solana.com/tx/4eyHPPvEGH1CNe44hEbAyniVUGhgA2QEXuVsLaau42sQm5NALdPRPFZ4EJJtWWGSDXeVZLFz6nArrFCSBSQtur1v?cluster=devnet) |
+
+The app simulates every grab before it opens the wallet, so a grab the program would refuse (wrong code word,
+no Genesis Token, second wallet on the same phone) is stopped with the program's own error code and never costs
+a fee. The on-chain refusals below were sent on purpose by the smoke script to show the program enforces it.
+
 ## Refusals (the part bots meet)
 
 | Attempt | Result |
