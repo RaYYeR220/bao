@@ -1,4 +1,4 @@
-import { Text, type TextProps, type TextStyle } from 'react-native'
+import { StyleSheet, Text, type TextProps, type TextStyle } from 'react-native'
 
 import { color, font } from './tokens'
 
@@ -70,5 +70,9 @@ const maxScale: Partial<Record<Variant, number>> = {
 }
 
 export function T({ variant = 'body', style, ...props }: TextProps & { variant?: Variant }) {
-  return <Text maxFontSizeMultiplier={maxScale[variant] ?? 2} {...props} style={[variants[variant], style]} />
+  // A caller that resizes the text without a line height gets one that fits the new size,
+  // instead of inheriting the variant's (which would clip large serif numerals).
+  const flat = StyleSheet.flatten(style) as TextStyle | undefined
+  const fit = flat?.fontSize && !flat.lineHeight ? { lineHeight: Math.round(flat.fontSize * 1.22) } : null
+  return <Text maxFontSizeMultiplier={maxScale[variant] ?? 2} {...props} style={[variants[variant], style, fit]} />
 }

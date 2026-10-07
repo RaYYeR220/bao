@@ -67,7 +67,7 @@ export default function ScanScreen() {
 
       {!permission ? null : permission.granted ? (
         <View style={[styles.caption, { bottom: insets.bottom + space[6] }]}>
-          <T style={styles.captionTitle}>Point at a packet or circle invite</T>
+          <T style={styles.captionTitle}>Point at a Bao code</T>
           <T variant="meta" style={{ textAlign: 'center' }}>
             Bao QR codes open a packet or a circle right here.
           </T>
@@ -113,5 +113,5 @@ const styles = StyleSheet.create({
   mask: { backgroundColor: 'rgba(10,7,7,0.72)' },
   corner: { position: 'absolute', width: 34, height: 34 },
   caption: { position: 'absolute', left: space[5], right: space[5], gap: 8, alignItems: 'center' },
-  captionTitle: { fontFamily: 'BodoniModa-MediumItalic', fontSize: 22, color: color.gofun, textAlign: 'center' },
+  captionTitle: { fontFamily: 'BodoniModa-MediumItalic', fontSize: 22, lineHeight: 28, color: color.gofun, textAlign: 'center' },
 })
