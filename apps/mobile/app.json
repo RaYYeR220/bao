@@ -13,7 +13,8 @@
         "android.permission.NFC",
         "android.permission.VIBRATE",
         "android.permission.CAMERA",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.HIGH_SAMPLING_RATE_SENSORS"
       ],
       "googleServicesFile": "./google-services.json",
       "intentFilters": [

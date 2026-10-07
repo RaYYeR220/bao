@@ -1,15 +1,20 @@
 import { Accelerometer } from 'expo-sensors'
 import { useEffect, useRef } from 'react'
 
-const SHAKE_G = 1.8
-const DEBOUNCE_MS = 250
+import { createShakeDetector } from './shake-detector'
 
 /**
- * Reports each deliberate shake (a spike above 1.8 g, debounced) so the screen can fill the
- * foil ring a third at a time and make the envelope tremble harder with every one.
+ * Asked-for spacing of accelerometer readings. expo-sensors only throttles with it: the sensor
+ * itself runs at SENSOR_DELAY_FASTEST when the app declares HIGH_SAMPLING_RATE_SENSORS
+ * (app.json) and at 200 ms otherwise (Android 12+), which is too coarse to catch a shake.
+ */
+const INTERVAL_MS = 40
+
+/**
+ * Reports each deliberate shake (one jolt per shake, see createShakeDetector) so the screen can
+ * fill the foil ring a third at a time and make the envelope tremble harder with every one.
  */
 export function useShakeSteps(enabled: boolean, onStep: () => void) {
-  const last = useRef(0)
   const cb = useRef(onStep)
   useEffect(() => {
     cb.current = onStep
@@ -17,14 +22,10 @@ export function useShakeSteps(enabled: boolean, onStep: () => void) {
 
   useEffect(() => {
     if (!enabled) return
-    Accelerometer.setUpdateInterval(50)
-    const sub = Accelerometer.addListener(({ x, y, z }) => {
-      const g = Math.sqrt(x * x + y * y + z * z)
-      if (g < SHAKE_G) return
-      const now = Date.now()
-      if (now - last.current < DEBOUNCE_MS) return
-      last.current = now
-      cb.current()
+    const isStep = createShakeDetector()
+    Accelerometer.setUpdateInterval(INTERVAL_MS)
+    const sub = Accelerometer.addListener(({ x, y, z, timestamp }) => {
+      if (isStep({ x, y, z, timestamp: timestamp ?? Date.now() / 1000 })) cb.current()
     })
     return () => sub.remove()
   }, [enabled])

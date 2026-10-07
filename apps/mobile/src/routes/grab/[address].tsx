@@ -50,6 +50,8 @@ import { color, font, radius, space } from '@/ui/tokens'
 import { describeProgramErrorName } from '@/features/bao/data-access/program-errors'
 
 const close = () => (router.canGoBack() ? router.back() : router.replace('/'))
+/** How long a partly shaken packet keeps its progress: long enough for a pause or a slow frame. */
+const SHAKE_KEEP_MS = 5000
 
 export default function GrabScreen() {
   const { address, code: codeParam } = useLocalSearchParams<{ address: string; code?: string }>()
@@ -115,7 +117,7 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
     (phase.kind === 'idle' || (phase.kind === 'refused' && phase.code === BAO_ERROR__ALREADY_GRABBED_ON_THIS_DEVICE))
   const needsCode = detail.audience === 'code' && !code
 
-  // shake progress: thirds of the foil ring, drained if the shaking stops
+  // shake progress: thirds of the foil ring, drained if the shaking stops for a while
   const ring = useSharedValue(0)
   const [steps, setSteps] = useState(0)
   const [trembleKey, setTrembleKey] = useState(0)
@@ -133,7 +135,7 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
     setSteps((n) => Math.min(3, n + 1))
     setTrembleKey((k) => k + 1)
     if (idleTimer.current) clearTimeout(idleTimer.current)
-    idleTimer.current = setTimeout(() => setSteps((n) => (n >= 3 ? n : 0)), 2600)
+    idleTimer.current = setTimeout(() => setSteps((n) => (n >= 3 ? n : 0)), SHAKE_KEEP_MS)
   }, [canShake, needsCode])
 
   // each step fills a third of the foil ring; the third one opens the wallet
