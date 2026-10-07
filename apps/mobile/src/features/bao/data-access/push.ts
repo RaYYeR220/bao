@@ -64,14 +64,33 @@ export function routeForNotification(data: Record<string, unknown> | undefined) 
   return null
 }
 
+/** Taps already followed, for the app's lifetime (a re-mounted root must not replay one). */
+const followedTaps = new Set<string>()
+
+/**
+ * Follows a tapped notification to its packet, once. A cold start can report the same tap
+ * both as the last response and to the listener, and the last response outlives the root
+ * component, so each tap is keyed and the stored one is cleared once followed.
+ */
 export function listenToNotificationTaps() {
   const open = (r: Notifications.NotificationResponse | null) => {
-    const href = routeForNotification(r?.notification.request.content.data as Record<string, unknown> | undefined)
+    if (!r) return
+    const tap = `${r.notification.request.identifier}@${r.notification.date}:${r.actionIdentifier}`
+    if (followedTaps.has(tap)) return
+    followedTaps.add(tap)
+    try {
+      Notifications.clearLastNotificationResponse()
+    } catch {
+      // not available on this platform
+    }
+    const href = routeForNotification(r.notification.request.content.data as Record<string, unknown> | undefined)
     if (href) router.push(href as never)
   }
-  void Notifications.getLastNotificationResponseAsync()
-    .then(open)
-    .catch(() => undefined)
+  try {
+    open(Notifications.getLastNotificationResponse())
+  } catch {
+    // not available on this platform
+  }
   const sub = Notifications.addNotificationResponseReceivedListener(open)
   return () => sub.remove()
 }
