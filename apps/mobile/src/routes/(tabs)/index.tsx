@@ -87,8 +87,11 @@ export default function FeedScreen() {
             progressBackgroundColor={color.kuro800}
             onRefresh={async () => {
               setRefreshing(true)
-              await feed.refetch()
-              setRefreshing(false)
+              try {
+                await feed.refetch()
+              } finally {
+                setRefreshing(false)
+              }
             }}
           />
         }

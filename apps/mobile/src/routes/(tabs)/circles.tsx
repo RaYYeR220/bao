@@ -62,8 +62,11 @@ export default function CirclesScreen() {
               progressBackgroundColor={color.kuro800}
               onRefresh={async () => {
                 setRefreshing(true)
-                await circles.refetch()
-                setRefreshing(false)
+                try {
+                  await circles.refetch()
+                } finally {
+                  setRefreshing(false)
+                }
               }}
             />
           ) : undefined

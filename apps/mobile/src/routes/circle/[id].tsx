@@ -76,8 +76,11 @@ export default function CircleScreen() {
               progressBackgroundColor={color.kuro800}
               onRefresh={async () => {
                 setRefreshing(true)
-                await q.refetch()
-                setRefreshing(false)
+                try {
+                  await q.refetch()
+                } finally {
+                  setRefreshing(false)
+                }
               }}
             />
           }

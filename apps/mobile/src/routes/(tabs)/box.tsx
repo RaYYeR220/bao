@@ -51,8 +51,11 @@ export default function BoxScreen() {
               progressBackgroundColor={color.kuro800}
               onRefresh={async () => {
                 setRefreshing(true)
-                await history.refetch()
-                setRefreshing(false)
+                try {
+                  await history.refetch()
+                } finally {
+                  setRefreshing(false)
+                }
               }}
             />
           ) : undefined
