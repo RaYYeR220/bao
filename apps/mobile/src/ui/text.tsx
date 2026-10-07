@@ -18,8 +18,8 @@ type Variant =
 
 const variants: Record<Variant, TextStyle> = {
   wordmark: { fontFamily: font.displayItalic, fontSize: 36, lineHeight: 42, letterSpacing: -0.5, color: color.gofun },
-  display: { fontFamily: font.display, fontSize: 30, lineHeight: 36, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
-  amount: { fontFamily: font.display, fontSize: 72, lineHeight: 80, letterSpacing: -2, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
+  display: { fontFamily: font.numerals, fontSize: 30, lineHeight: 36, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
+  amount: { fontFamily: font.numerals, fontSize: 72, lineHeight: 80, letterSpacing: -2, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
   title: { fontFamily: font.display, fontSize: 26, lineHeight: 32, color: color.gofun },
   name: { fontFamily: font.displayItalic, fontSize: 17, lineHeight: 22, color: color.gofun },
   body: { fontFamily: font.text, fontSize: 15, lineHeight: 21, color: color.gofun64 },

@@ -36,7 +36,7 @@ function CountUp({ amount, decimals, run, size }: { amount: bigint; decimals: nu
   }, [amount, reduced, run])
   return (
     <T
-      style={{ fontFamily: font.display, fontSize: size, lineHeight: size * 1.08, letterSpacing: -1, paddingLeft: 2, color: color.kuro950, fontVariant: ['tabular-nums', 'lining-nums'] }}
+      style={{ fontFamily: font.numerals, fontSize: size, lineHeight: size * 1.08, letterSpacing: -1, paddingLeft: 2, color: color.kuro950, fontVariant: ['tabular-nums', 'lining-nums'] }}
       maxFontSizeMultiplier={1}
       numberOfLines={1}
       adjustsFontSizeToFit

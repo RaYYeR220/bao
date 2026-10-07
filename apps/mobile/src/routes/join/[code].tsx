@@ -65,7 +65,7 @@ export default function JoinScreen() {
           </Animated.View>
         ) : (
           <>
-            <T style={{ fontFamily: font.display, fontSize: 34, letterSpacing: 4, color: color.kuro950 }}>{decodeURIComponent(code ?? '')}</T>
+            <T style={{ fontFamily: font.numerals, fontSize: 32, letterSpacing: 5, color: color.kuro950 }}>{decodeURIComponent(code ?? '')}</T>
             <T variant="body" style={{ color: color.paperInk2, textAlign: 'center' }}>
               {session ? (join.isPending ? 'Joining…' : 'Joining the circle behind this code.') : 'Sign in with your Seeker to join this circle.'}
             </T>

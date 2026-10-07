@@ -121,7 +121,7 @@ function Summary({ detail }: { detail: PacketDetail }) {
       <PacketEnvelope packet={detail} width={96} gleam={gleam} />
       <View style={{ flex: 1, gap: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-          <T style={{ fontFamily: font.display, fontSize: 40, lineHeight: 46, color: color.gofun }}>{formatAmount(detail.total, detail.token.decimals)}</T>
+          <T style={{ fontFamily: font.numerals, fontSize: 40, lineHeight: 46, color: color.gofun }}>{formatAmount(detail.total, detail.token.decimals)}</T>
           <T variant="capsSmall" style={{ color: color.kin300 }}>
             {detail.token.symbol}
           </T>
@@ -171,7 +171,7 @@ function KingRow({ detail }: { detail: PacketDetail }) {
         <T style={{ fontFamily: font.displayItalic, fontSize: 19, color: color.gofun }}>{name}</T>
       </View>
       {detail.luckKingAmount ? (
-        <T style={{ fontFamily: font.display, fontSize: 24, color: color.gofun, fontVariant: ['tabular-nums'] }}>
+        <T style={{ fontFamily: font.numerals, fontSize: 24, color: color.gofun, fontVariant: ['tabular-nums'] }}>
           {formatAmount(detail.luckKingAmount, detail.token.decimals)}
         </T>
       ) : null}
@@ -243,7 +243,7 @@ function GrabRow({ g, detail, mine, open, onToggle }: { g: GrabView; detail: Pac
             {g.at ? ` · ${clockTime(g.at)}` : ''} · device {shortAddress(g.deviceKey, 3)}
           </T>
         </View>
-        <T style={{ fontFamily: font.display, fontSize: 22, color: g.amount ? color.kuro950 : color.paperInk3, fontVariant: ['tabular-nums'] }}>
+        <T style={{ fontFamily: font.numerals, fontSize: 22, color: g.amount ? color.kuro950 : color.paperInk3, fontVariant: ['tabular-nums'] }}>
           {g.amount ? formatAmount(g.amount, detail.token.decimals) : '···'}
         </T>
       </View>

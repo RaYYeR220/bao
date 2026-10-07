@@ -182,7 +182,7 @@ function Invite({ c }: { c: CircleDetail }) {
         accessibilityLabel={`Invite code ${c.inviteCode}, copy`}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
       >
-        <T style={{ fontFamily: font.display, fontSize: 34, letterSpacing: 4, color: color.kuro950 }}>{c.inviteCode}</T>
+        <T style={{ fontFamily: font.numerals, fontSize: 32, letterSpacing: 5, color: color.kuro950 }}>{c.inviteCode}</T>
         <Icon name={copied ? 'check' : 'copy'} size={18} tone={copied ? color.jade500 : color.kin600} />
       </Pressable>
       <QRCode value={inviteLink(c.inviteCode)} size={150} color={color.kuro950} backgroundColor="transparent" />

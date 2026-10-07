@@ -67,8 +67,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(33,24,25,0.7)',
     minHeight: 52,
   },
-  cd: { fontFamily: font.display, fontSize: 18, lineHeight: 22, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
+  cd: { fontFamily: font.numerals, fontSize: 18, lineHeight: 22, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
   sep: { width: 1, alignSelf: 'stretch', backgroundColor: color.kuro600 },
-  amt: { fontFamily: font.display, fontSize: 18, lineHeight: 22, color: color.gofun },
+  amt: { fontFamily: font.numerals, fontSize: 18, lineHeight: 22, color: color.gofun },
   sym: { fontFamily: font.caps, fontSize: 10, letterSpacing: 1.6, color: color.kin300 },
 })

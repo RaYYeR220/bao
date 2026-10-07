@@ -449,7 +449,7 @@ function Stepper({ value, onChange, min, max }: { value: number; onChange: (n: n
       <Pressable onPress={() => set(value - 1)} onLongPress={() => set(value - 10)} style={styles.stepBtn} accessibilityLabel="Fewer shares" hitSlop={6}>
         <Icon name="minus" size={18} />
       </Pressable>
-      <T style={{ fontFamily: font.display, fontSize: 28, color: color.gofun, minWidth: 54, textAlign: 'center', fontVariant: ['tabular-nums'] }}>{value}</T>
+      <T style={{ fontFamily: font.numerals, fontSize: 28, color: color.gofun, minWidth: 54, textAlign: 'center', fontVariant: ['tabular-nums'] }}>{value}</T>
       <Pressable onPress={() => set(value + 1)} onLongPress={() => set(value + 10)} style={styles.stepBtn} accessibilityLabel="More shares" hitSlop={6}>
         <Icon name="plus" size={18} />
       </Pressable>
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   stepBar: { height: 1.5, borderRadius: 1 },
   chain: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: space[3] },
   amount: {
-    fontFamily: font.display,
+    fontFamily: font.numerals,
     fontSize: 72,
     color: color.gofun,
     minWidth: 60,

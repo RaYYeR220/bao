@@ -218,7 +218,7 @@ function Balance({ label, value }: { label: string; value: string | null }) {
       {value === null ? (
         <Skeleton width={80} height={30} />
       ) : (
-        <T style={{ fontFamily: font.display, fontSize: 32, lineHeight: 38, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] }}>
+        <T style={{ fontFamily: font.numerals, fontSize: 32, lineHeight: 38, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] }}>
           {value}
         </T>
       )}

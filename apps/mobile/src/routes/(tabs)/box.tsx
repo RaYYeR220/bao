@@ -139,7 +139,7 @@ function Stat({ label, value, sub, cjk }: { label: string; value: string; sub: s
   return (
     <View style={{ flex: 1, gap: 2 }} accessible accessibilityLabel={`${label}: ${value}`}>
       <T variant="caps">{label}</T>
-      <T style={{ fontFamily: font.display, fontSize: 26, lineHeight: 32, color: color.gofun, fontVariant: ['tabular-nums'] }} numberOfLines={1} adjustsFontSizeToFit>
+      <T style={{ fontFamily: font.numerals, fontSize: 26, lineHeight: 32, color: color.gofun, fontVariant: ['tabular-nums'] }} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </T>
       <T style={{ fontFamily: cjk ? font.cjk : font.textNarrow, fontSize: cjk ? 12 : 12, color: cjk ? color.kin400 : color.gofun44 }}>{sub}</T>
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     borderColor: color.kuro600,
     minHeight: 72,
   },
-  amt: { fontFamily: font.display, fontSize: 24, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
+  amt: { fontFamily: font.numerals, fontSize: 24, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
   mini: { width: 30, height: 48, borderRadius: 3, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,205,195,0.2)' },
   miniFlap: { position: 'absolute', left: 0, right: 0, top: 0, height: 17, borderBottomLeftRadius: 15, borderBottomRightRadius: 15, borderBottomWidth: 0.8, borderColor: color.kin400 },
   miniSeal: { position: 'absolute', left: 10, top: 13, width: 10, height: 10, borderRadius: 5, backgroundColor: color.shu800, borderWidth: 0.8, borderColor: color.kin300 },

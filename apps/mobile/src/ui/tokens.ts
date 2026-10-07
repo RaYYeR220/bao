@@ -69,6 +69,8 @@ export const foilPositions = [0, 0.38, 0.5, 0.62, 1]
 
 export const font = {
   display: 'BodoniModa-Medium',
+  /** Optical size 28: sturdier hairlines, so amounts (a 4 is mostly hairline) stay legible. */
+  numerals: 'BodoniModa28-Medium',
   displayRegular: 'BodoniModa-Regular',
   displayItalic: 'BodoniModa-MediumItalic',
   text: 'InstrumentSans-Regular',
@@ -82,6 +84,7 @@ export const font = {
 
 export const fontAssets = {
   [font.display]: require('../../assets/fonts/BodoniModa-Medium.ttf'),
+  [font.numerals]: require('../../assets/fonts/BodoniModa28-Medium.ttf'),
   [font.displayRegular]: require('../../assets/fonts/BodoniModa-Regular.ttf'),
   [font.displayItalic]: require('../../assets/fonts/BodoniModa-MediumItalic.ttf'),
   [font.text]: require('../../assets/fonts/InstrumentSans-Regular.ttf'),

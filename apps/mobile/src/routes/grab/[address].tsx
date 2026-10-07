@@ -343,7 +343,7 @@ function PocketFace({
         {kicker}
       </T>
       {startsAt ? (
-        <Countdown to={startsAt} style={{ fontFamily: font.display, fontSize: 40 * s, lineHeight: 46 * s, color: color.gofun, marginTop: 4 }} />
+        <Countdown to={startsAt} style={{ fontFamily: font.numerals, fontSize: 40 * s, lineHeight: 46 * s, color: color.gofun, marginTop: 4 }} />
       ) : (
         <T
           style={{ fontFamily: font.displayItalic, fontSize: 30 * s, lineHeight: 38 * s, color: muted ? '#C9C1BC' : color.gofun, marginTop: 6 }}

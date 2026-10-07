@@ -56,7 +56,7 @@ export function PacketEnvelope({
       <View style={[styles.face, { top: (212 / 230) * width }]} pointerEvents="none">
         <T
           style={{
-            fontFamily: font.display,
+            fontFamily: font.numerals,
             fontSize: amountSize,
             lineHeight: amountSize * 1.12,
             letterSpacing: -1,
