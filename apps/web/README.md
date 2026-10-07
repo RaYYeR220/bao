@@ -124,6 +124,14 @@ until the grab is indexed as paid, and checks the feed.
   reward), and closes lapsed Luck-King crowns. An unpaid win on an expired packet keeps being paid
   for an hour before a close may forfeit it. Each step is isolated, the tick stops starting new
   transactions after 40 s, and the result is returned as JSON.
+- Pushes: "packet dropped" (circle members, or every subscriber for an open packet), "a rain is
+  starting", and to the people involved "your share arrived", "you are the Luck King", "your packet
+  was emptied" and "your packet closed · N tSKR returned". The last one goes to the sender when a
+  close returned tokens (the packet expired with shares left); the amount is read from the
+  `PacketClosed` event by the indexer, so it is sent whoever closed the packet. A packet that
+  emptied returns nothing and sends nothing, and neither does a house rain. Each push is sent once
+  per event (`packets.*_push_at` flags and `push_receipts` keys such as `refund:<packet>`), and
+  only for events at most 15 minutes old, so a backfill replays none.
 - House rain (`src/lib/house-rain.ts`, a crank step, off unless `HOUSE_RAIN_ENABLED`): when fewer
   than `HOUSE_RAIN_MIN_LIVE` open packets are live or scheduled with shares left, the faucet key
   drops one open, Seeker-only, Lucky tSKR packet for 24 h ("Bao house rain"), minting the tSKR it

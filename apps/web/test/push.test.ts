@@ -1,3 +1,4 @@
+import { createKeyPairSignerFromPrivateKeyBytes, getAddressEncoder } from '@solana/kit';
 import { exportPKCS8, generateKeyPair, jwtVerify, importSPKI, exportSPKI } from 'jose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Store } from '@/lib/db';
@@ -11,10 +12,13 @@ import {
   pushPacketDropped,
   pushPacketEmptied,
   pushPaidOut,
+  pushRefundReturned,
   setPushTransport,
   type PushMessage,
   type PushTransport,
 } from '@/lib/push';
+import { resetEnv } from '@/lib/env';
+import { resetSigners } from '@/lib/keys';
 import { A, freshStore, mirror, wipe } from './helpers';
 
 let store: Store;
@@ -24,6 +28,14 @@ beforeAll(async () => {
 afterAll(() => store.sql.close());
 beforeEach(() => wipe(store));
 afterEach(() => setPushTransport(undefined));
+
+/** A deterministic keypair (seed 1..32) in the JSON byte-array form FAUCET_KEYPAIR takes. */
+async function testKeypair() {
+  const seed = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
+  const signer = await createKeyPairSignerFromPrivateKeyBytes(seed);
+  const secret = [...seed, ...getAddressEncoder().encode(signer.address)];
+  return { address: signer.address as string, secret: JSON.stringify(secret) };
+}
 
 function fakeTransport(unregistered: string[] = []) {
   const sent: { token: string; message: PushMessage }[] = [];
@@ -106,6 +118,80 @@ describe('fan-out', () => {
     ]);
   });
 
+  it('tells the sender what a closed packet returned, once, however often the close is replayed', async () => {
+    const { t, sent } = fakeTransport();
+    setPushTransport(t);
+    await store.registerPushToken(A.alice, 'tok-alice');
+    await store.registerPushToken(A.bob, 'tok-bob');
+    await store.upsertPacketMirror(mirror({ address: A.p1, reserved: 2, resolved: 2 }), 'expired');
+    await store.upsertPacketMirror(mirror({ address: A.p2, totalShares: 1 }), 'expired');
+    const p1 = (await store.getPacket(A.p1))!;
+    // webhook, poller, webhook retry
+    for (let i = 0; i < 3; i++) await pushRefundReturned(store, p1, '6500000');
+    await pushRefundReturned(store, (await store.getPacket(A.p2))!, '10000000');
+    expect(sent.map((s) => s.token)).toEqual(['tok-alice', 'tok-alice']);
+    expect(sent[0].message).toEqual({
+      kind: 'refund_returned',
+      title: 'Your packet closed · 6.5 tSKR returned',
+      body: 'Nobody grabbed 3 of its 5 shares before it expired.',
+      data: { packet: A.p1, url: `bao://packet/${A.p1}` },
+    });
+    expect(sent[1].message).toMatchObject({
+      title: 'Your packet closed · 10 tSKR returned',
+      body: 'Nobody grabbed it before it expired.',
+    });
+  });
+
+  it('counts grabs the packet row has not caught up with, and forfeited shares that came back', async () => {
+    const { t, sent } = fakeTransport();
+    setPushTransport(t);
+    await store.registerPushToken(A.alice, 'tok-alice');
+    // the row was mirrored before the last grab landed
+    await store.upsertPacketMirror(mirror({ address: A.p1, totalShares: 3, reserved: 1, resolved: 1 }), 'expired');
+    await store.applyGrab({ packet: A.p1, deviceKey: A.bob, claimer: A.bob, index: 0, status: 'paid', amount: '1', at: 1_004 });
+    await store.applyGrab({ packet: A.p1, deviceKey: A.carol, claimer: A.carol, index: 1, status: 'paid', amount: '1', at: 1_009 });
+    await pushRefundReturned(store, (await store.getPacket(A.p1))!, '4000000');
+    expect(sent[0].message.body).toBe('Nobody grabbed 1 of its 3 shares before it expired.');
+    // every share was grabbed, one was never paid out and came back with the close
+    await store.upsertPacketMirror(mirror({ address: A.p2, totalShares: 2, reserved: 2, resolved: 2 }), 'emptied');
+    await pushRefundReturned(store, (await store.getPacket(A.p2))!, '2000000');
+    expect(sent[1].message).toMatchObject({
+      title: 'Your packet closed · 2 tSKR returned',
+      body: 'What was left in the packet is back in your wallet.',
+    });
+  });
+
+  it('stays quiet when nothing came back, and for the house sender', async () => {
+    const { t, sent } = fakeTransport();
+    setPushTransport(t);
+    const house = await testKeypair();
+    for (const a of [A.alice, A.bob, house.address]) await store.registerPushToken(a, `tok-${a}`);
+    await store.upsertPacketMirror(mirror({ address: A.p1 }), 'emptied');
+    await store.upsertPacketMirror(mirror({ address: A.p2, sender: A.bob }), 'expired');
+    await store.upsertPacketMirror(mirror({ address: A.p3, sender: house.address }), 'expired');
+    // a packet that emptied returns nothing
+    await pushRefundReturned(store, (await store.getPacket(A.p1))!, '0');
+    // house rain labels its sender (house-rain.ts)
+    await store.setLabel(A.bob, 'Bao');
+    await pushRefundReturned(store, (await store.getPacket(A.p2))!, '88000000');
+    // the faucet key is the house even before its first drop labelled it
+    process.env.FAUCET_KEYPAIR = house.secret;
+    resetEnv();
+    resetSigners();
+    try {
+      await pushRefundReturned(store, (await store.getPacket(A.p3))!, '88000000');
+    } finally {
+      delete process.env.FAUCET_KEYPAIR;
+      resetEnv();
+      resetSigners();
+    }
+    expect(sent).toEqual([]);
+    // none of them spent the packet's one receipt
+    expect(await store.claimPushReceipt(`refund:${A.p1}`)).toBe(true);
+    expect(await store.claimPushReceipt(`refund:${A.p2}`)).toBe(true);
+    expect(await store.claimPushReceipt(`refund:${A.p3}`)).toBe(true);
+  });
+
   it('skips quietly without a transport', async () => {
     setPushTransport(null);
     await store.upsertPacketMirror(mirror({ address: A.p1 }), 'live');
@@ -122,7 +208,7 @@ describe('copy', () => {
 
   it('maps every kind to an android channel', () => {
     const p = { ...mirror({ address: A.p1 }), message: null } as never;
-    for (const m of [messages.rainStarting(p), messages.luckKing(p, '1'), messages.paidOut(p, '1', null)]) {
+    for (const m of [messages.rainStarting(p), messages.luckKing(p, '1'), messages.paidOut(p, '1', null), messages.refundReturned(p, '1', 0)]) {
       expect(CHANNELS[m.kind]).toBeTruthy();
     }
   });
@@ -137,6 +223,16 @@ describe('fcm message', () => {
       notification: { title: 'You are the Luck King', body: 'Biggest grab: 4 tSKR. By custom, you send the next one.' },
       data: { kind: 'luck_king', packet: A.p1, url: `bao://packet/${A.p1}`, tag: `luck_king:${A.p1}` },
       android: { priority: 'HIGH', notification: { channel_id: 'results', tag: `luck_king:${A.p1}` } },
+    });
+    // a refund is one of the sender's results: same channel, its own tag
+    expect(fcmMessage('device-token', messages.refundReturned(p, '6500000', 2))).toEqual({
+      token: 'device-token',
+      notification: {
+        title: 'Your packet closed · 6.5 tSKR returned',
+        body: 'Nobody grabbed 3 of its 5 shares before it expired.',
+      },
+      data: { kind: 'refund_returned', packet: A.p1, url: `bao://packet/${A.p1}`, tag: `refund_returned:${A.p1}` },
+      android: { priority: 'HIGH', notification: { channel_id: 'results', tag: `refund_returned:${A.p1}` } },
     });
     // the app registers exactly these channels (apps/mobile push.ts)
     expect(new Set(Object.values(CHANNELS))).toEqual(new Set(['packets', 'rains', 'results']));

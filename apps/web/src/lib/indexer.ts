@@ -10,7 +10,7 @@ import { eventsFromLogs, fetchPacketAccount, mirrorFromAccount, mirrorFromEvent,
 import type { Store } from './db';
 import { env } from './env';
 import { log, errorMessage } from './log';
-import { pushLuckKing, pushPacketEmptied, pushPaidOut } from './push';
+import { pushLuckKing, pushPacketEmptied, pushPaidOut, pushRefundReturned } from './push';
 import type { SolanaRpc } from './rpc';
 import { tokenMeta } from './tokens';
 import type { PacketRecord } from './types';
@@ -144,6 +144,7 @@ async function notifyFor(deps: IndexerDeps, event: BaoEvent, packet: PacketRecor
     if (event.name === 'PaidOut') await pushPaidOut(deps.store, packet, event.data.claimer, event.data.amount.toString());
     if (event.name === 'LuckKingCrowned') await pushLuckKing(deps.store, packet, event.data.king, event.data.amount.toString());
     if (event.name === 'Grabbed' && packet.resolved >= packet.totalShares) await pushPacketEmptied(deps.store, packet);
+    if (event.name === 'PacketClosed') await pushRefundReturned(deps.store, packet, event.data.refunded.toString());
   } catch (e) {
     log.warn('indexer.push_failed', { event: event.name, error: errorMessage(e) });
   }

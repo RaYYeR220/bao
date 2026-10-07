@@ -235,6 +235,12 @@ export class Store {
     return new Map(rows.map((r) => [r.address, r.name]));
   }
 
+  /** The server's label for one of its own wallets; null for everyone else. */
+  async label(address: string): Promise<string | null> {
+    const [r] = await this.sql.query('select label from users where address = $1', [address]);
+    return strOrNull(r?.label);
+  }
+
   async setLabel(address: string, label: string | null) {
     await this.sql.query('insert into users (address, label) values ($1, $2) on conflict (address) do update set label = $2', [
       address,

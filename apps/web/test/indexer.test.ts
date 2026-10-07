@@ -5,7 +5,7 @@ import { setPushTransport, type PushMessage } from '@/lib/push';
 import closeFx from './fixtures/close-txs.json';
 import smoke from './fixtures/smoke-txs.json';
 import { fakeRpc } from './fake-rpc';
-import { freshStore, mirror, wipe } from './helpers';
+import { A, freshStore, mirror, packetClosedLogs, wipe } from './helpers';
 
 const PACKET = 'ASRrZfbPcSoDjjJwuDGhghQyin8meXeb4HwTuEca8rXV';
 type Fx = { signature: string; slot: number; blockTime: number; err: unknown; logMessages: string[] };
@@ -147,5 +147,61 @@ describe('crowning and closing (real devnet crank pass)', () => {
     const packet = await store.getPacket(c.packet);
     expect(packet).toMatchObject({ status: 'closed', crowned: true, luckKing: grab.claimer, refunded: '0' });
     expect(packet?.closeSignature).toBe(c.close_packet.signature);
+  });
+});
+
+describe('a close that returns tokens', () => {
+  const closeTx = (packet: string, refunded: bigint, blockTime: number): TxInput => ({
+    signature: `close-${packet}`,
+    slot: 9,
+    blockTime,
+    err: null,
+    logs: packetClosedLogs(packet, refunded),
+  });
+
+  it('tells the sender what came back, once across replays', async () => {
+    const pushes: { token: string; message: PushMessage }[] = [];
+    setPushTransport({ send: async (token, message) => (pushes.push({ token, message }), 'ok') });
+    await store.registerPushToken(A.alice, 'tok-alice');
+    await store.registerPushToken(A.bob, 'tok-bob');
+    await store.upsertPacketMirror(mirror({ address: A.p1, reserved: 2, resolved: 2, expiresAt: 5_000 }), 'expired');
+    const deps = { store, rpc: rpcWithoutAccounts(), now: () => 6_030 };
+    // webhook, poller, webhook retry
+    for (let round = 0; round < 3; round++) {
+      expect((await indexTransaction(deps, closeTx(A.p1, 6_500_000n, 6_000))).events).toEqual(['PacketClosed']);
+    }
+    expect(await store.getPacket(A.p1)).toMatchObject({ status: 'closed', refunded: '6500000' });
+    expect(pushes).toEqual([
+      {
+        token: 'tok-alice',
+        message: {
+          kind: 'refund_returned',
+          title: 'Your packet closed · 6.5 tSKR returned',
+          body: 'Nobody grabbed 3 of its 5 shares before it expired.',
+          data: { packet: A.p1, url: `bao://packet/${A.p1}` },
+        },
+      },
+    ]);
+  });
+
+  it('stays quiet when the packet emptied, on a backfill, and for the house', async () => {
+    const pushes: PushMessage[] = [];
+    setPushTransport({ send: async (_t, m) => (pushes.push(m), 'ok') });
+    await store.registerPushToken(A.alice, 'tok-alice');
+    await store.registerPushToken(A.bob, 'tok-bob');
+    const rpc = rpcWithoutAccounts();
+    // every share was grabbed: the close returns nothing
+    await store.upsertPacketMirror(mirror({ address: A.p1, reserved: 5, resolved: 5, expiresAt: 5_000 }), 'emptied');
+    await indexTransaction({ store, rpc, now: () => 6_030 }, closeTx(A.p1, 0n, 6_000));
+    // a close indexed hours later is mirrored without a push
+    await store.upsertPacketMirror(mirror({ address: A.p2, expiresAt: 5_000 }), 'expired');
+    await indexTransaction({ store, rpc, now: () => 6_000 + 3_600 }, closeTx(A.p2, 10_000_000n, 6_000));
+    // a house rain that expired refunds the faucet, which house-rain.ts labelled
+    await store.setLabel(A.bob, 'Bao');
+    await store.upsertPacketMirror(mirror({ address: A.p3, sender: A.bob, expiresAt: 5_000 }), 'expired');
+    await indexTransaction({ store, rpc, now: () => 6_030 }, closeTx(A.p3, 88_000_000n, 6_000));
+    expect(pushes).toEqual([]);
+    const rows = await store.packetsByAddress([A.p1, A.p2, A.p3]);
+    expect(rows.map((p) => p.status)).toEqual(['closed', 'closed', 'closed']);
   });
 });

@@ -6,12 +6,19 @@ import { importPKCS8, SignJWT } from 'jose';
 import type { PushKind } from '@bao/sdk';
 import type { Store } from './db';
 import { env } from './env';
+import { loadSigner } from './keys';
 import { log } from './log';
 import { formatUi, tokenMeta } from './tokens';
 import type { PacketRecord } from './types';
 
+/**
+ * Kinds this server sends. `refund_returned` is newer than the sdk's `PushKind`; the app opens
+ * any push by its `data.packet`, so it needs no change to show one.
+ */
+export type ServerPushKind = PushKind | 'refund_returned';
+
 export interface PushMessage {
-  kind: PushKind;
+  kind: ServerPushKind;
   title: string;
   body: string;
   data: Record<string, string>;
@@ -26,12 +33,13 @@ export interface PushTransport {
 }
 
 /** Android notification channels the app registers (ids must match). */
-export const CHANNELS: Record<PushKind, string> = {
+export const CHANNELS: Record<ServerPushKind, string> = {
   packet_dropped: 'packets',
   rain_starting: 'rains',
   packet_emptied: 'results',
   luck_king: 'results',
   paid_out: 'results',
+  refund_returned: 'results',
 };
 
 interface ServiceAccount {
@@ -219,6 +227,21 @@ export const messages = {
       data: linkData(p),
     };
   },
+  /** `grabbed`: shares that found a grabber before the close. */
+  refundReturned(p: PacketRecord, refundedBase: string, grabbed: number): PushMessage {
+    const left = p.totalShares - grabbed;
+    return {
+      kind: 'refund_returned',
+      title: `Your packet closed · ${amount(p, refundedBase)} returned`,
+      body:
+        left <= 0
+          ? 'What was left in the packet is back in your wallet.'
+          : p.totalShares === 1
+            ? 'Nobody grabbed it before it expired.'
+            : `Nobody grabbed ${left} of its ${p.totalShares} shares before it expired.`,
+      data: linkData(p),
+    };
+  },
 };
 
 // ---------- fan-out ----------
@@ -258,4 +281,24 @@ export async function pushPaidOut(store: Store, p: PacketRecord, claimer: string
   if (!(await store.claimPushReceipt(`paid_out:${p.address}:${claimer}`))) return;
   const names = await store.skrNames([p.sender]);
   await deliver(store, await store.pushTokensFor([claimer]), messages.paidOut(p, amountBase, names.get(p.sender) ?? null));
+}
+
+/** The house sender: a wallet the server labelled (house-rain.ts labels the faucet "Bao"), or the faucet key itself. */
+async function isHouse(store: Store, address: string): Promise<boolean> {
+  if ((await store.label(address)) !== null) return true;
+  return (await loadSigner('faucet'))?.address === address;
+}
+
+/**
+ * Once per packet, to the sender, when a close returned tokens (it expired with shares left).
+ * A packet that emptied returns nothing and stays quiet, and so does a house rain: its refund
+ * goes back to the faucet, which nobody reads pushes for.
+ */
+export async function pushRefundReturned(store: Store, p: PacketRecord, refundedBase: string) {
+  if (BigInt(refundedBase) <= 0n) return;
+  if (await isHouse(store, p.sender)) return;
+  if (!(await store.claimPushReceipt(`refund:${p.address}`))) return;
+  // the mirrored counter can lag the last grab; the grab rows cannot overcount (cancelled ones are deleted)
+  const grabbed = Math.max(p.resolved, (await store.grabTimes(p.address)).count);
+  await deliver(store, await store.pushTokensFor([p.sender]), messages.refundReturned(p, refundedBase, grabbed));
 }

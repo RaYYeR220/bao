@@ -3,7 +3,8 @@
  * randomness never came, winds down finished or expired packets (close_claims in batches,
  * then close_packet), sends rain-start pushes, tops up the public feed with a house rain when
  * enabled, and runs the indexer. Every step is isolated and idempotent; the crank key signs
- * only permissionless instructions (a house rain is signed by the faucet key).
+ * only permissionless instructions (a house rain is signed by the faucet key). What a close
+ * returned to the sender is in its PacketClosed event, so the indexer step sends that push.
  */
 import { AccountRole, getBase58Decoder, type Address, type Instruction, type KeyPairSigner } from '@solana/kit';
 import { findAssociatedTokenPda } from '@solana-program/token-2022';
@@ -368,7 +369,7 @@ export async function runCrank(deps: CrankDeps): Promise<CrankReport> {
 
   const indexer = deps.skipIndexer
     ? { ok: true, ms: 0, result: { seen: 0, processed: 0, events: 0, cursor: null } }
-    : await step('indexer', () => pollProgram({ store: deps.store, rpc: deps.rpc }));
+    : await step('indexer', () => pollProgram({ store: deps.store, rpc: deps.rpc, now: deps.now }));
 
   const steps = { snapshot: snapshotStep, reconcile, payouts, cancels, closes, crowns, housekeeping, rains, houseRain, indexer };
   const s = snapshot as ChainSnapshot | null;

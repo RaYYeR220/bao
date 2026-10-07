@@ -1,3 +1,6 @@
+import { address, getAddressEncoder, getOptionEncoder, getStructEncoder, getU64Encoder, none } from '@solana/kit';
+import { BAO_PROGRAM_ADDRESS } from '@bao/sdk';
+import { eventDiscriminator } from '@/lib/chain';
 import { connectPglite, Store } from '@/lib/db';
 import { migrate } from '@/lib/migrate';
 import type { PacketMirror } from '@/lib/types';
@@ -65,4 +68,24 @@ export function mirror(over: Partial<PacketMirror> & { address: string }): Packe
     chainDepth: 0,
     ...over,
   };
+}
+
+const packetClosed = getStructEncoder([
+  ['packet', getAddressEncoder()],
+  ['refunded', getU64Encoder()],
+  ['luckKing', getOptionEncoder(getAddressEncoder())],
+]);
+
+/** Logs of a `close_packet` that returned `refunded` base units (same shape as fixtures/close-txs.json). */
+export function packetClosedLogs(packet: string, refunded: bigint): string[] {
+  const event = Buffer.concat([
+    eventDiscriminator('PacketClosed'),
+    Buffer.from(packetClosed.encode({ packet: address(packet), refunded, luckKing: none() })),
+  ]);
+  return [
+    `Program ${BAO_PROGRAM_ADDRESS} invoke [1]`,
+    'Program log: Instruction: ClosePacket',
+    `Program data: ${event.toString('base64')}`,
+    `Program ${BAO_PROGRAM_ADDRESS} success`,
+  ];
 }

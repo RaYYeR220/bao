@@ -11,9 +11,10 @@ import {
 } from '@bao/sdk';
 import { CLAIM_SIZE, PACKET_SIZE, planCrank, runCrank, type ChainSnapshot } from '@/lib/crank';
 import type { Store } from '@/lib/db';
-import { setPushTransport } from '@/lib/push';
+import { setPushTransport, type PushMessage } from '@/lib/push';
+import closeFx from './fixtures/close-txs.json';
 import { base64Account, fakeRpc } from './fake-rpc';
-import { A, freshStore, mirror, wipe } from './helpers';
+import { A, freshStore, mirror, packetClosedLogs, wipe } from './helpers';
 
 const TOKEN = address('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const NOW = 1_000_000;
@@ -258,6 +259,48 @@ describe('runCrank', () => {
     const closeClaims = sent[0][0];
     expect(Buffer.from(closeClaims.data!.subarray(0, 8))).toEqual(Buffer.from(CLOSE_CLAIMS_DISCRIMINATOR));
     expect(closeClaims.accounts!.at(-1)!.address).toBe(A.p2 as Address);
+  });
+
+  it('closes an expired packet and tells its sender what came back', async () => {
+    const pushes: { token: string; message: PushMessage }[] = [];
+    setPushTransport({ send: async (token, message) => (pushes.push({ token, message }), 'ok') });
+    await store.registerPushToken(A.alice, 'tok-alice');
+    await store.registerPushToken(A.bob, 'tok-bob');
+    await store.upsertPacketMirror(
+      mirror({ address: A.p1, totalShares: 2, reserved: 1, resolved: 1, remainingAmount: '6000000', createdAt: NOW - 4_000, startsAt: NOW - 4_000, expiresAt: NOW - 5 }),
+      'expired',
+    );
+    const expired = packet({ totalAmount: 10_000_000n, remainingAmount: 6_000_000n, reserved: 1, resolved: 1, openClaims: 1, expiresAt: BigInt(NOW - 5) });
+    const chain = accountsRpc([[A.p1, expired]], [[A.p2, claim(A.p1, A.bob, ClaimStatus.Paid, { amount: 4_000_000n })]]);
+    const sent: Instruction[][] = [];
+    const send = (async (_r: unknown, ixs: Instruction[]) => (sent.push(ixs), `sig${sent.length}`)) as never;
+    // the indexer step finds the close this tick just sent, with its PacketClosed event
+    const closeSignature = (closeFx as unknown as { close_packet: { signature: string } }).close_packet.signature;
+    const rpc = fakeRpc({
+      getSlot: () => chain.getSlot().send(),
+      getProgramAccounts: (...args) => chain.getProgramAccounts(...(args as [never, never])).send(),
+      getAccountInfo: () => ({ value: null }),
+      getSignaturesForAddress: () => (sent.length === 2 ? [{ signature: closeSignature, slot: SLOT, err: null }] : []),
+      getTransaction: () => ({ slot: SLOT, blockTime: BigInt(NOW - 2), meta: { err: null, logMessages: packetClosedLogs(A.p1, 6_000_000n) } }),
+    });
+
+    const report = await runCrank({ store, rpc, crank: { address: address(A.dave) } as never, send, now: () => NOW });
+    expect(report.ok).toBe(true);
+    expect(report.steps.closes.result?.done).toEqual([{ target: A.p1, signature: 'sig2' }]);
+    expect(report.steps.indexer.result).toMatchObject({ processed: 1, events: 1 });
+    expect(await store.getPacket(A.p1)).toMatchObject({ status: 'closed', refunded: '6000000', closeSignature });
+    expect(pushes).toEqual([
+      {
+        token: 'tok-alice',
+        message: {
+          kind: 'refund_returned',
+          title: 'Your packet closed · 6 tSKR returned',
+          body: 'Nobody grabbed 1 of its 2 shares before it expired.',
+          data: { packet: A.p1, url: `bao://packet/${A.p1}` },
+        },
+      },
+    ]);
+    setPushTransport(undefined);
   });
 
   it('skips on-chain steps without a crank key', async () => {
