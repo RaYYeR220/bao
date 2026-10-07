@@ -384,7 +384,7 @@ function Carousel({
           centre.beginGesture()
         }}
         // a fling begins at once where there is one; if none does, the gesture ends here
-        onScrollEndDrag={() => endGestureIn(250)}
+        onScrollEndDrag={() => endGestureIn(400)}
         onMomentumScrollBegin={() => endGestureIn(3000)}
         onMomentumScrollEnd={endGesture}
         contentContainerStyle={{ paddingHorizontal: side, paddingTop: 18, paddingBottom: 26 }}
