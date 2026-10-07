@@ -57,7 +57,7 @@ export function BaoWidget({ data }: { data: (WidgetView & { source?: string }) |
         paddingVertical: 12,
       }}
     >
-      <SvgWidget svg={envelopeSvg(waiting ? 'shu' : 'ash')} style={{ height: 92, width: 54 }} />
+      <SvgWidget svg={envelopeSvg(waiting ? 'shu' : 'ash')} style={{ height: 124, width: 72 }} />
       <FlexWidget style={{ flex: 1, marginLeft: 16, flexDirection: 'column', justifyContent: 'center' }}>
         <TextWidget
           text="BAO · 紅包"
@@ -65,12 +65,12 @@ export function BaoWidget({ data }: { data: (WidgetView & { source?: string }) |
         />
         <TextWidget
           text={waiting ? `${waiting} ${waiting === 1 ? 'packet' : 'packets'} waiting` : 'No packets right now'}
-          style={{ fontSize: 22, color: '#F4EFE6', marginTop: 4, fontFamily: 'BodoniModa-Medium' }}
+          style={{ fontSize: 26, color: '#F4EFE6', marginTop: 6, fontFamily: 'BodoniModa-Medium' }}
           maxLines={1}
         />
         <TextWidget
           text={line}
-          style={{ fontSize: 13, color: '#A29D97', marginTop: 4, fontFamily: 'InstrumentSans-Regular' }}
+          style={{ fontSize: 14, color: '#A29D97', marginTop: 6, fontFamily: 'InstrumentSans-Regular' }}
           maxLines={1}
         />
       </FlexWidget>
