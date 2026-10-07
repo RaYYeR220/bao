@@ -41,7 +41,9 @@ export function useTiltGleam(base = 0.5): SharedValue<number> {
       const tx = Math.max(-1, Math.min(1, v.x / 9.81))
       const ty = Math.max(-1, Math.min(1, (v.y - 6.5) / 9.81))
       const target = base - tx * 0.32 + ty * 0.18 + (v.d - 0.5) * 0.08
-      gleam.value += (target - gleam.value) * 0.18
+      const next = gleam.value + (target - gleam.value) * 0.18
+      // skip sub-pixel moves: every write repaints each lacquer canvas on screen
+      if (Math.abs(next - gleam.value) > 0.0015) gleam.value = next
     },
     [reduced, base],
   )

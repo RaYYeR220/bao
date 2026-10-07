@@ -28,6 +28,8 @@ export interface StageGeometry {
   envW: number
   /** Top of the sealed envelope. */
   sealedTop: number
+  /** How far the sealed envelope sits below its opened position. */
+  lift: number
   /** Final card frame (screen coordinates). */
   card: { left: number; top: number; width: number; height: number }
 }
@@ -42,7 +44,16 @@ export function stageGeometry(screenW: number, screenH: number, headerBottom: nu
   const cardW = screenW - 48
   const cardH = cardW * CARD_RATIO
   const cardTop = headerBottom + 0.58 * (flapH + envH) - 30
-  return { screenW, envW, sealedTop: headerBottom + 6, card: { left: 24, top: cardTop, width: cardW, height: cardH } }
+  // the sealed object sits a little lower, closer to the optical centre; it rises as it opens
+  const envHsealed = (envW * ENV.H) / ENV.W
+  const lift = Math.max(0, Math.min(56, (screenH - headerBottom - 200 - envHsealed) / 2))
+  return {
+    screenW,
+    envW,
+    sealedTop: headerBottom + 6 + lift,
+    lift,
+    card: { left: 24, top: cardTop, width: cardW, height: cardH },
+  }
 }
 
 const halfL = Skia.Path.MakeFromSVGString('M50 19 a31 31 0 0 0 0 62 l4 -14 -6 -9 5 -12 -5 -11 z')!
@@ -91,7 +102,7 @@ export function GrabStage({
   const envH = ENV.H * s
   const flapH = ENV.A * s
   const envLeft = (screenW - envW) / 2
-  const dOpen = ENV.F * s * 0.55
+  const dOpen = ENV.F * s * 0.55 - geo.lift
 
   const crack = useSharedValue(0)
   const flap = useSharedValue(0)
@@ -295,6 +306,7 @@ export function GrabStage({
   const linesL = useAnimatedStyle(() => ({ opacity: lines.value, transform: [{ translateX: -lines.value * 4 }] }))
   const linesR = useAnimatedStyle(() => ({ opacity: lines.value, transform: [{ translateX: lines.value * 4 }] }))
 
+  const opening = mode === 'peek' || mode === 'out' || mode === 'static-out'
   const sc = sealCenter(envW)
   const box = sealSize(envW) * (100 / 62)
 
@@ -304,11 +316,15 @@ export function GrabStage({
         style={[{ position: 'absolute', left: envLeft, top: sealedTop, width: envW, height: envH }, envStyle]}
       >
         <View style={[styles.shadow, { width: envW, height: envH }]} />
-        <Lacquer width={envW} tone={tone} part={4} gleam={gleam} style={StyleSheet.absoluteFill} art={false} />
-        {/* flap lining: behind the card once the lid is past vertical */}
-        <Animated.View style={[styles.flap, { width: envW, height: flapH }, flapBackStyle]}>
-          <Lacquer width={envW} tone={tone} part={3} gleam={gleam} heightUnits={ENV.A} />
-        </Animated.View>
+        {/* interior and lid lining only exist once the seal breaks: no hidden shaders while sealed */}
+        {opening ? (
+          <>
+            <Lacquer width={envW} tone={tone} part={4} gleam={gleam} style={StyleSheet.absoluteFill} art={false} />
+            <Animated.View style={[styles.flap, { width: envW, height: flapH }, flapBackStyle]}>
+              <Lacquer width={envW} tone={tone} part={3} gleam={gleam} heightUnits={ENV.A} />
+            </Animated.View>
+          </>
+        ) : null}
         <Animated.View
           style={[styles.cardBox, { width: cf.width, height: cf.height }, inCardStyle]}
           pointerEvents="none"
