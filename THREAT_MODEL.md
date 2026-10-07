@@ -87,3 +87,10 @@ forking Anchor or the MagicBlock SDK, and none is reachable from the program's o
 | `libsecp256k1 0.6.0` | RUSTSEC-2025-0161, unmaintained | `solana-program 2.3` (MagicBlock SDK) | compiled for off-chain targets only |
 | `rand 0.7.3` | RUSTSEC-2026-0097, unsound with a custom logger | `solana-program 2.3` (MagicBlock SDK) | off-chain only; on-chain randomness comes from the VRF proof |
 | `ansi_term`, `derivative`, `paste` | unmaintained | test and build tooling | not in the program's dependency graph |
+| `braces 3.0.3` (npm) | GHSA-vfj7-8cjw-p6xm | Metro's file map | build time only, never shipped in the app; no patched release exists |
+| `node-forge 1.4.0` (npm) | GHSA-86w9-cpqp-85rv | `@expo/cli` | dev-server certificates only; no patched release exists |
+| `decode-uri-component 0.2.2` (npm) | GHSA-vcc3-ghjq-m6fr | expo-router's `query-string` | the fixed release is ESM-only and breaks the router; the app strips query strings from outside links before routing |
+
+Fixed rather than documented: `vitest`, `tinypool` and `@vitest/mocker` (upgraded to vitest 4) and `uuid` under the
+Expo build tooling (overridden to 11.1.1). The pnpm workspace refuses packages younger than a week, transitive
+dependencies from git or tarball URLs, and provenance downgrades.
