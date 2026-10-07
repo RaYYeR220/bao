@@ -102,7 +102,10 @@ export function GrabStage({
   const envH = ENV.H * s
   const flapH = ENV.A * s
   const envLeft = (screenW - envW) / 2
-  const dOpen = ENV.F * s * 0.55 - geo.lift
+  // Opened, the lid stands above the envelope: shrink a little and drop so it clears the header.
+  const kOpen = 0.8
+  const headerBottom = sealedTop - 6 - geo.lift
+  const dOpen = headerBottom + 10 + kOpen * (envH / 2 + 0.985 * ENV.A * s) - (sealedTop + envH / 2)
 
   const crack = useSharedValue(0)
   const flap = useSharedValue(0)
@@ -223,7 +226,7 @@ export function GrabStage({
   }, [mode])
 
   const envStyle = useAnimatedStyle(() => {
-    const sc = interpolate(settle.value, [0, 1], [1, envScaleF])
+    const sc = 1 + (kOpen - 1) * shift.value + (envScaleF - kOpen) * settle.value
     const ty = shift.value * dOpen + settle.value * (envTranslateF - 0)
     return {
       transform: [
@@ -287,7 +290,7 @@ export function GrabStage({
 
   // the card in front: starts exactly where the inside card left off, ends in its final frame
   const startCx = envLeft + envW / 2
-  const startCy = sealedTop + dOpen + outTop + inH / 2
+  const startCy = sealedTop + dOpen + envH / 2 + kOpen * (outTop + inH / 2 - envH / 2)
   const endCx = cf.left + cf.width / 2
   const endCy = cf.top + cf.height / 2
   const frontStyle = useAnimatedStyle(() => {
@@ -297,7 +300,7 @@ export function GrabStage({
       transform: [
         { translateX: (startCx - endCx) * (1 - t) },
         { translateY: (startCy - endCy) * (1 - t) - Math.sin(t * Math.PI) * 18 },
-        { scale: k0 + (1 - k0) * t },
+        { scale: k0 * kOpen + (1 - k0 * kOpen) * t },
         { rotate: `${-1.6 * t}deg` },
       ],
     }
