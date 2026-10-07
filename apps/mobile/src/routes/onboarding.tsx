@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { $onboarded } from '@/features/bao/data-access/prefs'
 import { humanError, isWalletCancel } from '@/features/bao/data-access/send-with-wallet'
-import { ApiUnavailableError, apiErrorMessage } from '@/features/bao/data-access/use-bao-api'
+import { ApiUnavailableError, apiErrorMessage, useSession } from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn, useFaucet } from '@/features/bao/data-access/use-bao-sign-in'
 import { faucetLinks, shortAddress } from '@/features/bao/format'
 import { ShakeLines } from '@/features/bao/ui/shake-lines'
@@ -226,6 +226,7 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
   const wallet = useMobileWallet()
   const signIn = useBaoSignIn()
   const faucet = useFaucet()
+  const session = useSession()
   const [error, setError] = useState<string | null>(null)
   const [offline, setOffline] = useState(false)
   const connected = !!wallet.account
@@ -249,12 +250,14 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
   const getTokens = async () => {
     setError(null)
     try {
+      // connected while the server was unreachable: the faucet still needs a session first
+      if (!session && !(await signIn.mutateAsync()).serverReachable) throw new ApiUnavailableError()
       await faucet.mutateAsync()
       buzz('success')
       play('shimmer')
     } catch (e) {
       if (e instanceof ApiUnavailableError) setOffline(true)
-      else setError(apiErrorMessage(e, 'The faucet did not answer.'))
+      else if (!isWalletCancel(e)) setError(apiErrorMessage(e, 'The faucet did not answer.'))
     }
   }
 
@@ -335,7 +338,7 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
               <FoilButton
                 label="Get test tokens"
                 icon="drop"
-                busy={faucet.isPending}
+                busy={faucet.isPending || signIn.isPending}
                 onPress={() => void getTokens()}
               />
             )}

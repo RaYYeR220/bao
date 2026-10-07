@@ -15,6 +15,7 @@ import { useCallback, useRef, useState } from 'react'
 
 import { useAppCluster } from '@/features/cluster/data-access/cluster-provider'
 
+import { afterWallet } from './app-state'
 import { GENESIS_GROUP } from './bao-config'
 import {
   confirmSignature,
@@ -74,7 +75,7 @@ export function useGrab(packetAddress: string, code?: string) {
     setPhase({ kind: 'preparing' })
     let sent: Signature | null = null
     try {
-      const account = wallet.account ?? (await wallet.connect())
+      const account = wallet.account ?? (await afterWallet(wallet.connect()))
       // MWA signs the compiled message; the builder only needs the signer's address.
       const claimer = createNoopSigner(account.address)
       const packetKey = address(packetAddress)
@@ -191,7 +192,7 @@ export function useGrab(packetAddress: string, code?: string) {
     const claim = phase.claim
     setPhase((p) => (p.kind === 'revealed' ? { ...p, payout: 'collecting', payoutError: null } : p))
     try {
-      const account = wallet.account ?? (await wallet.connect())
+      const account = wallet.account ?? (await afterWallet(wallet.connect()))
       const ix = await buildPayout({
         payer: createNoopSigner(account.address),
         packet: address(packetAddress),

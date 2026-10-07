@@ -2,6 +2,7 @@ import type { UserView } from '@bao/sdk'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
 
+import { afterWallet } from './app-state'
 import { API_URL, APP_HOST, BAO_CHAIN } from './bao-config'
 import { WalletAccountMismatchError } from './send-with-wallet'
 import { saveSession } from './session-store'
@@ -38,7 +39,8 @@ export function useBaoSignIn() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (): Promise<SignInResult> => {
-      const account = wallet.account ?? (await wallet.connect())
+      // each wallet round trip ends before Bao is back in front: wait for that before the next request
+      const account = wallet.account ?? (await afterWallet(wallet.connect()))
       let input
       try {
         input = await baoApi.call('POST /api/auth/nonce', { body: { address: account.address } }, { force: true })
@@ -57,18 +59,23 @@ export function useBaoSignIn() {
       )
         throw new Error('The Bao server sent a sign-in request Bao does not recognise. Try again later.')
       // signIn authorizes and signs in one wallet round trip, for the BAO_CHAIN cluster
-      const output = await wallet.signIn({ ...input, chainId: BAO_CHAIN })
+      const output = await afterWallet(wallet.signIn({ ...input, chainId: BAO_CHAIN }))
       if (output.account.address !== account.address) throw new WalletAccountMismatchError()
-      const { token, user } = await baoApi.call('POST /api/auth/verify', {
-        body: {
-          input,
-          output: {
-            address: output.account.address,
-            signedMessage: walletBase64(output.signedMessage as Uint8Array),
-            signature: walletBase64(output.signature as Uint8Array),
+      // forced: the user just signed, so a stale "server down" mark must not throw the signature away
+      const { token, user } = await baoApi.call(
+        'POST /api/auth/verify',
+        {
+          body: {
+            input,
+            output: {
+              address: output.account.address,
+              signedMessage: walletBase64(output.signedMessage as Uint8Array),
+              signature: walletBase64(output.signature as Uint8Array),
+            },
           },
         },
-      })
+        { force: true },
+      )
       await saveSession({ token, address: user.address })
       await queryClient.invalidateQueries()
       return { address: user.address, user, serverReachable: true }

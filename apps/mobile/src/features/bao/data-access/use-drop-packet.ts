@@ -5,6 +5,7 @@ import { useMobileWallet } from '@wallet-ui/react-native-kit'
 
 import { useAppCluster } from '@/features/cluster/data-access/cluster-provider'
 
+import { afterWallet } from './app-state'
 import { TREASURY, TSKR_DECIMALS, TSKR_MINT } from './bao-config'
 import { fetchBalances } from './chain'
 import { rememberPacketMeta } from './prefs'
@@ -57,7 +58,7 @@ export function useDropPacket() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (input: DropInput) => {
-      const account = wallet.account ?? (await wallet.connect())
+      const account = wallet.account ?? (await afterWallet(wallet.connect()))
       const mint = input.mint ?? TSKR_MINT
       const total = toBaseUnits(input.amountUi, input.decimals ?? TSKR_DECIMALS)
       if (!Number.isInteger(input.shares) || input.shares < MIN_SHARES || input.shares > MAX_SHARES)

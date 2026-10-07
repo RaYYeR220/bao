@@ -39,6 +39,7 @@ import {
 
 import type { SolanaClient } from '@/features/cluster/data-access/create-solana-client'
 
+import { untilActive } from './app-state'
 import { BAO_CHAIN } from './bao-config'
 import { describeProgramErrorName } from './program-errors'
 
@@ -170,6 +171,8 @@ export async function sendWithWallet(
       })
       return getBase58Decoder().decode(signatureBytes) as Signature
     })
+    // the confirmation polls and API calls that follow need Bao back in front (network unblocked)
+    await untilActive()
     return signature
   } catch (error) {
     if (error instanceof WalletAccountMismatchError) throw error

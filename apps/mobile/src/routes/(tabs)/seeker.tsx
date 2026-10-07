@@ -64,7 +64,8 @@ export default function SeekerScreen() {
   const getTokens = async () => {
     setNote(null)
     try {
-      if (!session) await signIn.mutateAsync()
+      // the faucet needs a session, and there is none to get while the server is unreachable
+      if (!session && !(await signIn.mutateAsync()).serverReachable) throw new ApiUnavailableError()
       const res = await faucet.mutateAsync()
       buzz('success')
       play('shimmer')

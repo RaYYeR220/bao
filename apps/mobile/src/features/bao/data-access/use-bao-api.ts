@@ -3,6 +3,7 @@ import type { Endpoints } from '@bao/sdk'
 import { useQuery } from '@tanstack/react-query'
 import { atom } from 'nanostores'
 
+import { isAppActive, untilActive } from './app-state'
 import { API_URL } from './bao-config'
 import { $session, getToken, saveSession } from './session-store'
 
@@ -16,6 +17,10 @@ export class ApiUnavailableError extends Error {
 }
 
 const RECHECK_MS = 30_000
+/** Pauses before retrying a request that never reached the server. */
+const RETRY_MS = [400, 1200]
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 type Path<K> = K extends `${string} ${infer P}` ? P : never
 
@@ -53,6 +58,11 @@ async function rawCall<K extends keyof Endpoints>(
   }
 }
 
+/** fetch never reached the server (DNS, socket, background network block): worth another try. */
+function isNetworkFailure(error: unknown) {
+  return /network request failed|failed to fetch/i.test(error instanceof Error ? error.message : String(error))
+}
+
 function looksUnavailable(error: unknown) {
   const text = error instanceof Error ? error.message : String(error)
   if (/network request failed|failed to fetch|timed out|aborted/i.test(text)) return true
@@ -67,7 +77,9 @@ function looksUnavailable(error: unknown) {
 
 /**
  * Typed API client. Fails fast for 30 s after the server was found unreachable so screens fall
- * back to the chain without waiting on timeouts; `force` skips that shortcut (pull-to-refresh).
+ * back to the chain without waiting on timeouts; `force` skips that shortcut (pull-to-refresh,
+ * a step the user asked for). A request that never reached the server is retried twice, each
+ * time once Bao is in front, and only a failure seen while Bao was in front marks the server down.
  */
 export const baoApi = {
   async call<K extends keyof Endpoints>(
@@ -77,21 +89,31 @@ export const baoApi = {
   ): Promise<Endpoints[K]['res']> {
     const status = $api.get()
     if (!force && status.state === 'down' && Date.now() - status.checkedAt < RECHECK_MS) throw new ApiUnavailableError()
-    try {
-      const res = await rawCall(key, opts, timeoutMs)
-      $api.set({ state: 'up', checkedAt: Date.now() })
-      return res
-    } catch (error) {
-      if (looksUnavailable(error)) {
-        const text = String(error instanceof Error ? error.message : error)
-        if (__DEV__) console.log('api: %s unavailable: %s', key, text.slice(0, 200))
-        // a slow endpoint timing out says nothing about the rest of the server
-        const slowOnly = /timed out/i.test(text) && key === 'GET /api/users/:address'
-        if (!slowOnly) $api.set({ state: 'down', checkedAt: Date.now() })
-        throw new ApiUnavailableError()
+    for (let attempt = 0; ; attempt++) {
+      const activeAtStart = isAppActive()
+      try {
+        const res = await rawCall(key, opts, timeoutMs)
+        $api.set({ state: 'up', checkedAt: Date.now() })
+        return res
+      } catch (error) {
+        if (isNetworkFailure(error) && attempt < RETRY_MS.length) {
+          await sleep(RETRY_MS[attempt])
+          await untilActive()
+          continue
+        }
+        if (looksUnavailable(error)) {
+          const text = String(error instanceof Error ? error.message : error)
+          if (__DEV__) console.log('api: %s unavailable: %s', key, text.slice(0, 200))
+          // a slow endpoint timing out says nothing about the rest of the server, and a request
+          // made from the background (network blocked by Android) says nothing at all
+          const slowOnly = /timed out/i.test(text) && key === 'GET /api/users/:address'
+          const backgrounded = !activeAtStart || !isAppActive()
+          if (!slowOnly && !backgrounded) $api.set({ state: 'down', checkedAt: Date.now() })
+          throw new ApiUnavailableError()
+        }
+        $api.set({ state: 'up', checkedAt: Date.now() })
+        throw error
       }
-      $api.set({ state: 'up', checkedAt: Date.now() })
-      throw error
     }
   },
 }
