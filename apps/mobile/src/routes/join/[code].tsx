@@ -20,7 +20,8 @@ export default function JoinScreen() {
   const signIn = useBaoSignIn()
   const qc = useQueryClient()
   const join = useMutation({
-    mutationFn: () => baoApi.call('POST /api/circles/join', { body: { inviteCode: decodeURIComponent(code) } }, { force: true }),
+    mutationFn: () =>
+      baoApi.call('POST /api/circles/join', { body: { inviteCode: decodeURIComponent(code) } }, { force: true }),
     onSuccess: async () => {
       buzz('success')
       play('stamp')
@@ -49,35 +50,61 @@ export default function JoinScreen() {
   return (
     <View style={styles.scrim}>
       <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close" />
-      <Animated.View entering={SlideInDown.springify().damping(22).stiffness(180)} style={styles.card}>
-        <View style={styles.frame} pointerEvents="none" />
-        <T variant="caps" style={{ color: color.paperInk3 }}>
-          Circle invite
-        </T>
-        {c ? (
-          <Animated.View entering={FadeIn} style={{ alignItems: 'center', gap: 10 }}>
-            <CircleSeal glyph={c.emoji} size={72} />
-            <T style={{ fontFamily: font.display, fontSize: 28, color: color.kuro950, textAlign: 'center' }}>You are in {c.name}</T>
-            <T variant="meta" style={{ color: color.paperInk2 }}>
-              {c.memberCount} members · {c.livePackets} live
-            </T>
-            <FoilButton label="Open the circle" tone="shu" onPress={() => router.replace(`/circle/${c.id}`)} style={{ alignSelf: 'stretch' }} />
-          </Animated.View>
-        ) : (
-          <>
-            <T style={{ fontFamily: font.numerals, fontSize: 32, letterSpacing: 5, color: color.kuro950 }}>{decodeURIComponent(code ?? '')}</T>
-            <T variant="body" style={{ color: color.paperInk2, textAlign: 'center' }}>
-              {session ? (join.isPending ? 'Joining…' : 'Joining the circle behind this code.') : 'Sign in with your Seeker to join this circle.'}
-            </T>
-            {message ? <Note tone="shu">{message}</Note> : null}
-            {!session ? (
-              <FoilButton label="Sign in and join" tone="shu" busy={signIn.isPending} onPress={() => void signIn.mutateAsync().catch(() => undefined)} style={{ alignSelf: 'stretch' }} />
-            ) : err ? (
-              <FoilButton label="Try again" tone="shu" onPress={() => join.mutate()} style={{ alignSelf: 'stretch' }} />
-            ) : null}
-          </>
-        )}
-        <TextButton label="Close" tone="ink" onPress={close} />
+      <Animated.View entering={SlideInDown.springify().damping(22).stiffness(180)}>
+        <View style={styles.card}>
+          <View style={styles.frame} pointerEvents="none" />
+          <T variant="caps" style={{ color: color.paperInk3 }}>
+            Circle invite
+          </T>
+          {c ? (
+            <Animated.View entering={FadeIn} style={{ alignItems: 'center', gap: 10 }}>
+              <CircleSeal glyph={c.emoji} size={72} />
+              <T style={{ fontFamily: font.display, fontSize: 28, color: color.kuro950, textAlign: 'center' }}>
+                You are in {c.name}
+              </T>
+              <T variant="meta" style={{ color: color.paperInk2 }}>
+                {c.memberCount} {c.memberCount === 1 ? 'member' : 'members'} · {c.livePackets} live
+              </T>
+              <FoilButton
+                label="Open the circle"
+                tone="shu"
+                onPress={() => router.replace(`/circle/${c.id}`)}
+                style={{ alignSelf: 'stretch' }}
+              />
+            </Animated.View>
+          ) : (
+            <>
+              <T style={{ fontFamily: font.numerals, fontSize: 32, letterSpacing: 5, color: color.kuro950 }}>
+                {decodeURIComponent(code ?? '')}
+              </T>
+              <T variant="body" style={{ color: color.paperInk2, textAlign: 'center' }}>
+                {session
+                  ? join.isPending
+                    ? 'Joining…'
+                    : 'Joining the circle behind this code.'
+                  : 'Sign in with your Seeker to join this circle.'}
+              </T>
+              {message ? <Note tone="shu">{message}</Note> : null}
+              {!session ? (
+                <FoilButton
+                  label="Sign in and join"
+                  tone="shu"
+                  busy={signIn.isPending}
+                  onPress={() => void signIn.mutateAsync().catch(() => undefined)}
+                  style={{ alignSelf: 'stretch' }}
+                />
+              ) : err ? (
+                <FoilButton
+                  label="Try again"
+                  tone="shu"
+                  onPress={() => join.mutate()}
+                  style={{ alignSelf: 'stretch' }}
+                />
+              ) : null}
+            </>
+          )}
+          <TextButton label="Close" tone="ink" onPress={close} />
+        </View>
       </Animated.View>
     </View>
   )
@@ -85,6 +112,22 @@ export default function JoinScreen() {
 
 const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(5,3,3,0.78)', justifyContent: 'center', padding: space[5] },
-  card: { alignItems: 'center', gap: space[3], padding: space[5], borderRadius: 4, backgroundColor: color.paper, boxShadow: '0px 30px 50px -18px rgba(0,0,0,0.85)' },
-  frame: { position: 'absolute', left: 7, top: 7, right: 7, bottom: 7, borderWidth: 1, borderColor: 'rgba(127,95,44,0.5)', borderRadius: radius.envelope - 4 },
+  card: {
+    alignItems: 'center',
+    gap: space[3],
+    padding: space[5],
+    borderRadius: 4,
+    backgroundColor: color.paper,
+    boxShadow: '0px 30px 50px -18px rgba(0,0,0,0.85)',
+  },
+  frame: {
+    position: 'absolute',
+    left: 7,
+    top: 7,
+    right: 7,
+    bottom: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(127,95,44,0.5)',
+    borderRadius: radius.envelope - 4,
+  },
 })
