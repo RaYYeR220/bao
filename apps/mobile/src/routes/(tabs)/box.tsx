@@ -1,16 +1,16 @@
 import type { GrabView, PacketView } from '@bao/sdk'
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
 import { router } from 'expo-router'
-import { useState } from 'react'
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
-import Animated, { FadeIn, FadeInDown, useSharedValue } from 'react-native-reanimated'
+import { memo, useState } from 'react'
+import { FlatList, Pressable, RefreshControl, StyleSheet, View, type ListRenderItemInfo } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useHistory } from '@/features/bao/data-access/use-bao-data'
 import { displayName, formatAmount, plural, sharesLeft, timeAgo } from '@/features/bao/format'
 import { toneFor } from '@/features/bao/ui/packet-envelope'
 import { Backdrop } from '@/ui/backdrop'
-import { EnvelopeFace } from '@/ui/envelope/envelope'
+import { EnvelopeThumb } from '@/ui/envelope/envelope'
 import { buzz } from '@/ui/feedback'
 import { Icon } from '@/ui/icon'
 import { Note, Skeleton, StateBlock } from '@/ui/kit'
@@ -18,6 +18,19 @@ import { T } from '@/ui/text'
 import { color, font, radius, space } from '@/ui/tokens'
 
 type Tab = 'received' | 'sent'
+
+type BoxRow =
+  | { kind: 'received'; key: string; grab: GrabView; packet: PacketView | null }
+  | { kind: 'sent'; key: string; packet: PacketView }
+
+const rowKey = (r: BoxRow) => r.key
+const RowGap = () => <View style={{ height: 10 }} />
+const renderRow = ({ item, index }: ListRenderItemInfo<BoxRow>) =>
+  item.kind === 'received' ? (
+    <ReceivedRow grab={item.grab} packet={item.packet} i={index} />
+  ) : (
+    <SentRow packet={item.packet} i={index} />
+  )
 
 export default function BoxScreen() {
   const insets = useSafeAreaInsets()
@@ -32,15 +45,133 @@ export default function BoxScreen() {
   const receivedTotal = received.reduce((s, g) => s + BigInt(g.grab.amount ?? '0'), 0n)
   const sentTotal = sent.reduce((s, p) => s + BigInt(p.total), 0n)
 
+  const rows: BoxRow[] =
+    !account || !data
+      ? []
+      : tab === 'received'
+        ? received.map(({ grab, packet }) => ({
+            kind: 'received' as const,
+            key: `${grab.packet}-${grab.index}`,
+            grab,
+            packet,
+          }))
+        : sent.map((packet) => ({ kind: 'sent' as const, key: packet.address, packet }))
+
+  const header = (
+    <View style={{ gap: space[5], marginBottom: account ? space[5] : 0 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <View style={{ gap: 4 }}>
+          <T variant="caps">Opened and sent</T>
+          <T variant="title" style={{ fontSize: 34, lineHeight: 40 }} accessibilityRole="header">
+            My box
+          </T>
+        </View>
+        <T style={{ fontFamily: font.cjk, fontSize: 30, color: 'rgba(221,187,122,0.35)' }}>漆盒</T>
+      </View>
+
+      {!account ? (
+        <StateBlock
+          icon="box"
+          title="Your box is empty"
+          body="Connect your Seeker to keep every packet you open or send, with its proof."
+          action="Connect your Seeker"
+          onAction={() => router.navigate('/seeker')}
+        />
+      ) : (
+        <>
+          <View style={styles.stats}>
+            <Stat label="Grabbed" value={formatAmount(receivedTotal, 6)} sub={plural(received.length, 'packet')} />
+            <View style={styles.vr} />
+            <Stat label="Given" value={formatAmount(sentTotal, 6)} sub={plural(sent.length, 'packet')} />
+            <View style={styles.vr} />
+            <Stat label="Crowns" value={data ? String(data.crowns) : '–'} sub="運氣王" cjk />
+          </View>
+
+          <View style={styles.seg} accessibilityRole="tablist">
+            {(['received', 'sent'] as Tab[]).map((t) => (
+              <Pressable
+                key={t}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === t }}
+                onPress={() => {
+                  buzz('select')
+                  setTab(t)
+                }}
+                style={[styles.segItem, tab === t && styles.segOn]}
+              >
+                <T
+                  style={{
+                    fontFamily: font.textMedium,
+                    fontSize: 15,
+                    color: tab === t ? color.gofun : color.gofun44,
+                  }}
+                >
+                  {t === 'received' ? 'Received' : 'Sent'}
+                </T>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      )}
+    </View>
+  )
+
+  const empty = !account ? null : history.isLoading && !data ? (
+    <View style={{ gap: 12 }}>
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={i} width="100%" height={72} radius={14} />
+      ))}
+    </View>
+  ) : history.isError && !data ? (
+    <StateBlock
+      icon="refresh"
+      title="Could not open the box"
+      body="Solana devnet did not answer."
+      action="Try again"
+      onAction={() => void history.refetch()}
+    />
+  ) : tab === 'received' ? (
+    <StateBlock
+      icon="envelope"
+      title="Nothing opened yet"
+      body="Shake one open from the feed and it lands here."
+      action="Go to the feed"
+      onAction={() => router.navigate('/')}
+    />
+  ) : (
+    <StateBlock
+      icon="envelope"
+      title="No packets sent yet"
+      body="Drop one into a circle or the public feed."
+      action="Send a packet"
+      onAction={() => router.push('/send')}
+    />
+  )
+
   return (
     <View style={{ flex: 1 }}>
       <Backdrop glowY={0.12} />
-      <ScrollView
+      {/* rows are virtualized, keyed by packet and drawn without a canvas, so a long history stays cheap */}
+      <FlatList
+        data={rows}
+        keyExtractor={rowKey}
+        renderItem={renderRow}
+        ItemSeparatorComponent={RowGap}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        ListFooterComponent={
+          account && data?.source === 'chain' ? (
+            <Note icon="link" style={{ marginTop: space[5] }}>
+              Read straight from Solana devnet. Names return when the Bao server is reachable.
+            </Note>
+          ) : null
+        }
+        initialNumToRender={10}
+        windowSize={7}
         contentContainerStyle={{
           paddingTop: insets.top + 16,
           paddingHorizontal: space[5],
           paddingBottom: space[6],
-          gap: space[5],
         }}
         refreshControl={
           account ? (
@@ -60,111 +191,7 @@ export default function BoxScreen() {
             />
           ) : undefined
         }
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <View style={{ gap: 4 }}>
-            <T variant="caps">Opened and sent</T>
-            <T variant="title" style={{ fontSize: 34, lineHeight: 40 }} accessibilityRole="header">
-              My box
-            </T>
-          </View>
-          <T style={{ fontFamily: font.cjk, fontSize: 30, color: 'rgba(221,187,122,0.35)' }}>漆盒</T>
-        </View>
-
-        {!account ? (
-          <StateBlock
-            icon="box"
-            title="Your box is empty"
-            body="Connect your Seeker to keep every packet you open or send, with its proof."
-            action="Connect your Seeker"
-            onAction={() => router.navigate('/seeker')}
-          />
-        ) : (
-          <>
-            <View style={styles.stats}>
-              <Stat label="Grabbed" value={formatAmount(receivedTotal, 6)} sub={plural(received.length, 'packet')} />
-              <View style={styles.vr} />
-              <Stat label="Given" value={formatAmount(sentTotal, 6)} sub={plural(sent.length, 'packet')} />
-              <View style={styles.vr} />
-              <Stat label="Crowns" value={data ? String(data.crowns) : '–'} sub="運氣王" cjk />
-            </View>
-
-            <View style={styles.seg} accessibilityRole="tablist">
-              {(['received', 'sent'] as Tab[]).map((t) => (
-                <Pressable
-                  key={t}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: tab === t }}
-                  onPress={() => {
-                    buzz('select')
-                    setTab(t)
-                  }}
-                  style={[styles.segItem, tab === t && styles.segOn]}
-                >
-                  <T
-                    style={{
-                      fontFamily: font.textMedium,
-                      fontSize: 15,
-                      color: tab === t ? color.gofun : color.gofun44,
-                    }}
-                  >
-                    {t === 'received' ? 'Received' : 'Sent'}
-                  </T>
-                </Pressable>
-              ))}
-            </View>
-
-            {history.isLoading && !data ? (
-              <View style={{ gap: 12 }}>
-                {[0, 1, 2].map((i) => (
-                  <Skeleton key={i} width="100%" height={72} radius={14} />
-                ))}
-              </View>
-            ) : history.isError && !data ? (
-              <StateBlock
-                icon="refresh"
-                title="Could not open the box"
-                body="Solana devnet did not answer."
-                action="Try again"
-                onAction={() => void history.refetch()}
-              />
-            ) : tab === 'received' ? (
-              received.length ? (
-                <Animated.View entering={FadeIn.duration(300)} style={{ gap: 10 }}>
-                  {received.map(({ grab, packet }, i) => (
-                    <ReceivedRow key={`${grab.packet}-${grab.index}`} grab={grab} packet={packet} i={i} />
-                  ))}
-                </Animated.View>
-              ) : (
-                <StateBlock
-                  icon="envelope"
-                  title="Nothing opened yet"
-                  body="Shake one open from the feed and it lands here."
-                  action="Go to the feed"
-                  onAction={() => router.navigate('/')}
-                />
-              )
-            ) : sent.length ? (
-              <Animated.View entering={FadeIn.duration(300)} style={{ gap: 10 }}>
-                {sent.map((p, i) => (
-                  <SentRow key={p.address} packet={p} i={i} />
-                ))}
-              </Animated.View>
-            ) : (
-              <StateBlock
-                icon="envelope"
-                title="No packets sent yet"
-                body="Drop one into a circle or the public feed."
-                action="Send a packet"
-                onAction={() => router.push('/send')}
-              />
-            )}
-            {data?.source === 'chain' ? (
-              <Note icon="link">Read straight from Solana devnet. Names return when the Bao server is reachable.</Note>
-            ) : null}
-          </>
-        )}
-      </ScrollView>
+      />
     </View>
   )
 }
@@ -199,17 +226,27 @@ function Stat({ label, value, sub, cjk }: { label: string; value: string; sub: s
   )
 }
 
-/** A tiny lacquer envelope for list rows; opened ones show the cracked seal. */
+/** A tiny lacquer envelope for list rows (a still image); opened ones show the cracked seal. */
 function MiniEnvelope({ tone, open }: { tone: ReturnType<typeof toneFor>; open: boolean }) {
-  const gleam = useSharedValue(0.55)
-  return <EnvelopeFace width={32} tone={tone} gleam={gleam} sealState={open ? 'cracked' : 'closed'} />
+  return <EnvelopeThumb width={32} tone={tone} sealState={open ? 'cracked' : 'closed'} />
 }
 
-function ReceivedRow({ grab, packet, i }: { grab: GrabView; packet: PacketView | null; i: number }) {
+/** Only the first screenful slides in; rows recycled in while scrolling just appear. */
+const rowEntering = (i: number) => (i < 8 ? FadeInDown.delay(i * 40).duration(300) : undefined)
+
+const ReceivedRow = memo(function ReceivedRow({
+  grab,
+  packet,
+  i,
+}: {
+  grab: GrabView
+  packet: PacketView | null
+  i: number
+}) {
   const from = packet ? displayName(packet.senderSkr, packet.sender) : 'a packet'
   const king = packet?.mode === 'lucky' && packet.luckKing === grab.claimer
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(300)}>
+    <Animated.View entering={rowEntering(i)}>
       <Pressable
         onPress={() => router.push(`/packet/${grab.packet}`)}
         style={styles.row}
@@ -237,9 +274,9 @@ function ReceivedRow({ grab, packet, i }: { grab: GrabView; packet: PacketView |
       </Pressable>
     </Animated.View>
   )
-}
+})
 
-function SentRow({ packet, i }: { packet: PacketView; i: number }) {
+const SentRow = memo(function SentRow({ packet, i }: { packet: PacketView; i: number }) {
   const left = sharesLeft(packet)
   const status =
     packet.status === 'live'
@@ -252,7 +289,7 @@ function SentRow({ packet, i }: { packet: PacketView; i: number }) {
             ? 'Expired · returning'
             : 'Closed'
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(300)}>
+    <Animated.View entering={rowEntering(i)}>
       <Pressable
         onPress={() => router.push(`/packet/${packet.address}`)}
         style={styles.row}
@@ -277,7 +314,7 @@ function SentRow({ packet, i }: { packet: PacketView; i: number }) {
       </Pressable>
     </Animated.View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: space[3], alignItems: 'stretch' },

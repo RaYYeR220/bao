@@ -12,13 +12,14 @@ import {
   Shader,
   Skia,
   Text as SkText,
+  drawAsImage,
   useFont,
   useTexture,
   vec,
   type Uniforms,
 } from '@shopify/react-native-skia'
-import { useMemo, type ReactNode } from 'react'
-import { PixelRatio, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Image as RNImage, PixelRatio, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated'
 
 import { color, foilPositions, foilStops, type EnvelopeTone } from '../tokens'
@@ -300,47 +301,54 @@ export function Seal({
             ))}
           </>
         ) : null}
-        {cracked ? (
-          <Group>
-            <Path
-              path={halfLeft}
-              color={muted ? '#4A4241' : color.shu800}
-              transform={[{ translateX: -5 }, { translateY: 3 }]}
-            />
-            <Path
-              path={halfRight}
-              color={muted ? '#4A4241' : color.shu800}
-              transform={[{ translateX: 6 }, { translateY: 6 }]}
-            />
-          </Group>
-        ) : (
-          <>
-            <Circle cx={50} cy={53} r={32} color="rgba(0,0,0,0.45)">
-              <BlurMask blur={3.2} style="normal" />
-            </Circle>
-            <Circle cx={50} cy={50} r={31}>
-              <RadialGradient
-                c={vec(44, 42)}
-                r={44}
-                colors={muted ? ['#6B6362', '#4A4241', '#2E2928'] : ['#7A2024', '#50070F', '#320509']}
-                positions={[0, 0.7, 1]}
-              />
-            </Circle>
-            <Circle cx={50} cy={50} r={31} style="stroke" strokeWidth={1.3}>
-              <LinearGradient start={vec(19, 19)} end={vec(81, 81)} colors={foilStops} positions={foilPositions} />
-            </Circle>
-            <Circle cx={50} cy={50} r={26.5} style="stroke" strokeWidth={0.6} opacity={0.8}>
-              <LinearGradient start={vec(19, 19)} end={vec(81, 81)} colors={foilStops} positions={foilPositions} />
-            </Circle>
-            {font ? (
-              <SkText x={50 - glyphW / 2} y={60.5} text={glyph} font={font}>
-                <LinearGradient start={vec(36, 36)} end={vec(64, 64)} colors={foilStops} positions={foilPositions} />
-              </SkText>
-            ) : null}
-          </>
-        )}
+        <SealBody cracked={cracked} muted={muted} />
+        {!cracked && font ? (
+          <SkText x={50 - glyphW / 2} y={60.5} text={glyph} font={font}>
+            <LinearGradient start={vec(36, 36)} end={vec(64, 64)} colors={foilStops} positions={foilPositions} />
+          </SkText>
+        ) : null}
       </Group>
     </Canvas>
+  )
+}
+
+/** The seal disc (or its two cracked halves) in the 100-unit seal box, without the glyph. */
+function SealBody({ cracked, muted }: { cracked: boolean; muted: boolean }) {
+  if (cracked)
+    return (
+      <Group>
+        <Path
+          path={halfLeft}
+          color={muted ? '#4A4241' : color.shu800}
+          transform={[{ translateX: -5 }, { translateY: 3 }]}
+        />
+        <Path
+          path={halfRight}
+          color={muted ? '#4A4241' : color.shu800}
+          transform={[{ translateX: 6 }, { translateY: 6 }]}
+        />
+      </Group>
+    )
+  return (
+    <>
+      <Circle cx={50} cy={53} r={32} color="rgba(0,0,0,0.45)">
+        <BlurMask blur={3.2} style="normal" />
+      </Circle>
+      <Circle cx={50} cy={50} r={31}>
+        <RadialGradient
+          c={vec(44, 42)}
+          r={44}
+          colors={muted ? ['#6B6362', '#4A4241', '#2E2928'] : ['#7A2024', '#50070F', '#320509']}
+          positions={[0, 0.7, 1]}
+        />
+      </Circle>
+      <Circle cx={50} cy={50} r={31} style="stroke" strokeWidth={1.3}>
+        <LinearGradient start={vec(19, 19)} end={vec(81, 81)} colors={foilStops} positions={foilPositions} />
+      </Circle>
+      <Circle cx={50} cy={50} r={26.5} style="stroke" strokeWidth={0.6} opacity={0.8}>
+        <LinearGradient start={vec(19, 19)} end={vec(81, 81)} colors={foilStops} positions={foilPositions} />
+      </Circle>
+    </>
   )
 }
 
@@ -428,3 +436,112 @@ const styles = StyleSheet.create({
     boxShadow: '0px 24px 36px -14px rgba(0,0,0,0.9)',
   },
 })
+
+type ThumbSeal = 'closed' | 'cracked' | 'none'
+
+/** Drawn thumbnails as data URIs, one per tone, seal and pixel width, for the app's lifetime. */
+const thumbs = new Map<string, Promise<string | null>>()
+const thumbsReady = new Map<string, string>()
+
+const thumbKey = (width: number, tone: EnvelopeTone, seal: ThumbSeal) =>
+  `${tone}:${seal}:${Math.ceil(width * PixelRatio.get())}`
+
+/** The specular band of a resting envelope (gleam 0.55), as BakedLacquer draws it. */
+const REST_GLOSS = {
+  colors: [
+    'rgba(255,255,255,0)',
+    'rgba(255,233,224,0.1)',
+    'rgba(255,246,238,0.26)',
+    'rgba(255,233,224,0.08)',
+    'rgba(255,255,255,0)',
+  ],
+  positions: [0.35, 0.5, 0.55, 0.585, 0.71],
+}
+
+/**
+ * Draws a still envelope (lacquer, foil, the light at rest and the seal) once, off screen, into
+ * a PNG. Lists show it as a plain image: a live canvas per row costs a GPU surface each and, a
+ * dozen rows in, stalls the UI thread.
+ */
+function drawThumb(width: number, tone: EnvelopeTone, seal: ThumbSeal): Promise<string | null> {
+  const key = thumbKey(width, tone, seal)
+  const hit = thumbs.get(key)
+  if (hit) return hit
+  const px = width * PixelRatio.get()
+  const s = px / W
+  const c = sealCenter(px)
+  const box = sealSize(px) * (100 / 62)
+  const element = (
+    <Group>
+      <LacquerArt tone={tone} part={0} scale={s} art />
+      <Group transform={[{ scale: s }]} clip={outlinePath}>
+        <Rect x={0} y={0} width={W} height={H} blendMode="screen">
+          <LinearGradient
+            start={vec(0, 0)}
+            end={vec(W, H)}
+            colors={REST_GLOSS.colors}
+            positions={REST_GLOSS.positions}
+          />
+        </Rect>
+      </Group>
+      {seal !== 'none' ? (
+        <Group transform={[{ translateX: c.x - box / 2 }, { translateY: c.y - box / 2 }, { scale: box / 100 }]}>
+          <SealBody cracked={seal === 'cracked'} muted={tone === 'ash'} />
+        </Group>
+      ) : null}
+    </Group>
+  )
+  const done = drawAsImage(element, { width: Math.ceil(px), height: Math.ceil(px * ENVELOPE_RATIO) })
+    .then((image) => {
+      if (!image) throw new Error('no image')
+      const uri = `data:image/png;base64,${image.encodeToBase64()}`
+      thumbsReady.set(key, uri)
+      return uri
+    })
+    .catch(() => {
+      // drawn again next time it is asked for
+      thumbs.delete(key)
+      return null
+    })
+  thumbs.set(key, done)
+  return done
+}
+
+/**
+ * A small still envelope for list rows: the art of EnvelopeFace, drawn once per tone and seal
+ * and shown as an image (no canvas, no animation). The tone's lacquer colour stands in meanwhile.
+ */
+export function EnvelopeThumb({
+  width,
+  tone,
+  sealState = 'closed',
+  style,
+}: {
+  width: number
+  tone: EnvelopeTone
+  sealState?: ThumbSeal
+  style?: StyleProp<ViewStyle>
+}) {
+  const key = thumbKey(width, tone, sealState)
+  const [drawn, setDrawn] = useState<{ key: string; uri: string } | null>(null)
+  const uri = thumbsReady.get(key) ?? (drawn?.key === key ? drawn.uri : null)
+  useEffect(() => {
+    if (thumbsReady.has(key)) return
+    let live = true
+    void drawThumb(width, tone, sealState).then((u) => {
+      if (live && u) setDrawn({ key, uri: u })
+    })
+    return () => {
+      live = false
+    }
+  }, [key, sealState, tone, width])
+  const height = width * ENVELOPE_RATIO
+  return (
+    <View
+      style={[{ width, height, borderRadius: (6 * width) / W, backgroundColor: tones[tone].body[2] }, style]}
+      pointerEvents="none"
+    >
+      {uri ? <RNImage source={{ uri }} style={{ width, height }} fadeDuration={0} /> : null}
+    </View>
+  )
+}
