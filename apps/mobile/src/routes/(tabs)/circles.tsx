@@ -9,7 +9,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { maybeAskForPush } from '@/features/bao/data-access/push'
 import { humanError, isWalletCancel } from '@/features/bao/data-access/send-with-wallet'
-import { apiErrorMessage, baoApi, useApiState, useCircles, useSession } from '@/features/bao/data-access/use-bao-api'
+import {
+  apiErrorMessage,
+  baoApi,
+  refreshNow,
+  useApiState,
+  useCircles,
+  useSession,
+} from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn } from '@/features/bao/data-access/use-bao-sign-in'
 import { plural } from '@/features/bao/format'
 import { CircleSeal, SEAL_GLYPHS } from '@/features/bao/ui/circle-seal'
@@ -64,7 +71,7 @@ export default function CirclesScreen() {
               onRefresh={async () => {
                 setRefreshing(true)
                 try {
-                  await circles.refetch()
+                  await refreshNow(() => circles.refetch())
                 } finally {
                   setRefreshing(false)
                 }
@@ -119,7 +126,7 @@ export default function CirclesScreen() {
             title="Circles did not load"
             body="The Bao server did not answer."
             action="Try again"
-            onAction={() => void circles.refetch()}
+            onAction={() => void refreshNow(() => circles.refetch())}
           />
         ) : circles.data?.length ? (
           <View style={{ gap: 12 }}>

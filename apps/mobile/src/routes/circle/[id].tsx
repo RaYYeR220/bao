@@ -7,7 +7,7 @@ import QRCode from 'react-native-qrcode-svg'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { useCircle } from '@/features/bao/data-access/use-bao-api'
+import { refreshNow, useCircle } from '@/features/bao/data-access/use-bao-api'
 import { displayName, formatAmount, plural } from '@/features/bao/format'
 import { inviteLink, isCircleId } from '@/features/bao/links'
 import { BadLink } from '@/features/bao/ui/bad-link'
@@ -63,7 +63,7 @@ export default function CircleScreen() {
           title="This circle did not load"
           body="The Bao server did not answer."
           action="Try again"
-          onAction={() => void q.refetch()}
+          onAction={() => void refreshNow(() => q.refetch())}
         />
       ) : (
         <ScrollView
@@ -77,7 +77,7 @@ export default function CircleScreen() {
               onRefresh={async () => {
                 setRefreshing(true)
                 try {
-                  await q.refetch()
+                  await refreshNow(() => q.refetch())
                 } finally {
                   setRefreshing(false)
                 }

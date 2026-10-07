@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { packetLink } from '@/features/bao/data-access/bao-config'
 import { $reminders } from '@/features/bao/data-access/prefs'
 import { maybeAskForPush } from '@/features/bao/data-access/push'
-import { useCircles } from '@/features/bao/data-access/use-bao-api'
+import { refreshNow, useCircles } from '@/features/bao/data-access/use-bao-api'
 import { useMyClaim, usePacketData } from '@/features/bao/data-access/use-bao-data'
 import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
 import { useGrab, type GrabPhase } from '@/features/bao/data-access/use-grab'
@@ -70,7 +70,7 @@ export default function GrabScreen() {
           title="Could not reach Solana"
           body="The packet could not be read just now. Check the connection and try again."
           action="Try again"
-          onAction={() => void packetQ.refetch()}
+          onAction={() => void refreshNow(() => packetQ.refetch())}
           secondary="Close"
           onSecondary={close}
         />

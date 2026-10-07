@@ -19,7 +19,7 @@ import Svg, { Circle, Path } from 'react-native-svg'
 
 import { createCarouselFocus } from '@/features/bao/carousel-focus'
 import { $onboarded } from '@/features/bao/data-access/prefs'
-import { useCircles } from '@/features/bao/data-access/use-bao-api'
+import { refreshNow, useCircles } from '@/features/bao/data-access/use-bao-api'
 import { useChainStarter, useFeedData, useMyClaims } from '@/features/bao/data-access/use-bao-data'
 import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
 import { chainPlace, displayName, formatAmount, plural, sharesLeft } from '@/features/bao/format'
@@ -89,7 +89,7 @@ export default function FeedScreen() {
             onRefresh={async () => {
               setRefreshing(true)
               try {
-                await feed.refetch()
+                await refreshNow(() => feed.refetch())
               } finally {
                 setRefreshing(false)
               }
@@ -125,7 +125,7 @@ export default function FeedScreen() {
             title="The feed did not load"
             body="Solana devnet did not answer. Check the connection and try again."
             action="Try again"
-            onAction={() => void feed.refetch()}
+            onAction={() => void refreshNow(() => feed.refetch())}
           />
         ) : packets.length === 0 ? (
           <EmptyFeed hasRains={rains.length > 0} filter={filter} />

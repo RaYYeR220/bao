@@ -6,6 +6,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-n
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { refreshNow } from '@/features/bao/data-access/use-bao-api'
 import { usePacketData } from '@/features/bao/data-access/use-bao-data'
 import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
 import {
@@ -73,7 +74,7 @@ export default function PacketScreen() {
               : 'Its account was swept: every share was settled and the rest returned to the sender.'
           }
           action={q.isError ? 'Try again' : 'Back'}
-          onAction={q.isError ? () => void q.refetch() : back}
+          onAction={q.isError ? () => void refreshNow(() => q.refetch()) : back}
         />
       ) : (
         <ScrollView
@@ -87,7 +88,7 @@ export default function PacketScreen() {
               onRefresh={async () => {
                 setRefreshing(true)
                 try {
-                  await q.refetch()
+                  await refreshNow(() => q.refetch())
                 } finally {
                   setRefreshing(false)
                 }

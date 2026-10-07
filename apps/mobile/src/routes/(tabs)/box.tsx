@@ -6,6 +6,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, View, type ListRenderI
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { refreshNow } from '@/features/bao/data-access/use-bao-api'
 import { useHistory } from '@/features/bao/data-access/use-bao-data'
 import { displayName, formatAmount, plural, sharesLeft, timeAgo } from '@/features/bao/format'
 import { toneFor } from '@/features/bao/ui/packet-envelope'
@@ -128,7 +129,7 @@ export default function BoxScreen() {
       title="Could not open the box"
       body="Solana devnet did not answer."
       action="Try again"
-      onAction={() => void history.refetch()}
+      onAction={() => void refreshNow(() => history.refetch())}
     />
   ) : tab === 'received' ? (
     <StateBlock
@@ -183,7 +184,7 @@ export default function BoxScreen() {
               onRefresh={async () => {
                 setRefreshing(true)
                 try {
-                  await history.refetch()
+                  await refreshNow(() => history.refetch())
                 } finally {
                   setRefreshing(false)
                 }
