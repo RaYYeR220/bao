@@ -136,11 +136,12 @@ function Hero({ envW }: { envW: number }) {
   )
 }
 
-function Bound({ envW }: { envW: number }) {
+function Bound({ envW: full }: { envW: number }) {
   const gleam = useTiltGleam(0.45)
+  const envW = full * 0.8
   return (
     <View style={{ alignItems: 'center' }}>
-      <View style={{ width: envW * 1.5, height: envW * 1.748, alignItems: 'center' }}>
+      <View style={{ width: envW * 1.5, height: envW * 1.748 + 8, alignItems: 'center' }}>
         <View style={{ position: 'absolute', left: 0, top: envW * 0.12, transform: [{ rotate: '-7deg' }], opacity: 0.5 }}>
           <EnvelopeFace width={envW * 0.82} tone="kuro" gleam={gleam} sealState="cracked" />
         </View>

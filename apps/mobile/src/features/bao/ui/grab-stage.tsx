@@ -118,7 +118,7 @@ export function GrabStage({
   const outTop = -inH - 10 * s
 
   // envelope at rest when the card comes forward
-  const envScaleF = 0.58
+  const envScaleF = 0.52
   const envTranslateF = cf.top + 34 - (sealedTop + dOpen + envH / 2 + (envScaleF * envH) / 2)
 
   function settled() {
@@ -216,6 +216,7 @@ export function GrabStage({
     const ty = shift.value * dOpen + settle.value * (envTranslateF - 0)
     return {
       transform: [{ translateX: deny.value }, { translateY: ty }, { scale: sc }, { rotate: `${tremble.value - 2.5 * (1 - shift.value)}deg` }],
+      opacity: 1 - settle.value * 0.12,
     }
   })
 

@@ -155,6 +155,21 @@ export function ResultCard({
   )
 }
 
+/** The card before its amount is drawn: blank gofun, foil frame, a quiet 紅包 mark. */
+export function SealedCard({ width, height }: { width: number; height: number }) {
+  return (
+    <View style={[styles.card, { width, height, alignItems: 'center', justifyContent: 'center', gap: 8 }]}>
+      <View style={styles.frame} pointerEvents="none">
+        <View style={styles.frameInner} />
+      </View>
+      <T style={{ fontFamily: font.cjk, fontSize: 30, letterSpacing: 10, color: color.shu500, opacity: 0.85 }}>紅包</T>
+      <T variant="caps" style={{ color: color.paperInk3 }}>
+        Your share is being drawn
+      </T>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   card: {
     borderRadius: 4,

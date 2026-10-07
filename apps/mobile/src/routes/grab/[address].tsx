@@ -5,7 +5,7 @@ import * as Notifications from 'expo-notifications'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AccessibilityInfo, Share, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native'
-import Animated, { FadeIn, FadeInDown, FadeOut, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, { FadeIn, FadeInDown, useSharedValue, withTiming } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { packetLink } from '@/features/bao/data-access/bao-config'
@@ -18,7 +18,7 @@ import { clockTime, displayName, explorerTx, formatAmount, ordinal, sharesLeft, 
 import { GoldLeafBurst } from '@/features/bao/ui/gold-leaf'
 import { GrabStage, stageGeometry, type StageMode } from '@/features/bao/ui/grab-stage'
 import { toneFor } from '@/features/bao/ui/packet-envelope'
-import { ResultCard } from '@/features/bao/ui/result-card'
+import { ResultCard, SealedCard } from '@/features/bao/ui/result-card'
 import { Backdrop } from '@/ui/backdrop'
 import { Countdown } from '@/ui/countdown'
 import { buzz, play } from '@/ui/feedback'
@@ -226,7 +226,9 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
         .toUpperCase()}
       rightAction={result.isKing && detail.mode === 'lucky' ? { label: 'Send the next', onPress: sendNext } : undefined}
     />
-  ) : null
+  ) : (
+    <SealedCard width={geo.card.width} height={geo.card.height} />
+  )
 
   const face = (
     <PocketFace
@@ -461,7 +463,7 @@ function Bottom({
             ? ['Sealing your place…', 'Solana is confirming your grab']
             : ['The proof is on its way…', 'Your share is drawn by verifiable randomness, on-chain']
     content = (
-      <Animated.View key={phase.kind} entering={FadeIn.duration(350)} exiting={FadeOut.duration(200)} style={styles.status}>
+      <Animated.View key={phase.kind} entering={FadeIn.duration(350)} style={styles.status}>
         <T style={styles.statusTitle}>{copy[0]}</T>
         <T variant="meta" style={{ textAlign: 'center' }}>
           {copy[1]}

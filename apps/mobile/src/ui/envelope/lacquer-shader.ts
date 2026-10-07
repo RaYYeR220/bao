@@ -140,12 +140,12 @@ half4 main(float2 p) {
     float pat = seigaiha(d);
     col = mix(col, col * 0.7, pat * 0.25 * u_pattern);
   } else if (part > 2.5) {
-    // flap lining: the inside of the lid
+    // flap lining: gold-leaf paper on the inside of the lid, so the open envelope reads at a glance
     float v = smoothstep(0.0, 1.0, d.y / A);
-    col = mix(u_c2, u_c3, v * 0.8);
+    float3 gold = mix(float3(0.80, 0.64, 0.36), float3(0.42, 0.31, 0.15), v);
     float pat = seigaiha(d + float2(13.0, 0.0));
-    col = mix(col, col * 0.62, pat * 0.35 * u_pattern);
-    col *= 0.8;
+    col = mix(gold, gold * 0.72, pat * 0.45);
+    col = mix(col, u_c2, 0.18);
   } else {
     float3 body = bodyColor(uv);
     // deboss: a dark arc offset down, a faint warm arc on top

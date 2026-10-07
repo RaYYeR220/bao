@@ -177,6 +177,7 @@ export default function SendScreen() {
                     value={amount}
                     onChangeText={(t) => setAmount(t.replace(',', '.').replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').slice(0, 12))}
                     keyboardType="decimal-pad"
+                    selectTextOnFocus
                     style={styles.amount}
                     maxLength={12}
                     selectionColor={color.kin300}
