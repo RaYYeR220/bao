@@ -293,12 +293,21 @@ function Carousel({
   const x = useSharedValue(0)
   const tilt = useTiltGleam(0.52)
   const [index, setIndex] = useState(0)
+  const indexRef = useRef(0)
+  // the packet in focus, so a list that changes under the carousel can keep it (or its slot) in view
+  const focusedAddress = useRef<string | null>(null)
   const listRef = useRef<Animated.FlatList<PacketView>>(null)
 
+  const show = (i: number) => {
+    indexRef.current = i
+    focusedAddress.current = packets[i]?.address ?? null
+    setIndex(i)
+    focusListeners.forEach((l) => l(i))
+  }
   const setFocused = (i: number) => {
     const clamped = Math.max(0, Math.min(packets.length - 1, i))
-    setIndex(clamped)
-    focusListeners.forEach((l) => l(clamped))
+    if (clamped === indexRef.current) return
+    show(clamped)
     buzz('select')
   }
   const onScroll = useAnimatedScrollHandler((e) => {
@@ -320,6 +329,23 @@ function Carousel({
     focused.current = focus
     if (i > 0) setTimeout(() => listRef.current?.scrollToOffset({ offset: i * itemW, animated: true }), 300)
   }, [focus, itemW, packets])
+
+  // A grab (or an expiry) takes a packet out of the list while the scroll offset stays put, which
+  // left the carousel on an empty slot past the end. Re-centre on the focused packet if it is
+  // still there, else on the slot it left (clamped to the last one).
+  useEffect(() => {
+    if (!packets.length) return
+    const kept = focusedAddress.current ? packets.findIndex((p) => p.address === focusedAddress.current) : -1
+    const target = kept >= 0 ? kept : Math.min(indexRef.current, packets.length - 1)
+    if (target === indexRef.current && Math.round(x.value / itemW) === target) {
+      focusedAddress.current = packets[target].address
+      return
+    }
+    show(target)
+    x.set(target * itemW)
+    listRef.current?.scrollToOffset({ offset: target * itemW, animated: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packets, itemW, x])
 
   const current = packets[Math.min(index, packets.length - 1)]
 
