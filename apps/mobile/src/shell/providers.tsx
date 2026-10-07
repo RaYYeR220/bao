@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { APP_URL, DEVNET_RPC_URL } from '@/features/bao/data-access/bao-config'
+import { secureWalletAuthorizationCache } from '@/features/bao/data-access/wallet-auth-cache'
 import { ClusterProvider } from '@/features/cluster/data-access/cluster-provider'
 import { createClusterProps } from '@/features/cluster/data-access/create-cluster-props'
 import { color } from '@/ui/tokens'
@@ -45,7 +46,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
 function WalletProvider({ children }: { children: ReactNode }) {
   return (
-    <MobileWalletProvider cluster={BAO_CLUSTER} identity={identity}>
+    <MobileWalletProvider cache={secureWalletAuthorizationCache} cluster={BAO_CLUSTER} identity={identity}>
       {children}
     </MobileWalletProvider>
   )
