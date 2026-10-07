@@ -17,6 +17,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path } from 'react-native-svg'
 
+import { createCarouselFocus } from '@/features/bao/carousel-focus'
 import { $onboarded } from '@/features/bao/data-access/prefs'
 import { useCircles } from '@/features/bao/data-access/use-bao-api'
 import { useChainStarter, useFeedData, useMyClaims } from '@/features/bao/data-access/use-bao-data'
@@ -292,61 +293,73 @@ function Carousel({
   const side = (screenW - itemW) / 2
   const x = useSharedValue(0)
   const tilt = useTiltGleam(0.52)
+  // The card at the centre, as the scroll offset reports it. The counter and the caption read
+  // this and nothing else moves it, so the three always describe the same card.
   const [index, setIndex] = useState(0)
-  const indexRef = useRef(0)
-  // the packet in focus, so a list that changes under the carousel can keep it (or its slot) in view
-  const focusedAddress = useRef<string | null>(null)
+  const shown = useRef(0)
+  const [centre] = useState(createCarouselFocus)
   const listRef = useRef<Animated.FlatList<PacketView>>(null)
+  const gestureTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const show = (i: number) => {
-    indexRef.current = i
-    focusedAddress.current = packets[i]?.address ?? null
-    setIndex(i)
-    focusListeners.forEach((l) => l(i))
+  /** Carries out what `centre` asks for: a card to scroll to, or nothing. */
+  const scrollToCard = (i: number | null, animated = false) => {
+    if (i !== null) listRef.current?.scrollToOffset({ offset: i * itemW, animated })
   }
-  const setFocused = (i: number) => {
-    const clamped = Math.max(0, Math.min(packets.length - 1, i))
-    if (clamped === indexRef.current) return
-    show(clamped)
-    buzz('select')
+  const onOffset = (at: number) => {
+    const i = centre.onOffset(at)
+    if (i === shown.current) return
+    shown.current = i
+    setIndex(i)
+    if (centre.gesturing) buzz('select')
   }
   const onScroll = useAnimatedScrollHandler((e) => {
     x.value = e.contentOffset.x
   })
   useAnimatedReaction(
     () => Math.round(x.value / itemW),
-    (i, prev) => {
-      if (i !== prev) runOnJS(setFocused)(i)
+    (at, prev) => {
+      if (at !== prev) runOnJS(onOffset)(at)
     },
   )
+  useEffect(() => {
+    focusListeners.forEach((l) => l(index))
+  }, [index])
+
+  // The list changed under the carousel (a packet came or went, the feed fell back to the chain
+  // and its other order): keep the focused packet centred, or its slot if it left. The scroll is
+  // only asked for here. A longer list is not laid out yet when it is, so the scroll is clamped
+  // to the old width, and onContentSizeChange asks again.
+  useEffect(() => {
+    scrollToCard(centre.setKeys(packets.map((p) => p.address)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centre, packets, itemW])
 
   // jump to a just-dropped packet once; later refetches must not yank the carousel back
-  const focused = useRef<string | null>(null)
+  const jumped = useRef<string | null>(null)
   useEffect(() => {
-    if (!focus || focused.current === focus) return
-    const i = packets.findIndex((p) => p.address === focus)
-    if (i < 0) return
-    focused.current = focus
-    if (i > 0) setTimeout(() => listRef.current?.scrollToOffset({ offset: i * itemW, animated: true }), 300)
-  }, [focus, itemW, packets])
-
-  // A grab (or an expiry) takes a packet out of the list while the scroll offset stays put, which
-  // left the carousel on an empty slot past the end. Re-centre on the focused packet if it is
-  // still there, else on the slot it left (clamped to the last one).
-  useEffect(() => {
-    if (!packets.length) return
-    const kept = focusedAddress.current ? packets.findIndex((p) => p.address === focusedAddress.current) : -1
-    const target = kept >= 0 ? kept : Math.min(indexRef.current, packets.length - 1)
-    // only when the focused packet moved or the offset points past the end: never mid-swipe
-    if (target === indexRef.current && Math.round(x.value / itemW) < packets.length) {
-      focusedAddress.current = packets[target].address
-      return
-    }
-    show(target)
-    x.set(target * itemW)
-    listRef.current?.scrollToOffset({ offset: target * itemW, animated: false })
+    if (!focus || jumped.current === focus || !packets.some((p) => p.address === focus)) return
+    jumped.current = focus
+    setTimeout(() => scrollToCard(centre.focusOn(focus), true), 300)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packets, itemW, x])
+  }, [centre, focus, packets])
+
+  // A drag and the fling after it belong to the user: nothing is scrolled under them, and the
+  // card they land on becomes the one to keep.
+  const endGesture = () => {
+    if (gestureTimer.current) clearTimeout(gestureTimer.current)
+    gestureTimer.current = null
+    scrollToCard(centre.endGesture())
+  }
+  const endGestureIn = (ms: number) => {
+    if (gestureTimer.current) clearTimeout(gestureTimer.current)
+    gestureTimer.current = setTimeout(endGesture, ms)
+  }
+  useEffect(
+    () => () => {
+      if (gestureTimer.current) clearTimeout(gestureTimer.current)
+    },
+    [],
+  )
 
   const current = packets[Math.min(index, packets.length - 1)]
 
@@ -363,6 +376,17 @@ function Carousel({
         disableIntervalMomentum
         onScroll={onScroll}
         scrollEventThrottle={16}
+        // every card is one itemW wide: the list is as wide as its data from the first layout
+        getItemLayout={(_, i) => ({ length: itemW, offset: side + i * itemW, index: i })}
+        onContentSizeChange={() => scrollToCard(centre.owed())}
+        onScrollBeginDrag={() => {
+          if (gestureTimer.current) clearTimeout(gestureTimer.current)
+          centre.beginGesture()
+        }}
+        // a fling begins at once where there is one; if none does, the gesture ends here
+        onScrollEndDrag={() => endGestureIn(250)}
+        onMomentumScrollBegin={() => endGestureIn(3000)}
+        onMomentumScrollEnd={endGesture}
         contentContainerStyle={{ paddingHorizontal: side, paddingTop: 18, paddingBottom: 26 }}
         style={{ height: envH + 44 }}
         renderItem={({ item, index: i }) => (
