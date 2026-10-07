@@ -148,7 +148,8 @@
         }
       ],
       "./plugins/with-gradle-tuning",
-      "./plugins/with-release-signing"
+      "./plugins/with-release-signing",
+      "./plugins/with-nfc-intent"
     ],
     "scheme": "bao",
     "slug": "bao",
