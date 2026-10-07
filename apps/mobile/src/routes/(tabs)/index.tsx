@@ -34,6 +34,13 @@ import { useTiltGleam } from '@/ui/motion'
 import { T } from '@/ui/text'
 import { color, font, space } from '@/ui/tokens'
 
+function liveLabel(packets: PacketView[]) {
+  const now = Math.floor(Date.now() / 1000)
+  const soon = packets.filter((p) => p.startsAt > now).length
+  const live = packets.length - soon
+  return soon ? `${live} live · ${soon} soon` : `${live} live`
+}
+
 type Filter = { kind: 'all' } | { kind: 'public' } | { kind: 'circle'; id: string; name: string }
 
 export default function FeedScreen() {
@@ -97,7 +104,7 @@ export default function FeedScreen() {
             <T variant="caps">
               {filterLabel} ·{' '}
               <T variant="caps" style={{ color: color.kin400 }}>
-                {feed.isLoading ? '…' : `${packets.length} live`}
+                {feed.isLoading ? '…' : liveLabel(packets)}
               </T>
             </T>
             {onChain ? <OnChainTag /> : null}
@@ -385,6 +392,7 @@ function CarouselItem({
 function Meta({ packet, grabbed }: { packet: PacketView; grabbed?: string | null }) {
   const name = displayName(packet.senderSkr, packet.sender)
   const left = sharesLeft(packet)
+  const opensLater = packet.startsAt > Math.floor(Date.now() / 1000)
   return (
     <Pressable
       onPress={() => router.push(`/packet/${packet.address}`)}
@@ -400,7 +408,7 @@ function Meta({ packet, grabbed }: { packet: PacketView; grabbed?: string | null
           </T>
           {packet.seekerOnly ? <SgtBadge /> : null}
         </View>
-        <Countdown to={packet.expiresAt} style={{ fontSize: 30, lineHeight: 34 }} />
+        <Countdown to={opensLater ? packet.startsAt : packet.expiresAt} style={{ fontSize: 30, lineHeight: 34 }} />
       </View>
       <View style={[styles.metaRow, { marginTop: 8 }]}>
         <T variant="meta" style={{ flexShrink: 1 }} numberOfLines={1}>
@@ -415,7 +423,9 @@ function Meta({ packet, grabbed }: { packet: PacketView; grabbed?: string | null
           shares left · {packet.mode === 'lucky' ? 'Lucky split' : 'Equal split'}
           {packet.chainDepth > 0 ? ` · #${packet.chainDepth + 1} in a chain` : ''}
         </T>
-        <T variant="meta">until it closes</T>
+        <T variant="meta" style={opensLater ? { color: color.kin300 } : undefined}>
+          {opensLater ? 'until it rains' : 'until it closes'}
+        </T>
       </View>
       {packet.message ? (
         <T style={{ fontFamily: font.displayItalic, fontSize: 15, lineHeight: 20, color: color.gofun64, marginTop: 8 }} numberOfLines={2}>
