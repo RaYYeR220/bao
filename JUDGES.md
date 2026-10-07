@@ -1,5 +1,7 @@
 # Reviewing Bao in five minutes
 
+The three-minute demo: https://youtu.be/N1hNVH_5Gmo
+
 ## 1. Install (1 minute)
 
 Download [`bao-1.0.0.apk`](https://github.com/RaYYeR220/bao/releases/download/v1.0.0/bao-1.0.0.apk) and install it on
