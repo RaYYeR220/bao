@@ -129,24 +129,17 @@ describe('copy', () => {
 });
 
 describe('fcm message', () => {
-  it('is data-only, so the app shows it exactly once in the foreground and the background', () => {
+  it('draws on the same channel and tag in the background (tray) and the foreground (app)', () => {
     const p = { ...mirror({ address: A.p1 }), message: null } as never;
     const m = fcmMessage('device-token', messages.luckKing(p, '4000000'));
-    expect(m).not.toHaveProperty('notification');
-    expect(m.android).not.toHaveProperty('notification');
     expect(m).toEqual({
       token: 'device-token',
-      data: {
-        kind: 'luck_king',
-        packet: A.p1,
-        url: `bao://packet/${A.p1}`,
-        title: 'You are the Luck King',
-        message: 'Biggest grab: 4 tSKR. By custom, you send the next one.',
-        channelId: 'results',
-        tag: `luck_king:${A.p1}`,
-      },
-      android: { priority: 'HIGH' },
+      notification: { title: 'You are the Luck King', body: 'Biggest grab: 4 tSKR. By custom, you send the next one.' },
+      data: { kind: 'luck_king', packet: A.p1, url: `bao://packet/${A.p1}`, tag: `luck_king:${A.p1}` },
+      android: { priority: 'HIGH', notification: { channel_id: 'results', tag: `luck_king:${A.p1}` } },
     });
+    // the app registers exactly these channels (apps/mobile push.ts)
+    expect(new Set(Object.values(CHANNELS))).toEqual(new Set(['packets', 'rains', 'results']));
     // FCM data values must all be strings
     expect(Object.values(m.data).every((v) => typeof v === 'string')).toBe(true);
   });
@@ -179,10 +172,9 @@ describe('fcm transport', () => {
     const body = JSON.parse(String(send.init.body));
     expect(body.message).toMatchObject({
       token: 'device-token',
-      data: { kind: 'rain_starting', packet: A.p1, channelId: 'rains', title: 'A rain is starting' },
-      android: { priority: 'HIGH' },
+      data: { kind: 'rain_starting', packet: A.p1 },
+      android: { priority: 'HIGH', notification: { channel_id: 'rains', tag: `rain_starting:${A.p1}` } },
     });
-    expect(body.message.notification).toBeUndefined();
   });
 
   it('reports unregistered tokens', async () => {

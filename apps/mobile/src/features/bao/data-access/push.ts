@@ -24,10 +24,10 @@ const CHANNELS = [
 ] as const
 
 /**
- * Pushes arrive as data-only FCM messages (title, message, channelId and tag in the data), so
- * the app is the only thing that shows them: expo-notifications draws them itself in the
- * background, and this handler lets them through in the foreground. Exactly one notification
- * per push either way, on its own channel, and a repeat with the same tag replaces it.
+ * Each push is drawn once: by Android from its notification block while Bao is in the
+ * background, by this handler while it is in front (FCM hands foreground messages to the app
+ * instead of drawing them). The server names a channel registered below and the same tag for
+ * both (`data.tag` becomes the notification id), so a repeat replaces what is already shown.
  */
 export async function setupNotifications() {
   Notifications.setNotificationHandler({

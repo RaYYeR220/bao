@@ -50,26 +50,20 @@ export function parseServiceAccount(json: string): ServiceAccount {
 }
 
 /**
- * A data-only FCM message: the app shows it itself (expo-notifications reads title, message,
- * channelId and tag from the data), in the foreground and the background alike. With a
- * `notification` block Android drew it from the system tray in the background while the app's
- * handler drew it again in the foreground, on different channels and tags, so it showed twice.
- * The tag makes a repeat replace the notification already shown instead of stacking.
+ * One push, one notification. In the background Android draws it from the `notification` block;
+ * in the foreground the app's handler draws it (expo-notifications drops data-only messages in
+ * the foreground, so the block is needed). Both drawers now use a channel the app registers and
+ * the same tag (`data.tag` is the id expo-notifications gives it), so a repeat replaces the
+ * notification already shown. Before, the tray copy fell back to `packets` tagged by packet and
+ * the app's copy to expo's fallback channel tagged by FCM message id: two notifications.
  */
 export function fcmMessage(token: string, message: PushMessage) {
   const tag = `${message.kind}:${message.data.packet ?? ''}`;
   return {
     token,
-    data: {
-      kind: message.kind,
-      ...message.data,
-      title: message.title,
-      message: message.body,
-      channelId: CHANNELS[message.kind],
-      tag,
-    },
-    // high priority wakes the app to show it; a data message never shows on its own
-    android: { priority: 'HIGH' },
+    notification: { title: message.title, body: message.body },
+    data: { kind: message.kind, ...message.data, tag },
+    android: { priority: 'HIGH', notification: { channel_id: CHANNELS[message.kind], tag } },
   };
 }
 
