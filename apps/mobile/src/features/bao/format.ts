@@ -49,8 +49,10 @@ export const clockTime = (unix: number) => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-export const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`
-export const explorerAddress = (a: string) => `https://explorer.solana.com/address/${a}?cluster=devnet`
+// values can come from the API: encode them so a link always stays one explorer page
+export const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${encodeURIComponent(sig)}?cluster=devnet`
+export const explorerAddress = (a: string) =>
+  `https://explorer.solana.com/address/${encodeURIComponent(a)}?cluster=devnet`
 
 /** Explorer links for the transactions the devnet faucet sent (it signs server-side). */
 export const faucetLinks = (r: { sol: string | null; tskr: string | null; genesis: { signature: string } | null }) =>
