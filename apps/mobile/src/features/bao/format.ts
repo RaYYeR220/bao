@@ -52,6 +52,14 @@ export const clockTime = (unix: number) => {
 export const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`
 export const explorerAddress = (a: string) => `https://explorer.solana.com/address/${a}?cluster=devnet`
 
+/** Explorer links for the transactions the devnet faucet sent (it signs server-side). */
+export const faucetLinks = (r: { sol: string | null; tskr: string | null; genesis: { signature: string } | null }) =>
+  [
+    r.sol ? { label: 'SOL tx', url: explorerTx(r.sol) } : null,
+    r.tskr ? { label: 'tSKR tx', url: explorerTx(r.tskr) } : null,
+    r.genesis ? { label: 'Genesis tx', url: explorerTx(r.genesis.signature) } : null,
+  ].filter((l): l is { label: string; url: string } => !!l)
+
 export const sharesLeft = (p: { shares: number; reserved: number }) => Math.max(0, p.shares - p.reserved)
 
 export const ordinal = (n: number) => {

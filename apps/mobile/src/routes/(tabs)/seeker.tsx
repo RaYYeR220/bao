@@ -19,7 +19,7 @@ import {
 import { useBalances } from '@/features/bao/data-access/use-bao-data'
 import { useBaoSignIn, useBaoSignOut, useFaucet } from '@/features/bao/data-access/use-bao-sign-in'
 import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
-import { explorerAddress, formatAmount, shortAddress } from '@/features/bao/format'
+import { explorerAddress, faucetLinks, formatAmount, shortAddress } from '@/features/bao/format'
 import { Backdrop } from '@/ui/backdrop'
 import { buzz, play } from '@/ui/feedback'
 import { Icon } from '@/ui/icon'
@@ -39,7 +39,11 @@ export default function SeekerScreen() {
   const signIn = useBaoSignIn()
   const signOut = useBaoSignOut()
   const faucet = useFaucet()
-  const [note, setNote] = useState<{ tone: 'jade' | 'shu' | 'muted'; text: string } | null>(null)
+  const [note, setNote] = useState<{
+    tone: 'jade' | 'shu' | 'muted'
+    text: string
+    links?: { label: string; url: string }[]
+  } | null>(null)
 
   const connect = async () => {
     setNote(null)
@@ -70,6 +74,7 @@ export default function SeekerScreen() {
       setNote({
         tone: 'jade',
         text: got ? `Sent: ${got}. It lands in a few seconds.` : 'You already have everything the playground gives.',
+        links: faucetLinks(res),
       })
       setTimeout(() => {
         void balances.refetch()
@@ -187,6 +192,13 @@ export default function SeekerScreen() {
             <Note tone={note.tone} icon={note.tone === 'jade' ? 'check' : 'info'}>
               {note.text}
             </Note>
+            {note.links?.length ? (
+              <View style={styles.links}>
+                {note.links.map((l) => (
+                  <ExplorerLink key={l.label} label={l.label} url={l.url} />
+                ))}
+              </View>
+            ) : null}
           </Animated.View>
         ) : null}
 
@@ -288,6 +300,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(23,17,18,0.85)',
   },
   balances: { flexDirection: 'row', gap: space[4], alignItems: 'center' },
+  links: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginTop: space[3] },
   vr: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: color.kuro600 },
   faucet: { flexDirection: 'row', alignItems: 'center', gap: space[4] },
   faucetIcon: {

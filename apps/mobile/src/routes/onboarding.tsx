@@ -19,12 +19,12 @@ import { $onboarded } from '@/features/bao/data-access/prefs'
 import { humanError, isWalletCancel } from '@/features/bao/data-access/send-with-wallet'
 import { ApiUnavailableError, apiErrorMessage } from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn, useFaucet } from '@/features/bao/data-access/use-bao-sign-in'
-import { shortAddress } from '@/features/bao/format'
+import { faucetLinks, shortAddress } from '@/features/bao/format'
 import { ShakeLines } from '@/features/bao/ui/shake-lines'
 import { Backdrop } from '@/ui/backdrop'
 import { EnvelopeFace } from '@/ui/envelope/envelope'
 import { buzz, play } from '@/ui/feedback'
-import { FoilButton, Note, SgtBadge, TextButton } from '@/ui/kit'
+import { ExplorerLink, FoilButton, Note, SgtBadge, TextButton } from '@/ui/kit'
 import { useReducedMotion, useTiltGleam } from '@/ui/motion'
 import { T } from '@/ui/text'
 import { color, font, space } from '@/ui/tokens'
@@ -314,6 +314,13 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
                   .join(', ') || 'Tokens'}{' '}
                 on the way to your wallet.
               </Note>
+            ) : null}
+            {faucet.isSuccess && faucetLinks(faucet.data).length ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 18 }}>
+                {faucetLinks(faucet.data).map((l) => (
+                  <ExplorerLink key={l.label} label={l.label} url={l.url} />
+                ))}
+              </View>
             ) : null}
             {offline ? (
               <Note>
