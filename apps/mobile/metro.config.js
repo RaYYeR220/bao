@@ -1,5 +1,4 @@
 const { getDefaultConfig } = require('expo/metro-config')
-const { withUniwindConfig } = require('uniwind/metro') // make sure this import exists
 const fs = require('fs')
 const path = require('path')
 
@@ -25,17 +24,9 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform)
 }
 
-// Apply uniwind modifications before exporting
-const uniwindConfig = withUniwindConfig(config, {
-  // relative path to your global.css file
-  cssEntryFile: './src/global.css',
-  // optional: path to typings
-  dtsFile: './src/uniwind-types.d.ts',
-})
-
 // Cache transforms per project; the machine-wide Metro cache can serve stale transforms from other projects.
-uniwindConfig.cacheStores = ({ FileStore }) => [
+config.cacheStores = ({ FileStore }) => [
   new FileStore({ root: path.join(__dirname, 'node_modules', '.cache', 'metro') }),
 ]
 
-module.exports = uniwindConfig
+module.exports = config
