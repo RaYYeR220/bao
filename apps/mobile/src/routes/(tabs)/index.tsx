@@ -337,7 +337,8 @@ function Carousel({
     if (!packets.length) return
     const kept = focusedAddress.current ? packets.findIndex((p) => p.address === focusedAddress.current) : -1
     const target = kept >= 0 ? kept : Math.min(indexRef.current, packets.length - 1)
-    if (target === indexRef.current && Math.round(x.value / itemW) === target) {
+    // only when the focused packet moved or the offset points past the end: never mid-swipe
+    if (target === indexRef.current && Math.round(x.value / itemW) < packets.length) {
       focusedAddress.current = packets[target].address
       return
     }
