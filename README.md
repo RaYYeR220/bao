@@ -118,6 +118,13 @@ See [THREAT_MODEL.md](THREAT_MODEL.md): device binding, randomness, the griefing
 - **The program is upgradeable** until the mainnet release.
 - **The VRF oracle is trusted for liveness, not for fairness**: a missing answer leads to a refund path,
   never to an unproven payout.
+- **Tested on a Samsung Galaxy A52 with Phantom and on an emulator with a test wallet, not on a Seeker.** There
+  was no Seeker at hand, so Seed Vault itself is exercised only through the Mobile Wallet Adapter protocol it
+  shares with those wallets.
+- **Writing a packet to an NFC tag is implemented but was not tried on a physical tag.** Opening a packet from
+  a link, a QR code or a tag that carries the link uses the same App Link.
+- **The app sends tSKR only.** The program accepts any classic SPL mint and Token-2022 mints without the
+  extensions listed in the threat model; a token picker is not in this build.
 
 ## License
 
