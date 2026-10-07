@@ -15,8 +15,8 @@
     "start": "expo start",
     "web": "expo start --web"
   },
-  "displayName": "Mobile example",
-  "description": "A Solana mobile app template with Expo, React Native, Solana Kit, Mobile Wallet Adapter actions, and Uniwind.",
+  "displayName": "Bao",
+  "description": "Bao: sybil-proof red packets for Solana Seeker. Expo Android app with Mobile Wallet Adapter on devnet.",
   "usecase": "Mobile",
   "keywords": [
     "expo",
@@ -29,7 +29,7 @@
     "wallet-ui"
   ],
   "main": "./index.js",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "dependencies": {
     "@bao/sdk": "file:../../packages/sdk",
     "@expo/metro-runtime": "~57.0.5",
