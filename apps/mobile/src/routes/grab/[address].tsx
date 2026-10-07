@@ -438,6 +438,8 @@ function Bottom({
         {isKing ? <TextButton label="Packet details" tone="muted" onPress={() => router.push(`/packet/${detail.address}`)} /> : null}
       </Animated.View>
     )
+  } else if (phase.kind === 'revealed' || alreadyMine) {
+    content = null
   } else if (phase.kind === 'refused') {
     content = <Refusal phase={phase} detail={detail} onRetry={onRetry} onCode={onCode} />
   } else if (phase.kind === 'error') {

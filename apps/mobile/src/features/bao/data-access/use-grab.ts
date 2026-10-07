@@ -101,6 +101,7 @@ export function useGrab(packetAddress: string, code?: string) {
       setPhase({ kind: 'confirming', signature })
       await confirmSignature(client, signature)
 
+      const unsealedAt = Date.now()
       if (mode === 'lucky') setPhase({ kind: 'unsealing', signature })
       let record = await fetchMaybeClaimRecord(client.rpc as never, claim)
       for (let i = 0; i < 90 && (!record.exists || record.data.status === ClaimStatus.Pending); i++) {
@@ -115,6 +116,8 @@ export function useGrab(packetAddress: string, code?: string) {
         return
       }
       const after = await fetchPacket(client.rpc as never, packetKey)
+      // let the unsealing breathe: the proof can land in under a second on a quiet devnet
+      if (mode === 'lucky') await sleep(Math.max(0, 2200 - (Date.now() - unsealedAt)))
       const king = after.data.luckKing
       const won = record.data.status === ClaimStatus.Won
       setPhase({

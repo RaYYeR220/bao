@@ -3,14 +3,14 @@ import { useMobileWallet } from '@wallet-ui/react-native-kit'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
+import Animated, { FadeIn, FadeInDown, useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useHistory } from '@/features/bao/data-access/use-bao-data'
 import { displayName, formatAmount, sharesLeft, timeAgo } from '@/features/bao/format'
 import { toneFor } from '@/features/bao/ui/packet-envelope'
 import { Backdrop } from '@/ui/backdrop'
-import { tones } from '@/ui/envelope/lacquer-shader'
+import { EnvelopeFace } from '@/ui/envelope/envelope'
 import { buzz } from '@/ui/feedback'
 import { Icon } from '@/ui/icon'
 import { Note, Skeleton, StateBlock } from '@/ui/kit'
@@ -147,14 +147,10 @@ function Stat({ label, value, sub, cjk }: { label: string; value: string; sub: s
   )
 }
 
+/** A tiny lacquer envelope for list rows; opened ones show the cracked seal. */
 function MiniEnvelope({ tone, open }: { tone: ReturnType<typeof toneFor>; open: boolean }) {
-  const t = tones[tone]
-  return (
-    <View style={[styles.mini, { backgroundColor: t.body[1] }]}>
-      <View style={[styles.miniFlap, { backgroundColor: t.flap[1], opacity: open ? 0.35 : 1 }]} />
-      <View style={[styles.miniSeal, { opacity: open ? 0.3 : 1 }]} />
-    </View>
-  )
+  const gleam = useSharedValue(0.55)
+  return <EnvelopeFace width={32} tone={tone} gleam={gleam} sealState={open ? 'cracked' : 'closed'} />
 }
 
 function ReceivedRow({ grab, packet, i }: { grab: GrabView; packet: PacketView | null; i: number }) {
@@ -232,7 +228,4 @@ const styles = StyleSheet.create({
     minHeight: 72,
   },
   amt: { fontFamily: font.numerals, fontSize: 24, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] },
-  mini: { width: 30, height: 48, borderRadius: 3, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,205,195,0.2)' },
-  miniFlap: { position: 'absolute', left: 0, right: 0, top: 0, height: 17, borderBottomLeftRadius: 15, borderBottomRightRadius: 15, borderBottomWidth: 0.8, borderColor: color.kin400 },
-  miniSeal: { position: 'absolute', left: 10, top: 13, width: 10, height: 10, borderRadius: 5, backgroundColor: color.shu800, borderWidth: 0.8, borderColor: color.kin300 },
 })

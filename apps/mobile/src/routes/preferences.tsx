@@ -1,6 +1,7 @@
 import Constants from 'expo-constants'
 import { router } from 'expo-router'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { requestPinWidget } from 'react-native-android-widget'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { APP_URL } from '@/features/bao/data-access/bao-config'
@@ -13,6 +14,7 @@ import { Hairline, RoundButton, Row } from '@/ui/kit'
 import { useReducedMotion } from '@/ui/motion'
 import { T } from '@/ui/text'
 import { color, space } from '@/ui/tokens'
+import { WIDGET_NAME } from '@/widget/task-handler'
 
 export default function Preferences() {
   const insets = useSafeAreaInsets()
@@ -70,6 +72,13 @@ export default function Preferences() {
           <T variant="meta" style={{ marginLeft: 34, marginTop: -4, marginBottom: 10 }}>
             {APP_URL.replace(/^https:\/\//, '')} · when it is down, Bao reads straight from the chain.
           </T>
+          <Hairline />
+          <Row
+            icon="box"
+            label="Add the home-screen widget"
+            value="Packets waiting, next rain"
+            onPress={() => void requestPinWidget({ widgetName: WIDGET_NAME }).catch(() => false)}
+          />
           <Hairline />
           <Row
             icon="envelope"
