@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { $onboarded } from '@/features/bao/data-access/prefs'
 import { humanError, WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
-import { ApiUnavailableError } from '@/features/bao/data-access/use-bao-api'
+import { ApiUnavailableError, apiErrorMessage } from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn, useFaucet } from '@/features/bao/data-access/use-bao-sign-in'
 import { shortAddress } from '@/features/bao/format'
 import { ShakeLines } from '@/features/bao/ui/shake-lines'
@@ -255,7 +255,7 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
       play('shimmer')
     } catch (e) {
       if (e instanceof ApiUnavailableError) setOffline(true)
-      else setError(e instanceof Error ? e.message : 'The faucet did not answer.')
+      else setError(apiErrorMessage(e, 'The faucet did not answer.'))
     }
   }
 

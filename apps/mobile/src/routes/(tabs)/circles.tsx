@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { maybeAskForPush } from '@/features/bao/data-access/push'
 import { humanError, WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
-import { baoApi, useApiState, useCircles, useSession } from '@/features/bao/data-access/use-bao-api'
+import { apiErrorMessage, baoApi, useApiState, useCircles, useSession } from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn } from '@/features/bao/data-access/use-bao-sign-in'
 import { CircleSeal, SEAL_GLYPHS } from '@/features/bao/ui/circle-seal'
 import { Backdrop } from '@/ui/backdrop'
@@ -222,11 +222,7 @@ function CreateSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
           </Pressable>
         ))}
       </View>
-      {create.isError ? (
-        <Note tone="shu">
-          {create.error instanceof Error ? create.error.message.replace(/^.*→ \d+: /, '') : 'Could not create it.'}
-        </Note>
-      ) : null}
+      {create.isError ? <Note tone="shu">{apiErrorMessage(create.error, 'Could not create it.')}</Note> : null}
       <FoilButton
         label="Start the circle"
         disabled={name.trim().length < 2}

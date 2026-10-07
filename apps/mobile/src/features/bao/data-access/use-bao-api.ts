@@ -136,3 +136,21 @@ export function useUserProfile(address: string | undefined) {
     retry: false,
   })
 }
+
+/** The server's own message for a refused request ("faucet already used…"), else a short fallback. */
+export function apiErrorMessage(error: unknown, fallback = 'The Bao server said no. Try again in a moment.'): string {
+  if (error instanceof ApiUnavailableError) return error.message
+  const text = error instanceof Error ? error.message : String(error)
+  const m = /→ \d{3}: ([\s\S]*)$/.exec(text)
+  if (!m) return fallback
+  try {
+    const body = JSON.parse(m[1]) as { error?: string; message?: string }
+    const msg = body.error ?? body.message
+    if (!msg) return fallback
+    if (/faucet already used/i.test(msg))
+      return 'You already collected today’s test tokens. Come back tomorrow, or grab a packet from the feed.'
+    return msg.charAt(0).toUpperCase() + msg.slice(1).replace(/\.?$/, '.')
+  } catch {
+    return fallback
+  }
+}

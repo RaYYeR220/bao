@@ -9,7 +9,13 @@ import Svg, { Circle, Path } from 'react-native-svg'
 
 import { TSKR_DECIMALS } from '@/features/bao/data-access/bao-config'
 import { humanError, WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
-import { ApiUnavailableError, useApiState, useMe, useSession } from '@/features/bao/data-access/use-bao-api'
+import {
+  ApiUnavailableError,
+  apiErrorMessage,
+  useApiState,
+  useMe,
+  useSession,
+} from '@/features/bao/data-access/use-bao-api'
 import { useBalances } from '@/features/bao/data-access/use-bao-data'
 import { useBaoSignIn, useBaoSignOut, useFaucet } from '@/features/bao/data-access/use-bao-sign-in'
 import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
@@ -73,11 +79,10 @@ export default function SeekerScreen() {
     } catch (e) {
       if (e instanceof ApiUnavailableError)
         setNote({ tone: 'muted', text: 'The faucet lives on the Bao server, which is unreachable right now.' })
-      else if (!(e instanceof WalletRejectedError))
-        setNote({
-          tone: 'shu',
-          text: e instanceof Error ? e.message.replace(/^.*→ \d+: /, '') : 'The faucet did not answer.',
-        })
+      else if (!(e instanceof WalletRejectedError)) {
+        const text = apiErrorMessage(e, 'The faucet did not answer.')
+        setNote({ tone: /already collected/.test(text) ? 'muted' : 'shu', text })
+      }
     }
   }
 
