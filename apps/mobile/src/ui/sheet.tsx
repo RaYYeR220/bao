@@ -26,7 +26,7 @@ export function Sheet({
   const reduced = useReducedMotion()
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         <Animated.View
           entering={reduced ? FadeIn.duration(150) : SlideInDown.duration(380).springify().damping(22).stiffness(180).mass(1.1)}
@@ -55,10 +55,6 @@ export function Sheet({
 const styles = StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(5,3,3,0.72)' },
   panel: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     backgroundColor: color.kuro800,
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,

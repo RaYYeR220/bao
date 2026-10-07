@@ -288,6 +288,7 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
       />
 
       <CodeSheet
+        key={codeOpen ? 'open' : 'closed'}
         visible={codeOpen}
         hint={detail.codeHint}
         onClose={() => setCodeOpen(false)}
@@ -545,7 +546,13 @@ function Refusal({
         {notSeeker ? 'Only real Seekers can open this' : wrongCode ? 'That is not the word' : already ? 'This Seeker already grabbed' : 'The seal stays shut'}
       </T>
       <T variant="body" style={{ fontSize: 14, lineHeight: 20 }}>
-        {phase.message}
+        {wrongCode
+          ? 'The program hashed your word with this packet and it did not match. Ask whoever shared it, then try again.'
+          : already
+            ? 'One Seeker, one grab: this phone’s Genesis token already holds a claim on this packet.'
+            : notSeeker
+              ? 'This packet is Seeker-only. Before anything moves, the program looks for a Seeker Genesis Token in the grabbing wallet, and this one has none.'
+              : phase.message}
       </T>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
         <T variant="capsSmall" style={{ color: color.gofun44 }}>
@@ -586,7 +593,7 @@ function CodeSheet({
           Hint: <T style={{ fontFamily: font.displayItalic, color: color.gofun }}>“{hint}”</T>
         </T>
       ) : (
-        <T variant="body">Whoever shared this packet told you the word. Case and spaces do not matter.</T>
+        <T variant="body">Whoever shared this packet told you the word. Capital letters do not matter.</T>
       )}
       <TextInput
         value={value}
