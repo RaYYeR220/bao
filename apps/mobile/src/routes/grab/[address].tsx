@@ -172,7 +172,6 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
     }
   }, [phase.kind])
 
-  const tone = spent ? 'ash' : toneFor(detail)
   const name = displayName(detail.senderSkr, detail.sender)
   const symbol = detail.token.symbol
   const decimals = detail.token.decimals
@@ -193,15 +192,21 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
     return detail.grabs.find((g) => (sig && g.grabSignature === sig) || (mine.data && g.deviceKey === mine.data.data.deviceKey))
   }, [detail.grabs, mine.data, result?.signature])
 
+  // the envelope keeps its lacquer for whoever opened it; spectators of a spent packet see ash
+  const tone = spent && !result ? 'ash' : toneFor({ skin: detail.skin, status: 'live' })
+
   const rankLine = useMemo(() => {
     if (!result) return ''
     const resolved = detail.grabs.filter((g) => g.amount !== null)
     const count = Math.max(resolved.length, 1)
     const bigger = resolved.filter((g) => BigInt(g.amount!) > result.amount).length
     const packetLine = `${name}’s ${formatAmount(detail.total, decimals)} ${symbol} packet`
+    const finished = detail.resolved >= detail.shares || detail.status === 'closed'
+    const soFar = finished ? '' : ' so far'
     if (detail.mode === 'equal') return `an equal share of ${packetLine}`
-    if (bigger === 0) return `biggest of ${count} ${count === 1 ? 'grab' : 'grabs'} so far in ${packetLine}`
-    return `${ordinal(bigger + 1)} of ${count} so far in ${packetLine}`
+    if (detail.shares === 1) return `all of ${packetLine}`
+    if (bigger === 0) return `biggest of ${count} ${count === 1 ? 'grab' : 'grabs'}${soFar} in ${packetLine}`
+    return `${ordinal(bigger + 1)} of ${count}${soFar} in ${packetLine}`
   }, [decimals, detail, name, result, symbol])
 
   const sendNext = () =>
