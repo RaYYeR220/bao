@@ -18,6 +18,8 @@ import {
   sharesLeft,
   shortAddress,
 } from '@/features/bao/format'
+import { isPacketAddress } from '@/features/bao/links'
+import { BadLink } from '@/features/bao/ui/bad-link'
 import { PacketEnvelope } from '@/features/bao/ui/packet-envelope'
 import { Backdrop } from '@/ui/backdrop'
 import { useNow } from '@/ui/countdown'
@@ -31,10 +33,13 @@ import { color, font, radius, space } from '@/ui/tokens'
 export default function PacketScreen() {
   const { address } = useLocalSearchParams<{ address: string }>()
   const insets = useSafeAreaInsets()
-  const q = usePacketData(address)
+  const valid = isPacketAddress(address)
+  const q = usePacketData(valid ? address : undefined)
   const detail = q.data?.detail ?? null
   const [refreshing, setRefreshing] = useState(false)
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'))
+
+  if (!valid) return <BadLink kind="packet" />
 
   return (
     <View style={{ flex: 1 }}>

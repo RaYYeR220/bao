@@ -5,8 +5,9 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated'
 
 import { maybeAskForPush } from '@/features/bao/data-access/push'
-import { ApiUnavailableError, baoApi, useSession } from '@/features/bao/data-access/use-bao-api'
+import { ApiUnavailableError, apiErrorMessage, baoApi, useSession } from '@/features/bao/data-access/use-bao-api'
 import { useBaoSignIn } from '@/features/bao/data-access/use-bao-sign-in'
+import { isInviteCode } from '@/features/bao/links'
 import { CircleSeal } from '@/features/bao/ui/circle-seal'
 import { buzz, play } from '@/ui/feedback'
 import { FoilButton, Note, TextButton } from '@/ui/kit'
@@ -15,13 +16,17 @@ import { color, font, radius, space } from '@/ui/tokens'
 
 /** bao://join/<code>: join a circle from an invite link, QR or code. */
 export default function JoinScreen() {
-  const { code } = useLocalSearchParams<{ code: string }>()
+  const { code: rawCode } = useLocalSearchParams<{ code: string }>()
+  // links are validated on the way in; a code that still is not an invite code never reaches the API
+  const code = isInviteCode(rawCode) ? rawCode : null
   const session = useSession()
   const signIn = useBaoSignIn()
   const qc = useQueryClient()
   const join = useMutation({
-    mutationFn: () =>
-      baoApi.call('POST /api/circles/join', { body: { inviteCode: decodeURIComponent(code) } }, { force: true }),
+    mutationFn: async () => {
+      if (!code) throw new Error('That is not a Bao invite code.')
+      return baoApi.call('POST /api/circles/join', { body: { inviteCode: code } }, { force: true })
+    },
     onSuccess: async () => {
       buzz('success')
       play('stamp')
@@ -31,20 +36,21 @@ export default function JoinScreen() {
   })
 
   useEffect(() => {
-    if (session && join.isIdle) join.mutate()
+    if (session && code && join.isIdle) join.mutate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/circles'))
   const c = join.data
   const err = join.error
-  const message =
-    err instanceof ApiUnavailableError
+  const message = !code
+    ? 'That is not a Bao invite code. Ask for a fresh invite link or QR.'
+    : err instanceof ApiUnavailableError
       ? 'Circles live on the Bao server, which is unreachable right now. Try the invite again in a moment.'
       : err
         ? /404|not found/i.test(String(err))
           ? 'That invite code does not match any circle.'
-          : String((err as Error).message).replace(/^.*→ \d+: /, '')
+          : apiErrorMessage(err, 'The invite did not go through. Try again in a moment.')
         : null
 
   return (
@@ -75,7 +81,7 @@ export default function JoinScreen() {
           ) : (
             <>
               <T style={{ fontFamily: font.numerals, fontSize: 32, letterSpacing: 5, color: color.kuro950 }}>
-                {decodeURIComponent(code ?? '')}
+                {code ?? '······'}
               </T>
               <T variant="body" style={{ color: color.paperInk2, textAlign: 'center' }}>
                 {session
@@ -85,7 +91,7 @@ export default function JoinScreen() {
                   : 'Sign in with your Seeker to join this circle.'}
               </T>
               {message ? <Note tone="shu">{message}</Note> : null}
-              {!session ? (
+              {!code ? null : !session ? (
                 <FoilButton
                   label="Sign in and join"
                   tone="shu"

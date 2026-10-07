@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications'
 import { router } from 'expo-router'
 import { Platform } from 'react-native'
 
+import { hrefFor, isPacketAddress, parseBaoLink } from '@/features/bao/links'
 import { color } from '@/ui/tokens'
 
 import { $pushAsked } from './prefs'
@@ -28,15 +29,13 @@ export async function setupNotifications() {
   }
 }
 
-/** Where a notification should take you: its deep link, or the packet it is about. */
+/** Where a notification should take you: the packet it is about, or its (validated) Bao link. */
 export function routeForNotification(data: Record<string, unknown> | undefined) {
   if (!data) return null
-  if (typeof data.packet === 'string') return `/grab/${data.packet}`
+  if (isPacketAddress(data.packet)) return `/grab/${data.packet}`
   if (typeof data.url === 'string') {
-    const m = /(?:packet|p)\/([1-9A-HJ-NP-Za-km-z]{32,44})/.exec(data.url)
-    if (m) return `/grab/${m[1]}`
-    const j = /join\/([A-Za-z0-9_-]+)/.exec(data.url)
-    if (j) return `/join/${j[1]}`
+    const link = parseBaoLink(data.url)
+    if (link) return hrefFor(link)
   }
   return null
 }

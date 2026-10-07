@@ -9,7 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useCircle } from '@/features/bao/data-access/use-bao-api'
 import { displayName, formatAmount } from '@/features/bao/format'
-import { inviteLink } from '@/features/bao/links'
+import { inviteLink, isCircleId } from '@/features/bao/links'
+import { BadLink } from '@/features/bao/ui/bad-link'
 import { CircleSeal } from '@/features/bao/ui/circle-seal'
 import { PacketEnvelope } from '@/features/bao/ui/packet-envelope'
 import { Backdrop } from '@/ui/backdrop'
@@ -23,10 +24,13 @@ import { color, font, radius, space } from '@/ui/tokens'
 export default function CircleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
-  const q = useCircle(id)
+  const valid = isCircleId(id)
+  const q = useCircle(valid ? id : undefined)
   const c = q.data
   const [refreshing, setRefreshing] = useState(false)
   const back = () => (router.canGoBack() ? router.back() : router.replace('/circles'))
+
+  if (!valid) return <BadLink kind="circle" />
 
   return (
     <View style={{ flex: 1 }}>

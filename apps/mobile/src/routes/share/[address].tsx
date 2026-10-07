@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { packetLink } from '@/features/bao/data-access/bao-config'
 import { usePacketData } from '@/features/bao/data-access/use-bao-data'
 import { explorerTx, formatAmount } from '@/features/bao/format'
+import { isPacketAddress, isSignature } from '@/features/bao/links'
+import { BadLink } from '@/features/bao/ui/bad-link'
 import { PacketEnvelope } from '@/features/bao/ui/packet-envelope'
 import { Backdrop } from '@/ui/backdrop'
 import { buzz, play } from '@/ui/feedback'
@@ -22,7 +24,13 @@ import { color, font, radius, space } from '@/ui/tokens'
 type NfcState = 'idle' | 'waiting' | 'written' | 'off' | 'unsupported' | 'error'
 
 export default function ShareScreen() {
-  const { address, sig, fresh } = useLocalSearchParams<{ address: string; sig?: string; fresh?: string }>()
+  const { address } = useLocalSearchParams<{ address: string }>()
+  if (!isPacketAddress(address)) return <BadLink kind="packet" />
+  return <SharePacket address={address} />
+}
+
+function SharePacket({ address }: { address: string }) {
+  const { sig, fresh } = useLocalSearchParams<{ sig?: string; fresh?: string }>()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const packet = usePacketData(address)
@@ -31,7 +39,7 @@ export default function ShareScreen() {
   const link = packetLink(address)
   const [copied, setCopied] = useState(false)
   const [nfc, setNfc] = useState<NfcState>('idle')
-  const createSig = sig ?? detail?.createSignature ?? null
+  const createSig = (isSignature(sig) ? sig : null) ?? detail?.createSignature ?? null
 
   useEffect(() => {
     if (fresh) AccessibilityInfo.announceForAccessibility('Your packet is sealed and live.')

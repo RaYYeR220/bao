@@ -19,6 +19,7 @@ import { useApiState, useCircles, useSession } from '@/features/bao/data-access/
 import { useBalances, useCrown, usePacketData } from '@/features/bao/data-access/use-bao-data'
 import { toBaseUnits, useDropPacket, type DropInput } from '@/features/bao/data-access/use-drop-packet'
 import { clockTime, displayName, formatAmount } from '@/features/bao/format'
+import { isCircleId, isPacketAddress } from '@/features/bao/links'
 import { Backdrop } from '@/ui/backdrop'
 import { useNow } from '@/ui/countdown'
 import { EnvelopeFace } from '@/ui/envelope/envelope'
@@ -46,7 +47,13 @@ const RAIN_IN: { min: number; label: string }[] = [
 export default function SendScreen() {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  const params = useLocalSearchParams<{ parent?: string; parentRefund?: string; circle?: string }>()
+  const raw = useLocalSearchParams<{ parent?: string; parentRefund?: string; circle?: string }>()
+  // route params can arrive from a link: keep only well-formed addresses and ids
+  const params = {
+    parent: isPacketAddress(raw.parent) ? raw.parent : undefined,
+    parentRefund: isPacketAddress(raw.parentRefund) ? raw.parentRefund : undefined,
+    circle: isCircleId(raw.circle) ? raw.circle : undefined,
+  }
   const wallet = useMobileWallet()
   const session = useSession()
   const apiState = useApiState()

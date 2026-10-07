@@ -24,6 +24,8 @@ import {
   sharesLeft,
   shortAddress,
 } from '@/features/bao/format'
+import { isPacketAddress } from '@/features/bao/links'
+import { BadLink } from '@/features/bao/ui/bad-link'
 import { GoldLeafBurst } from '@/features/bao/ui/gold-leaf'
 import { GrabStage, stageGeometry, type StageMode } from '@/features/bao/ui/grab-stage'
 import { toneFor } from '@/features/bao/ui/packet-envelope'
@@ -43,9 +45,11 @@ const close = () => (router.canGoBack() ? router.back() : router.replace('/'))
 
 export default function GrabScreen() {
   const { address, code: codeParam } = useLocalSearchParams<{ address: string; code?: string }>()
-  const packetQ = usePacketData(address)
+  const valid = isPacketAddress(address)
+  const packetQ = usePacketData(valid ? address : undefined)
   const detail = packetQ.data?.detail ?? null
 
+  if (!valid) return <BadLink kind="packet" />
   if (packetQ.isLoading && !packetQ.data) return <Loading />
   if (packetQ.isError && !packetQ.data)
     return (
