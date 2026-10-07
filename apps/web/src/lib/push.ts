@@ -49,6 +49,30 @@ export function parseServiceAccount(json: string): ServiceAccount {
   return sa as ServiceAccount;
 }
 
+/**
+ * A data-only FCM message: the app shows it itself (expo-notifications reads title, message,
+ * channelId and tag from the data), in the foreground and the background alike. With a
+ * `notification` block Android drew it from the system tray in the background while the app's
+ * handler drew it again in the foreground, on different channels and tags, so it showed twice.
+ * The tag makes a repeat replace the notification already shown instead of stacking.
+ */
+export function fcmMessage(token: string, message: PushMessage) {
+  const tag = `${message.kind}:${message.data.packet ?? ''}`;
+  return {
+    token,
+    data: {
+      kind: message.kind,
+      ...message.data,
+      title: message.title,
+      message: message.body,
+      channelId: CHANNELS[message.kind],
+      tag,
+    },
+    // high priority wakes the app to show it; a data message never shows on its own
+    android: { priority: 'HIGH' },
+  };
+}
+
 export function fcmTransport(sa: ServiceAccount, fetcher: typeof fetch = fetch): PushTransport {
   const tokenUri = sa.token_uri ?? 'https://oauth2.googleapis.com/token';
   let cached: { token: string; expiresAt: number } | null = null;
@@ -80,17 +104,7 @@ export function fcmTransport(sa: ServiceAccount, fetcher: typeof fetch = fetch):
       const res = await fetcher(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
         method: 'POST',
         headers: { authorization: `Bearer ${await accessToken()}`, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          message: {
-            token,
-            notification: { title: message.title, body: message.body },
-            data: { kind: message.kind, ...message.data },
-            android: {
-              priority: 'HIGH',
-              notification: { channel_id: CHANNELS[message.kind], tag: message.data.packet ?? message.kind },
-            },
-          },
-        }),
+        body: JSON.stringify({ message: fcmMessage(token, message) }),
       });
       if (res.ok) return 'ok';
       const text = await res.text();

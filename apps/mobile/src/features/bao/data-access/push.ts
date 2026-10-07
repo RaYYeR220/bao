@@ -9,6 +9,26 @@ import { $pushAsked } from './prefs'
 import { getToken } from './session-store'
 import { baoApi } from './use-bao-api'
 
+/**
+ * Android channels, one per group of pushes. The ids must match CHANNELS in apps/web
+ * src/lib/push.ts: a push naming a channel the app never made lands in a fallback channel.
+ */
+const CHANNELS = [
+  { id: 'packets', name: 'Packets', description: 'A packet dropped in one of your circles or the public feed' },
+  { id: 'rains', name: 'Rains', description: 'A public rain about to start' },
+  {
+    id: 'results',
+    name: 'Your grabs and packets',
+    description: 'Your share arrived, your Luck King crown, your packet emptied',
+  },
+] as const
+
+/**
+ * Pushes arrive as data-only FCM messages (title, message, channelId and tag in the data), so
+ * the app is the only thing that shows them: expo-notifications draws them itself in the
+ * background, and this handler lets them through in the foreground. Exactly one notification
+ * per push either way, on its own channel, and a repeat with the same tag replaces it.
+ */
 export async function setupNotifications() {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -19,13 +39,17 @@ export async function setupNotifications() {
     }),
   })
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('packets', {
-      name: 'Packets and rains',
-      description: 'A packet dropped in your circle, a rain starting, your Luck King crown',
-      importance: Notifications.AndroidImportance.HIGH,
-      lightColor: color.shu400,
-      vibrationPattern: [0, 60, 80, 120],
-    }).catch(() => undefined)
+    await Promise.all(
+      CHANNELS.map(({ id, name, description }) =>
+        Notifications.setNotificationChannelAsync(id, {
+          name,
+          description,
+          importance: Notifications.AndroidImportance.HIGH,
+          lightColor: color.shu400,
+          vibrationPattern: [0, 60, 80, 120],
+        }).catch(() => undefined),
+      ),
+    )
   }
 }
 

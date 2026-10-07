@@ -767,7 +767,7 @@ async function toggleReminder(packet: string, startsAt: number, on: boolean) {
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: new Date(startsAt * 1000),
-      channelId: 'packets',
+      channelId: 'rains',
     },
   }).catch(() => undefined)
   $reminders.set({ ...all, [packet]: startsAt })
