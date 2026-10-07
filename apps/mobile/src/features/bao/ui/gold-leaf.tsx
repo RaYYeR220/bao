@@ -25,24 +25,25 @@ export function GoldLeafBurst({ origin, fire, count = 34 }: { origin: { x: numbe
   const { width, height } = useWindowDimensions()
   const t = useSharedValue(0)
   const flakes = useMemo<Flake[]>(() => {
-    let seed = 7 + fire * 13
-    const rnd = () => {
-      seed = (seed * 16807) % 2147483647
-      return seed / 2147483647
+    // deterministic per burst, so a re-render never reshuffles the leaf mid-air
+    const rnd = (i: number) => {
+      const x = Math.sin(i * 12.9898 + fire * 78.233) * 43758.5453
+      return x - Math.floor(x)
     }
-    return Array.from({ length: count }, () => {
-      const angle = -Math.PI / 2 + (rnd() - 0.5) * 2.2
-      const speed = 380 + rnd() * 520
+    return Array.from({ length: count }, (_, i) => {
+      const k = i * 9
+      const angle = -Math.PI / 2 + (rnd(k) - 0.5) * 2.2
+      const speed = 380 + rnd(k + 1) * 520
       return {
         vx: Math.cos(angle) * speed * 0.8,
         vy: Math.sin(angle) * speed,
-        spin: (rnd() - 0.5) * 14,
-        flutter: 14 + rnd() * 26,
-        phase: rnd() * Math.PI * 2,
-        w: 5 + rnd() * 7,
-        h: 2.4 + rnd() * 3.2,
-        tint: Math.floor(rnd() * TINTS.length),
-        delay: rnd() * 0.12,
+        spin: (rnd(k + 2) - 0.5) * 14,
+        flutter: 14 + rnd(k + 3) * 26,
+        phase: rnd(k + 4) * Math.PI * 2,
+        w: 5 + rnd(k + 5) * 7,
+        h: 2.4 + rnd(k + 6) * 3.2,
+        tint: Math.floor(rnd(k + 7) * TINTS.length),
+        delay: rnd(k + 8) * 0.12,
       }
     })
   }, [count, fire])

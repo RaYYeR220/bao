@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet } from 'react-native'
 import Animated, { type AnimatedStyle } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import type { ViewStyle } from 'react-native'

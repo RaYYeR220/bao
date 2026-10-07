@@ -17,11 +17,7 @@ function CountUp({ amount, decimals, run, size }: { amount: bigint; decimals: nu
   // stays at zero until the card has landed, then counts up to the drawn share
   const [shown, setShown] = useState<bigint>(0n)
   useEffect(() => {
-    if (!run) return
-    if (reduced) {
-      setShown(amount)
-      return
-    }
+    if (!run || reduced) return
     let raf = 0
     const start = Date.now()
     const dur = 950
@@ -34,6 +30,7 @@ function CountUp({ amount, decimals, run, size }: { amount: bigint; decimals: nu
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [amount, reduced, run])
+  const value = run && reduced ? amount : shown
   return (
     <T
       style={{ fontFamily: font.numerals, fontSize: size, lineHeight: size * 1.08, letterSpacing: -1, paddingLeft: 2, color: color.kuro950, fontVariant: ['tabular-nums', 'lining-nums'] }}
@@ -42,7 +39,7 @@ function CountUp({ amount, decimals, run, size }: { amount: bigint; decimals: nu
       adjustsFontSizeToFit
       accessibilityLabel={`${formatAmount(amount, decimals)}`}
     >
-      {formatAmount(shown, decimals)}
+      {formatAmount(value, decimals)}
     </T>
   )
 }

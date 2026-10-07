@@ -12,6 +12,7 @@ import { useBalances, usePacketData } from '@/features/bao/data-access/use-bao-d
 import { toBaseUnits, useDropPacket, type DropInput } from '@/features/bao/data-access/use-drop-packet'
 import { clockTime, displayName, formatAmount } from '@/features/bao/format'
 import { Backdrop } from '@/ui/backdrop'
+import { useNow } from '@/ui/countdown'
 import { EnvelopeFace } from '@/ui/envelope/envelope'
 import { buzz, play } from '@/ui/feedback'
 import { Icon, type IconName } from '@/ui/icon'
@@ -62,6 +63,7 @@ export default function SendScreen() {
   const [skin, setSkin] = useState<SkinName>('shu')
   const [error, setError] = useState<string | null>(null)
   const amountRef = useRef<TextInput>(null)
+  const now = useNow(15_000)
 
   const total = useMemo(() => {
     try {
@@ -261,7 +263,7 @@ export default function SendScreen() {
                     ))}
                   </View>
                   {rainIn > 0 ? (
-                    <T variant="meta">Opens at {clockTime(Math.floor(Date.now() / 1000) + rainIn * 60)}. People who set a reminder get a nudge.</T>
+                    <T variant="meta">Opens at {clockTime(now + rainIn * 60)}. People who set a reminder get a nudge.</T>
                   ) : null}
                 </Animated.View>
               ) : null}
@@ -373,7 +375,7 @@ export default function SendScreen() {
                   v={
                     audience === 'public'
                       ? rainIn
-                        ? `Public rain at ${clockTime(Math.floor(Date.now() / 1000) + rainIn * 60)}`
+                        ? `Public rain at ${clockTime(now + rainIn * 60)}`
                         : 'Public, opens now'
                       : audience === 'circle'
                         ? (circles.data?.find((c) => c.id === circleId)?.name ?? 'Circle')

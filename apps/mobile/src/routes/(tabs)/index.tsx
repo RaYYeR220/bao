@@ -25,7 +25,7 @@ import { displayName, formatAmount, sharesLeft } from '@/features/bao/format'
 import { PacketEnvelope } from '@/features/bao/ui/packet-envelope'
 import { RainStrip } from '@/features/bao/ui/rain-strip'
 import { Backdrop } from '@/ui/backdrop'
-import { Countdown } from '@/ui/countdown'
+import { Countdown, useNow } from '@/ui/countdown'
 import { ENVELOPE_RATIO } from '@/ui/envelope/envelope'
 import { buzz } from '@/ui/feedback'
 import { Icon } from '@/ui/icon'
@@ -34,8 +34,7 @@ import { useTiltGleam } from '@/ui/motion'
 import { T } from '@/ui/text'
 import { color, font, space } from '@/ui/tokens'
 
-function liveLabel(packets: PacketView[]) {
-  const now = Math.floor(Date.now() / 1000)
+function liveLabel(packets: PacketView[], now: number) {
   const soon = packets.filter((p) => p.startsAt > now).length
   const live = packets.length - soon
   return soon ? `${live} live · ${soon} soon` : `${live} live`
@@ -62,6 +61,7 @@ export default function FeedScreen() {
     return all
   }, [feed.data, filter])
   const rains = feed.data?.rains ?? []
+  const now = useNow(10_000)
   const claims = useMyClaims(packets)
 
   // Size the hero so header → button fits one screen; rains sit just below the fold.
@@ -104,7 +104,7 @@ export default function FeedScreen() {
             <T variant="caps">
               {filterLabel} ·{' '}
               <T variant="caps" style={{ color: color.kin400 }}>
-                {feed.isLoading ? '…' : liveLabel(packets)}
+                {feed.isLoading ? '…' : liveLabel(packets, now)}
               </T>
             </T>
             {onChain ? <OnChainTag /> : null}
@@ -288,6 +288,12 @@ function Carousel({
   const [index, setIndex] = useState(0)
   const listRef = useRef<Animated.FlatList<PacketView>>(null)
 
+  const setFocused = (i: number) => {
+    const clamped = Math.max(0, Math.min(packets.length - 1, i))
+    setIndex(clamped)
+    focusListeners.forEach((l) => l(clamped))
+    buzz('select')
+  }
   const onScroll = useAnimatedScrollHandler((e) => {
     x.value = e.contentOffset.x
   })
@@ -297,12 +303,6 @@ function Carousel({
       if (i !== prev) runOnJS(setFocused)(i)
     },
   )
-  function setFocused(i: number) {
-    const clamped = Math.max(0, Math.min(packets.length - 1, i))
-    setIndex(clamped)
-    focusListeners.forEach((l) => l(clamped))
-    buzz('select')
-  }
 
   useEffect(() => {
     if (!focus) return
@@ -392,7 +392,8 @@ function CarouselItem({
 function Meta({ packet, grabbed }: { packet: PacketView; grabbed?: string | null }) {
   const name = displayName(packet.senderSkr, packet.sender)
   const left = sharesLeft(packet)
-  const opensLater = packet.startsAt > Math.floor(Date.now() / 1000)
+  const now = useNow(5_000)
+  const opensLater = packet.startsAt > now
   return (
     <Pressable
       onPress={() => router.push(`/packet/${packet.address}`)}

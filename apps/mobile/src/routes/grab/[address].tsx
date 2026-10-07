@@ -79,14 +79,14 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
   const { phase, grab, collect, reset } = useGrab(detail.address, code)
   const mine = useMyClaim(detail.address, detail.seekerOnly)
 
-  const now = Math.floor(Date.now() / 1000)
-  const [opened, setOpened] = useState(detail.status !== 'scheduled')
+  const [mountedAt] = useState(() => Math.floor(Date.now() / 1000))
+  const [opened, setOpened] = useState(() => detail.startsAt <= mountedAt)
   useEffect(() => {
-    if (opened || detail.startsAt <= now) return
-    const t = setTimeout(() => setOpened(true), (detail.startsAt - now) * 1000 + 300)
+    if (opened) return
+    const t = setTimeout(() => setOpened(true), Math.max(0, detail.startsAt * 1000 - Date.now()) + 300)
     return () => clearTimeout(t)
-  }, [detail.startsAt, now, opened])
-  const scheduled = !opened && detail.startsAt > now
+  }, [detail.startsAt, opened])
+  const scheduled = !opened
   const spent = detail.status === 'emptied' || detail.status === 'expired'
   const alreadyMine = !!mine.data && mine.data.data.status !== 0 && (phase.kind === 'idle' || (phase.kind === 'refused' && phase.code === 6016))
   const needsCode = detail.audience === 'code' && !code
@@ -114,7 +114,6 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
 
   // each step fills a third of the foil ring; the third one opens the wallet
   useEffect(() => {
-    ring.value = withTiming(steps / 3, { duration: steps ? 260 : 600 })
     if (steps === 0) return
     if (steps < 3) {
       play('tick')
@@ -123,22 +122,22 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
     }
     buzz('heavy')
     AccessibilityInfo.announceForAccessibility('Opening. Confirm in your wallet.')
-    const t = setTimeout(() => void grab(), 240)
+    const t = setTimeout(() => {
+      void grab()
+      setSteps(0)
+    }, 240)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [steps])
   useShakeSteps(canShake && !codeOpen, step)
 
-  // back to sealed after a rejected wallet prompt or a refusal
-  const prevKind = useRef(phase.kind)
+  // the ring: shake progress while idle, full while the grab is in flight, empty after a refusal
+  const ringSteps = phase.kind === 'idle' ? steps : phase.kind === 'refused' || phase.kind === 'error' ? 0 : 3
   useEffect(() => {
-    const was = prevKind.current
-    prevKind.current = phase.kind
-    if (phase.kind === 'idle' && was !== 'idle') setSteps(0)
-    if (phase.kind === 'refused' || phase.kind === 'error') {
-      setSteps(0)
-      if (phase.kind === 'refused') buzz('error')
-    }
+    ring.value = withTiming(ringSteps / 3, { duration: ringSteps ? 260 : 600 })
+  }, [ring, ringSteps])
+  useEffect(() => {
+    if (phase.kind === 'refused') buzz('error')
   }, [phase.kind])
 
   const gleam = useTiltGleam(0.42)
@@ -221,7 +220,7 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
       kicker={alreadyMine ? 'You grabbed earlier' : 'You grabbed'}
       headline={result.isKing && detail.mode === 'lucky' ? 'Luck King' : detail.mode === 'lucky' ? 'Lucky share' : 'Equal share'}
       detail={rankLine}
-      postmark={[detail.seekerOnly ? 'Seeker-bound' : 'Grabbed', clockTime(myGrab?.at || Math.floor(Date.now() / 1000)), result.signature ? `tx ${shortAddress(result.signature, 3)}` : null]
+      postmark={[detail.seekerOnly ? 'Seeker-bound' : 'Grabbed', clockTime(myGrab?.at || mountedAt), result.signature ? `tx ${shortAddress(result.signature, 3)}` : null]
         .filter(Boolean)
         .join(' · ')
         .toUpperCase()}

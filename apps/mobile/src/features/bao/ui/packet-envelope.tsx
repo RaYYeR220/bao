@@ -2,6 +2,7 @@ import type { PacketView } from '@bao/sdk'
 import { StyleSheet, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 
+import { useNow } from '@/ui/countdown'
 import { EnvelopeFace } from '@/ui/envelope/envelope'
 import { tones } from '@/ui/envelope/lacquer-shader'
 import { T } from '@/ui/text'
@@ -34,7 +35,8 @@ export function PacketEnvelope({
   const s = width / 230
   const amountSize = (packet.total.length > 9 ? 56 : 74) * s
   const spent = tone === 'ash'
-  const rainAt = packet.startsAt > Math.floor(Date.now() / 1000) ? packet.startsAt : null
+  const now = useNow(30_000)
+  const rainAt = packet.startsAt > now ? packet.startsAt : null
   const sub = grabbed
     ? width < 150
       ? 'OPENED'
