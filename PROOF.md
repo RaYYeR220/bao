@@ -43,6 +43,18 @@ The app simulates every grab before it opens the wallet, so a grab the program w
 no Genesis Token, second wallet on the same phone) is stopped with the program's own error code and never costs
 a fee. The on-chain refusals below were sent on purpose by the smoke script to show the program enforces it.
 
+## On a real phone
+
+The release APK on a Samsung Galaxy A52 (Android 14) with a fresh Phantom wallet on devnet
+([`BnMCpSa1…EdZMy`](https://explorer.solana.com/address/BnMCpSa1goWWevnFpEphFGpQj7AWMkhz3JdrsxQEdZMy?cluster=devnet)).
+
+| Step | What happened |
+|---|---|
+| The wallet holds SOL but no Genesis Token and shakes a Seeker-only packet open | the app runs the grab against the program before the wallet opens; the program answers `NotASeeker` (6013) and nothing is signed or sent |
+| The Playground faucet mints a test Genesis Token to the wallet | [mint](https://explorer.solana.com/tx/5hN6BXb22ueZubti3Uh9PCKJWbTVokvBFoBRSDWJJhfL2ZsSEq5ZWLhc8EQkT2sihzazi7eqUboNf2AY31hjpQNR?cluster=devnet) |
+| The same phone shakes the same packet again and signs in Phantom | [grab_lucky](https://explorer.solana.com/tx/3WKU1DyMArU5md3sXyRkNGCnujaqoFjHDDXUpx3nYeeSALb8Rez8J5oo4BaHz2wMTqaBktkhS65wBBrNWDKEbN1u?cluster=devnet) |
+| The proof lands, the share is 6.74 tSKR, the crank pays it | [payout](https://explorer.solana.com/tx/3w2e6vjr5q6H1tjYTYe58yxh3MLsGqGJ1WEP43ud875sv4jpr9i6mNZeqnEKkx3CdFWH6G9WKe71PkuHR5TizFZH?cluster=devnet) |
+
 ## Refusals (the part bots meet)
 
 | Attempt | Result |
