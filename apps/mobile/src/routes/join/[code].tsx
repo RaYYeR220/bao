@@ -89,11 +89,13 @@ export default function JoinScreen() {
                 {code ?? '······'}
               </T>
               <T variant="body" style={{ color: color.paperInk2, textAlign: 'center' }}>
-                {session
-                  ? join.isPending
-                    ? 'Joining…'
-                    : 'Joining the circle behind this code.'
-                  : 'Sign in with your Seeker to join this circle.'}
+                {!code
+                  ? 'This link does not carry a circle invite.'
+                  : session
+                    ? join.isPending
+                      ? 'Joining…'
+                      : 'Joining the circle behind this code.'
+                    : 'Sign in with your Seeker to join this circle.'}
               </T>
               {message ? <Note tone="shu">{message}</Note> : null}
               {!code ? null : !session ? (
