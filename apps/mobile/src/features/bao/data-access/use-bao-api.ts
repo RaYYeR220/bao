@@ -45,13 +45,20 @@ let asked = 0
 // 0 while the first door is trusted, else the time until which requests leave by the second
 let secondDoorUntil = 0
 
-/** No answer came back: the request ran out of time, or never reached the server at all. */
+/** No answer came back: the request ran out of time, or the connection failed. */
 class NoAnswerError extends Error {
+  /** It failed before anything was sent (no DNS, no route, no connection): safe to send again. */
+  readonly neverLeft: boolean
   constructor(
     readonly timedOut: boolean,
     detail = '',
   ) {
     super(timedOut ? 'Request timed out' : `Network request failed${detail && `: ${detail}`}`)
+    this.neverLeft =
+      !timedOut &&
+      /unable to resolve host|no address associated|failed to connect|network is unreachable|connection refused/i.test(
+        detail,
+      )
   }
 }
 
@@ -92,7 +99,8 @@ function viaXhr(url: string, wire: Wire, timeoutMs: number): Promise<Answer> {
     for (const [name, value] of Object.entries(wire.headers)) xhr.setRequestHeader(name, value)
     xhr.timeout = timeoutMs
     xhr.onload = () => settle(() => resolve({ status: xhr.status, text: xhr.responseText }))
-    xhr.onerror = () => settle(() => reject(new NoAnswerError(false)))
+    // React Native leaves the native error text in the response
+    xhr.onerror = () => settle(() => reject(new NoAnswerError(false, String(xhr.responseText ?? ''))))
     xhr.ontimeout = () => settle(() => reject(new NoAnswerError(true)))
     xhr.onabort = () => settle(() => reject(new NoAnswerError(true)))
     xhr.send(wire.body)
@@ -140,11 +148,15 @@ function looksUnavailable(error: unknown) {
   return false
 }
 
-/** Whether the next request may meet a connection that died without saying so. */
+/**
+ * Whether the next request may meet a connection that died without saying so. Not before the
+ * first answer of a launch: there is no old connection yet, and a cold server needs its time.
+ */
 function inDoubt() {
   const { state, checkedAt } = $api.get()
   const now = Date.now()
-  return state !== 'up' || now - checkedAt > QUIET_MS || now - resumedAt < RESUMED_MS || secondDoorUntil !== 0
+  if (state === 'down' || secondDoorUntil !== 0 || now - resumedAt < RESUMED_MS) return true
+  return state === 'up' && now - checkedAt > QUIET_MS
 }
 
 /**
@@ -165,8 +177,9 @@ export async function refreshNow<T>(refetch: () => Promise<T>): Promise<T> {
  * screens fall back to the chain without waiting on timeouts; then the next call asks again.
  * `force`, and anything run inside refreshNow, skips that shortcut: a step the user asked for.
  *
- * Before the server is marked down a request gets more than one chance. One that never reached
- * the server is retried twice, each time once Bao is in front. A read that ran out of time is
+ * Before the server is marked down a request gets more than one chance. One whose connection
+ * failed is retried twice, each time once Bao is in front (a write only if nothing was sent). A
+ * read that ran out of time is
  * asked once more through the other door (see Door); while the connection is in doubt (nothing
  * heard for a while, Bao just back in front, the server not known to be up) its first try is
  * short, so a dead connection costs 5 s and not the whole deadline. Writes, and calls with a
@@ -182,7 +195,8 @@ export const baoApi = {
     const status = $api.get()
     const down = status.state === 'down' && status.checkedAt >= resumedAt && Date.now() - status.checkedAt < RECHECK_MS
     if (down && !force && asked === 0) throw new ApiUnavailableError()
-    const twice = (key as string).startsWith('GET ') && timeoutMs === undefined
+    const read = (key as string).startsWith('GET ')
+    const twice = read && timeoutMs === undefined
     // after the first door hung, everything leaves by the second for a while; then reads try the
     // first again, and writes follow once one of them got through
     let door: Door = secondDoorUntil !== 0 && (Date.now() < secondDoorUntil || !twice) ? 'xhr' : 'fetch'
@@ -199,7 +213,10 @@ export const baoApi = {
         else if (fetchHung) secondDoorUntil = Date.now() + SECOND_DOOR_MS
         return res
       } catch (error) {
-        if (error instanceof NoAnswerError && !error.timedOut && pauses < RETRY_MS.length) {
+        // a read is safe to repeat; a write only if it never left (or Android had the network
+        // blocked: Bao was behind a wallet)
+        const again = error instanceof NoAnswerError && !error.timedOut && (read || error.neverLeft || !activeAtStart)
+        if (again && pauses < RETRY_MS.length) {
           await sleep(RETRY_MS[pauses++])
           await untilActive()
           continue
