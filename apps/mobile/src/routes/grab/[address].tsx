@@ -505,6 +505,11 @@ function Bottom({
         ) : payout === 'paying' ? (
           <Note icon="clock">Paying your share into your wallet…</Note>
         ) : null}
+        {phase.kind === 'revealed' && phase.payout === 'unpaid' && phase.payoutError ? (
+          <Note tone="shu" icon="info">
+            {phase.payoutError}
+          </Note>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: space[3] }}>
           {isKing ? (
             <FoilButton label="Send the next one" icon="envelope" tone="shu" onPress={onSendNext} style={{ flex: 1 }} />
@@ -540,6 +545,11 @@ function Bottom({
         <Note icon="info" tone="shu">
           {phase.message}
         </Note>
+        {phase.signature ? (
+          <View style={styles.links}>
+            <ExplorerLink label="Grab tx" url={explorerTx(phase.signature)} />
+          </View>
+        ) : null}
         <FoilButton label="Try again" icon="refresh" onPress={onRetry} />
       </Animated.View>
     )

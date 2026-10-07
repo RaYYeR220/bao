@@ -6,6 +6,7 @@ import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated'
 
 import { maybeAskForPush } from '@/features/bao/data-access/push'
 import { ApiUnavailableError, apiErrorMessage, baoApi, useSession } from '@/features/bao/data-access/use-bao-api'
+import { humanError, isWalletCancel } from '@/features/bao/data-access/send-with-wallet'
 import { useBaoSignIn } from '@/features/bao/data-access/use-bao-sign-in'
 import { isInviteCode } from '@/features/bao/links'
 import { CircleSeal } from '@/features/bao/ui/circle-seal'
@@ -43,15 +44,18 @@ export default function JoinScreen() {
   const close = () => (router.canGoBack() ? router.back() : router.replace('/circles'))
   const c = join.data
   const err = join.error
+  const signInError = signIn.error && !isWalletCancel(signIn.error) ? humanError(signIn.error) : null
   const message = !code
     ? 'That is not a Bao invite code. Ask for a fresh invite link or QR.'
-    : err instanceof ApiUnavailableError
-      ? 'Circles live on the Bao server, which is unreachable right now. Try the invite again in a moment.'
-      : err
-        ? /404|not found/i.test(String(err))
-          ? 'That invite code does not match any circle.'
-          : apiErrorMessage(err, 'The invite did not go through. Try again in a moment.')
-        : null
+    : signInError
+      ? signInError
+      : err instanceof ApiUnavailableError
+        ? 'Circles live on the Bao server, which is unreachable right now. Try the invite again in a moment.'
+        : err
+          ? /404|not found/i.test(String(err))
+            ? 'That invite code does not match any circle.'
+            : apiErrorMessage(err, 'The invite did not go through. Try again in a moment.')
+          : null
 
   return (
     <View style={styles.scrim}>

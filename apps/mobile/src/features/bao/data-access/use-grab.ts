@@ -18,10 +18,11 @@ import { useAppCluster } from '@/features/cluster/data-access/cluster-provider'
 import { GENESIS_GROUP } from './bao-config'
 import {
   confirmSignature,
+  ConfirmTimeoutError,
   humanError,
+  isWalletCancel,
   sendWithWallet,
   TransactionFailedError,
-  WalletRejectedError,
 } from './send-with-wallet'
 import { baoApi } from './use-bao-api'
 
@@ -45,9 +46,12 @@ export type GrabPhase =
       mode: 'lucky' | 'equal'
       payout: PayoutState
       payoutSignature: string | null
+      /** Why collecting the share yourself failed (not shown for a closed wallet). */
+      payoutError?: string | null
     }
   | { kind: 'refused'; message: string; code: number | null; signature?: Signature | null }
-  | { kind: 'error'; message: string }
+  /** `signature`: the grab was sent but its outcome is unknown; worth a look on the explorer. */
+  | { kind: 'error'; message: string; signature?: Signature | null }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -68,6 +72,7 @@ export function useGrab(packetAddress: string, code?: string) {
     if (busy.current) return
     busy.current = true
     setPhase({ kind: 'preparing' })
+    let sent: Signature | null = null
     try {
       const account = wallet.account ?? (await wallet.connect())
       // MWA signs the compiled message; the builder only needs the signer's address.
@@ -110,6 +115,7 @@ export function useGrab(packetAddress: string, code?: string) {
 
       setPhase({ kind: 'signing' })
       const signature = await sendWithWallet(wallet, client, account.address, [instruction])
+      sent = signature
       setPhase({ kind: 'confirming', signature })
       await confirmSignature(client, signature)
 
@@ -124,6 +130,7 @@ export function useGrab(packetAddress: string, code?: string) {
         setPhase({
           kind: 'error',
           message: 'The randomness is taking longer than usual. Your place is reserved; check back in a minute.',
+          signature,
         })
         return
       }
@@ -165,10 +172,12 @@ export function useGrab(packetAddress: string, code?: string) {
     } catch (error) {
       if (error instanceof TransactionFailedError) {
         setPhase({ kind: 'refused', message: error.message, code: error.code, signature: error.signature })
-      } else if (error instanceof WalletRejectedError) {
+      } else if (isWalletCancel(error)) {
+        // closing the wallet (connect or sign) is not an error: back to the sealed packet
         setPhase({ kind: 'idle' })
       } else {
-        setPhase({ kind: 'error', message: humanError(error) })
+        const signature = error instanceof ConfirmTimeoutError ? error.signature : sent
+        setPhase({ kind: 'error', message: humanError(error), signature })
       }
     } finally {
       busy.current = false
@@ -180,7 +189,7 @@ export function useGrab(packetAddress: string, code?: string) {
     if (busy.current || phase.kind !== 'revealed' || !meta.current) return
     busy.current = true
     const claim = phase.claim
-    setPhase((p) => (p.kind === 'revealed' ? { ...p, payout: 'collecting' } : p))
+    setPhase((p) => (p.kind === 'revealed' ? { ...p, payout: 'collecting', payoutError: null } : p))
     try {
       const account = wallet.account ?? (await wallet.connect())
       const ix = await buildPayout({
@@ -195,8 +204,14 @@ export function useGrab(packetAddress: string, code?: string) {
       await confirmSignature(client, sig)
       setPhase((p) => (p.kind === 'revealed' ? { ...p, payout: 'paid', payoutSignature: sig } : p))
       void queryClient.invalidateQueries({ queryKey: ['balances'] })
-    } catch {
-      setPhase((p) => (p.kind === 'revealed' ? { ...p, payout: 'unpaid' } : p))
+    } catch (error) {
+      const payoutError = isWalletCancel(error) ? null : humanError(error)
+      const pending = error instanceof ConfirmTimeoutError ? error.signature : null
+      setPhase((p) =>
+        p.kind === 'revealed'
+          ? { ...p, payout: 'unpaid', payoutError, payoutSignature: pending ?? p.payoutSignature }
+          : p,
+      )
     } finally {
       busy.current = false
     }

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path } from 'react-native-svg'
 
 import { TSKR_DECIMALS } from '@/features/bao/data-access/bao-config'
-import { humanError, WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
+import { humanError, isWalletCancel } from '@/features/bao/data-access/send-with-wallet'
 import {
   ApiUnavailableError,
   apiErrorMessage,
@@ -53,8 +53,7 @@ export default function SeekerScreen() {
           text: 'Connected. The Bao server is unreachable, so names and circles will sync later.',
         })
     } catch (e) {
-      if (!(e instanceof WalletRejectedError) && !/reject|declin|cancel/i.test(String(e)))
-        setNote({ tone: 'shu', text: humanError(e) })
+      if (!isWalletCancel(e)) setNote({ tone: 'shu', text: humanError(e) })
     }
   }
 
@@ -79,7 +78,7 @@ export default function SeekerScreen() {
     } catch (e) {
       if (e instanceof ApiUnavailableError)
         setNote({ tone: 'muted', text: 'The faucet lives on the Bao server, which is unreachable right now.' })
-      else if (!(e instanceof WalletRejectedError)) {
+      else if (!isWalletCancel(e)) {
         const text = apiErrorMessage(e, 'The faucet did not answer.')
         setNote({ tone: /already collected/.test(text) ? 'muted' : 'shu', text })
       }
