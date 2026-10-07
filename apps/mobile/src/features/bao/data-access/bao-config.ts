@@ -13,6 +13,14 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? APP_URL
 export const DEVNET_RPC_URL = process.env.EXPO_PUBLIC_DEVNET_RPC ?? 'https://api.devnet.solana.com'
 /** The cluster of DEVNET_RPC_URL, as the wallet (MWA authorize, SIWS chainId) names it. */
 export const BAO_CHAIN = 'solana:devnet'
+/**
+ * Bao's server-side front for that same devnet cluster: it forwards reads and simulations to a
+ * keyed devnet endpoint the app must not ship. The app asks it first and DEVNET_RPC_URL when it
+ * fails. EXPO_PUBLIC_RPC_PROXY=off leaves DEVNET_RPC_URL alone (local development).
+ */
+export const DEVNET_RPC_PROXY_URL = /^(off|false|0)$/i.test(process.env.EXPO_PUBLIC_RPC_PROXY ?? '')
+  ? null
+  : `${API_URL}/api/rpc`
 
 export const PROGRAM_ID = address(DEVNET.programId)
 export const GENESIS_GROUP = address(DEVNET.genesisGroup ?? 'BuRJQxYkL43H3MmgmZmRuC1GCDFc1hSkEu2t1mxiDgwK')

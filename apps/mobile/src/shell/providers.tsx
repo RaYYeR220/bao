@@ -17,7 +17,9 @@ export const identity: AppIdentity = { name: 'Bao', uri: APP_URL, icon: 'icon.pn
 
 /**
  * The one cluster Bao uses: the wallet authorizes for `solana:devnet` (BAO_CHAIN, checked again
- * before every signature) and every RPC call goes to the devnet endpoint.
+ * before every signature) and every RPC call goes to devnet. The cluster's URL is the public
+ * devnet endpoint; Bao's server proxy, a devnet-only front for the same cluster, is tried before
+ * it (createSolanaClient) and never replaces it.
  */
 export const BAO_CLUSTER = createSolanaDevnet({ label: 'Devnet', url: DEVNET_RPC_URL })
 
@@ -28,7 +30,7 @@ export const queryClient = new QueryClient({
 })
 const clusterConfig = createClusterProps()
 // Bao runs on devnet only; the program, test Genesis group and tSKR live there. The RPC client
-// (useAppCluster) reads the same endpoint the wallet is authorized for.
+// (useAppCluster) reads the same cluster the wallet is authorized for.
 clusterConfig.store.updateClusterUrl(BAO_CLUSTER.id, BAO_CLUSTER.url)
 clusterConfig.store.setCluster(BAO_CLUSTER.id)
 

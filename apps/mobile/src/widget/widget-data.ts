@@ -21,6 +21,7 @@ export async function loadWidgetData(): Promise<WidgetView & { source: 'api' | '
     if (!res.ok) throw new Error(String(res.status))
     return { ...((await res.json()) as WidgetView), source: 'api' }
   } catch {
+    // Bao's server just failed and the RPC proxy lives on it: read the public endpoint directly
     const rpc = createSolanaRpc(DEVNET_RPC_URL)
     const feed = await fetchChainFeed(rpc as never)
     const total = feed.packets.reduce((sum, p) => sum + BigInt(p.remaining), 0n)
