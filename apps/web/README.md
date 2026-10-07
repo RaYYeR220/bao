@@ -108,9 +108,11 @@ until the grab is indexed as paid, and checks the feed.
 
    Keep the secret out of git: paste it in the SQL editor, or store it in Supabase Vault and read it
    with `vault.decrypted_secrets`.
-5. **Android**: the app registers notification channels `packets`, `rains` and `results` (pushes
-   carry `data.kind`, `data.packet`, `data.url = bao://packet/<address>`), and verifies App Links
-   for `https://<host>/p/*` once `ANDROID_CERT_SHA256` is set.
+5. **Android**: pushes are data-only FCM messages the app draws itself, once, in the foreground and
+   the background (`data.title`, `data.message`, `data.channelId`, `data.tag`, plus `data.kind`,
+   `data.packet`, `data.url = bao://packet/<address>`). The app registers the channels `packets`,
+   `rains` and `results`, and verifies App Links for `https://<host>/p/*` once
+   `ANDROID_CERT_SHA256` is set.
 
 ## Notes
 
