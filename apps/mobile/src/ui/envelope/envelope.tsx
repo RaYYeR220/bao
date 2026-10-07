@@ -123,7 +123,6 @@ function BakedLacquer({
   const s = width / W
   const height = heightUnits * s
   const pr = PixelRatio.get()
-  const spec = tones[tone]
   const tickKey = ticks ? `${ticks.total}:${ticks.left}` : ''
   const size = useMemo(() => ({ width: Math.ceil(width * pr), height: Math.ceil(height * pr) }), [width, height, pr])
 
