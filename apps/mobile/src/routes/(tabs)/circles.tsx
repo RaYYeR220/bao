@@ -199,12 +199,15 @@ function CreateSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
   })
   return (
     <Sheet visible={visible} onClose={onClose} kicker="New circle" title="Name your circle">
+      {/* Android wraps a placeholder wider than a one-line field onto a clipped second line:
+          keep it short, and keep large text sizes from pushing it over the edge */}
       <TextInput
         value={name}
         onChangeText={(t) => setName(t.slice(0, 32))}
-        placeholder="Radiants, Seoul Seekers, the family…"
+        placeholder="e.g. Seoul Seekers"
         placeholderTextColor={color.gofun44}
         style={styles.input}
+        maxFontSizeMultiplier={1.4}
         autoFocus
         accessibilityLabel="Circle name"
       />
