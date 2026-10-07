@@ -10,6 +10,8 @@ Every crypto giveaway gets farmed by bots. Bao's can't be: each grab is bound on
 **Seeker Genesis Token**, so one device grabs once, no matter how many wallets it has. A farm of
 emulators is refused by the program itself, not by a server.
 
+![Feed, shake to open, the result card with the Luck King seal, a refused code word, choosing who a packet is for, and sharing it](docs/screens.jpg)
+
 > Live on **Solana devnet** (`DifXuyhEu3r7sgXQjgCokyikQFcYCYD2cwhjNyU7j6XR`). Mainnet follows the dApp Store
 > release. Every claim below links to a transaction in [PROOF.md](PROOF.md).
 
