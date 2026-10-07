@@ -21,6 +21,7 @@ export const TABLES = [
   'packets',
   'grabs',
   'push_tokens',
+  'push_receipts',
   'faucet_claims',
   'indexer_cursor',
 ];

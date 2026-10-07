@@ -58,6 +58,17 @@ describe('indexTransaction on real devnet transactions', () => {
     expect(pushes.map((p) => p.kind)).toEqual(['paid_out']);
   });
 
+  it('pushes a payout once when the webhook and the poller both index it', async () => {
+    const deps = { store, rpc: rpcWithoutAccounts(), now: () => fx.payout.blockTime + 5 };
+    const pushes: PushMessage[] = [];
+    setPushTransport({ send: async (_t, m) => (pushes.push(m), 'ok') });
+    for (const k of ['create_packet', 'grab_lucky', 'vrf_callback'] as const) await indexTransaction(deps, tx(fx[k]));
+    const [grab] = await store.grabsOf(PACKET);
+    await store.registerPushToken(grab.claimer, 'tok');
+    for (let round = 0; round < 3; round++) await indexTransaction(deps, tx(fx.payout));
+    expect(pushes.map((p) => p.kind)).toEqual(['paid_out']);
+  });
+
   it('is idempotent under replays', async () => {
     const deps = { store, rpc: rpcWithoutAccounts() };
     for (let round = 0; round < 2; round++) for (const k of ORDER) await indexTransaction(deps, tx(fx[k]));

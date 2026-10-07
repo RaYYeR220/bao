@@ -514,6 +514,15 @@ export class Store {
   }
 
   /**
+   * Atomically claims a one-time push for an event (see 0002_push_receipts.sql); true only for
+   * the first caller, so a replayed transaction never notifies twice.
+   */
+  async claimPushReceipt(key: string): Promise<boolean> {
+    const rows = await this.sql.query('insert into push_receipts (key) values ($1) on conflict (key) do nothing returning key', [key]);
+    return rows.length > 0;
+  }
+
+  /**
    * Packets the viewer may grab now or soon: open packets for everyone, circle packets for
    * members. Excludes code packets (shared by link), closed, expired, emptied and already-grabbed ones.
    */

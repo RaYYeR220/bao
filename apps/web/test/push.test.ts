@@ -6,8 +6,10 @@ import {
   duration,
   fcmTransport,
   messages,
+  pushLuckKing,
   pushPacketDropped,
   pushPacketEmptied,
+  pushPaidOut,
   setPushTransport,
   type PushMessage,
   type PushTransport,
@@ -77,6 +79,30 @@ describe('fan-out', () => {
     await store.applyGrab({ packet: A.p1, deviceKey: A.carol, claimer: A.carol, index: 1, status: 'paid', at: 1_009 });
     await pushPacketEmptied(store, (await store.getPacket(A.p1))!);
     expect(sent[0].message.body).toBe('2 grabs in 9s');
+  });
+
+  it('crowns a Luck King once per packet and pays out once per claim, however often it is replayed', async () => {
+    const { t, sent } = fakeTransport();
+    setPushTransport(t);
+    await store.registerPushToken(A.bob, 'tok-bob');
+    await store.registerPushToken(A.carol, 'tok-carol');
+    await store.upsertPacketMirror(mirror({ address: A.p1 }), 'live');
+    await store.upsertPacketMirror(mirror({ address: A.p2 }), 'live');
+    const p1 = (await store.getPacket(A.p1))!;
+    const p2 = (await store.getPacket(A.p2))!;
+    // webhook, poller, webhook retry
+    for (let i = 0; i < 3; i++) {
+      await pushLuckKing(store, p1, A.bob, '4000000');
+      await pushPaidOut(store, p1, A.bob, '4000000');
+      await pushPaidOut(store, p1, A.carol, '1000000');
+    }
+    await pushPaidOut(store, p2, A.bob, '2000000');
+    expect(sent.map((s) => `${s.message.kind} ${s.token} ${s.message.data.packet}`)).toEqual([
+      `luck_king tok-bob ${A.p1}`,
+      `paid_out tok-bob ${A.p1}`,
+      `paid_out tok-carol ${A.p1}`,
+      `paid_out tok-bob ${A.p2}`,
+    ]);
   });
 
   it('skips quietly without a transport', async () => {

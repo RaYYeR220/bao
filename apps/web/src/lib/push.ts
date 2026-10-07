@@ -239,11 +239,15 @@ export async function pushPacketEmptied(store: Store, p: PacketRecord) {
   await deliver(store, await store.pushTokensFor([p.sender]), messages.packetEmptied(p, p.totalShares, seconds));
 }
 
+/** Once per packet: the crown is made once, however often its transaction is indexed. */
 export async function pushLuckKing(store: Store, p: PacketRecord, king: string, amountBase: string) {
+  if (!(await store.claimPushReceipt(`luck_king:${p.address}`))) return;
   await deliver(store, await store.pushTokensFor([king]), messages.luckKing(p, amountBase));
 }
 
+/** Once per claim: the webhook, the poller and retries all replay the payout. */
 export async function pushPaidOut(store: Store, p: PacketRecord, claimer: string, amountBase: string) {
+  if (!(await store.claimPushReceipt(`paid_out:${p.address}:${claimer}`))) return;
   const names = await store.skrNames([p.sender]);
   await deliver(store, await store.pushTokensFor([claimer]), messages.paidOut(p, amountBase, names.get(p.sender) ?? null));
 }
