@@ -81,9 +81,13 @@ export function useBaoSignOut() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      await saveSession(null)
-      await wallet.disconnect().catch(() => undefined)
-      queryClient.clear()
+      try {
+        // the JWT leaves the keystore first; the wallet authorization and cached data follow
+        await saveSession(null)
+      } finally {
+        await wallet.disconnect().catch(() => undefined)
+        queryClient.clear()
+      }
     },
   })
 }

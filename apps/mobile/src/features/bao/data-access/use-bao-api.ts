@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { atom } from 'nanostores'
 
 import { API_URL } from './bao-config'
-import { $session, getToken } from './session-store'
+import { $session, getToken, saveSession } from './session-store'
 
 /** Whether the Bao server answered recently. The app keeps working on-chain when it is down. */
 export const $api = atom<{ state: 'unknown' | 'up' | 'down'; checkedAt: number }>({ state: 'unknown', checkedAt: 0 })
@@ -39,6 +39,10 @@ async function rawCall<K extends keyof Endpoints>(
       headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
       body: method === 'GET' ? undefined : JSON.stringify(opts.body ?? {}),
     })
+    if (res.status === 401 && token && getToken() === token) {
+      // the session expired or was revoked: forget it (the wallet stays connected; sign in again)
+      await saveSession(null).catch(() => undefined)
+    }
     if (!res.ok) throw new Error(`${key} → ${res.status}: ${await res.text()}`)
     return (await res.json()) as Endpoints[K]['res']
   } catch (e) {

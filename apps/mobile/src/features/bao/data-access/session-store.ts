@@ -8,13 +8,18 @@ export interface BaoSession {
   address: string
 }
 
-/** Signed-in session (SIWS-backed JWT); persisted in the device keystore. */
+/** Signed-in session (SIWS-backed JWT); persisted only in the device keystore (expo-secure-store). */
 export const $session = atom<BaoSession | null>(null)
 
 export async function loadSession() {
   try {
     const raw = await SecureStore.getItemAsync(KEY)
-    $session.set(raw ? (JSON.parse(raw) as BaoSession) : null)
+    const parsed = raw ? (JSON.parse(raw) as Partial<BaoSession>) : null
+    $session.set(
+      parsed && typeof parsed.token === 'string' && typeof parsed.address === 'string'
+        ? { token: parsed.token, address: parsed.address }
+        : null,
+    )
   } catch {
     $session.set(null)
   }
