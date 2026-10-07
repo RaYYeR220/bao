@@ -269,10 +269,10 @@ export async function fetchChainCrowns(rpc: BaoRpc, king: Address) {
 }
 
 export async function fetchPackets(rpc: BaoRpc, addresses: Address[]) {
-  const unique = [...new Set(addresses)]
+  const distinct = [...new Set(addresses)]
   const out = new Map<string, PacketView>()
-  for (let i = 0; i < unique.length; i += 100) {
-    const chunk = unique.slice(i, i + 100)
+  for (let i = 0; i < distinct.length; i += 100) {
+    const chunk = distinct.slice(i, i + 100)
     const { value } = await rpc.getMultipleAccounts(chunk, { encoding: 'base64', commitment: 'confirmed' }).send()
     value.forEach((acc, k) => {
       if (!acc) return

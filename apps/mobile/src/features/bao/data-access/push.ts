@@ -60,7 +60,7 @@ export async function registerPush() {
     const { data } = await Notifications.getDevicePushTokenAsync()
     await baoApi.call('POST /api/push/register', { body: { fcmToken: String(data) } })
   } catch (e) {
-    console.log('push: not registered:', e instanceof Error ? e.message : String(e))
+    if (__DEV__) console.log('push: not registered: %s', e instanceof Error ? e.message : String(e))
   }
 }
 

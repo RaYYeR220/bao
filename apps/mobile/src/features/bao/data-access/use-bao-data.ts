@@ -1,4 +1,4 @@
-import { address, getBase64Encoder, type Address } from '@solana/kit'
+import { address, getBase64Encoder, type Address, type Rpc, type SolanaRpcApi } from '@solana/kit'
 import {
   ClaimStatus,
   fetchMaybeCrown,
@@ -164,7 +164,7 @@ export function useMyClaims(packets: PacketView[] | undefined) {
   })
 }
 
-type BaoRpcLike = import('@solana/kit').Rpc<import('@solana/kit').SolanaRpcApi>
+type BaoRpcLike = Rpc<SolanaRpcApi>
 const claimDecoder = getClaimRecordDecoder()
 const b64 = getBase64Encoder()
 

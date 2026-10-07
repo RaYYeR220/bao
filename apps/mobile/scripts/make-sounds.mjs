@@ -106,7 +106,7 @@ function write(name, buf, peak) {
   for (let i = 0; i < buf.length; i++)
     data.writeInt16LE(Math.round(Math.max(-1, Math.min(1, buf[i])) * 32767), 44 + i * 2)
   writeFileSync(join(out, `${name}.wav`), data)
-  console.log(`${name}.wav  ${(data.length / 1024).toFixed(1)} KB`)
+  console.log('%s.wav  %s KB', name, (data.length / 1024).toFixed(1))
 }
 
 // tick — a dry foil click for each shake

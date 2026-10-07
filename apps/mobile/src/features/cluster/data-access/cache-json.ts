@@ -11,7 +11,7 @@ export function parseCacheValue<T>(storageKey: string, value: string) {
   try {
     return JSON.parse(value, cacheReviver) as T
   } catch (error) {
-    console.warn(`Failed to parse cached data for key ${storageKey}:`, error)
+    console.warn('Failed to parse cached data for key %s:', storageKey, error)
     return undefined
   }
 }

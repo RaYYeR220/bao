@@ -69,7 +69,8 @@ export async function preflight(client: SolanaClient, feePayer: Address, instruc
     })
     .send()
   if (value.err) {
-    console.log(`preflight refused: ${safeJson(value.err)} | ${(value.logs ?? []).slice(-12).join(' | ')}`)
+    if (__DEV__)
+      console.log('preflight refused: %s | %s', safeJson(value.err), (value.logs ?? []).slice(-12).join(' | '))
     throw new TransactionFailedError(null, value.err, value.logs ?? [])
   }
 }

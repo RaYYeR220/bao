@@ -80,7 +80,7 @@ export const baoApi = {
     } catch (error) {
       if (looksUnavailable(error)) {
         const text = String(error instanceof Error ? error.message : error)
-        console.log(`api: ${key} unavailable: ${text.slice(0, 200)}`)
+        if (__DEV__) console.log('api: %s unavailable: %s', key, text.slice(0, 200))
         // a slow endpoint timing out says nothing about the rest of the server
         const slowOnly = /timed out/i.test(text) && key === 'GET /api/users/:address'
         if (!slowOnly) $api.set({ state: 'down', checkedAt: Date.now() })
