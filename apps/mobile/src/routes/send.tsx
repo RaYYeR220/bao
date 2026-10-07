@@ -88,7 +88,7 @@ export default function SendScreen() {
     ? `#${parentDetail.chainDepth + 2} in ${displayName(parentDetail.senderSkr, parentDetail.sender)}’s chain`
     : null
 
-  const envW = step === 2 ? Math.min(width * 0.42, 170) : Math.min(width * 0.22, 92)
+  const envW = step === 2 ? Math.min(width * 0.34, 132) : Math.min(width * 0.22, 92)
 
   async function submit() {
     setError(null)
@@ -236,7 +236,6 @@ export default function SendScreen() {
                     : 'Everyone gets the same share. No crown, no drama.'}
                 </T>
               </View>
-              <FoilButton label="Next: who it is for" disabled={!step1Ok} onPress={next} />
             </Animated.View>
           ) : null}
 
@@ -335,7 +334,6 @@ export default function SendScreen() {
                   ))}
                 </View>
               </View>
-              <FoilButton label="Next: seal it" disabled={!step2Ok} onPress={next} />
             </Animated.View>
           ) : null}
 
@@ -412,6 +410,17 @@ export default function SendScreen() {
                   {error}
                 </Note>
               ) : null}
+            </Animated.View>
+          ) : null}
+        </ScrollView>
+        {/* the one decision of each step sits in thumb reach, never below the fold */}
+        <View style={[styles.footer, { paddingBottom: insets.bottom + space[3] }]}>
+          {step === 0 ? (
+            <FoilButton label="Next: who it is for" disabled={!step1Ok} onPress={next} />
+          ) : step === 1 ? (
+            <FoilButton label="Next: seal it" disabled={!step2Ok} onPress={next} />
+          ) : (
+            <>
               <FoilButton
                 label={drop.isPending ? 'Confirm in your wallet…' : 'Seal the packet'}
                 icon="envelope"
@@ -421,12 +430,12 @@ export default function SendScreen() {
                 onPress={() => void submit()}
                 accessibilityHint="Opens your wallet to sign one transaction"
               />
-              <T variant="meta" style={{ textAlign: 'center' }}>
-                One signature. The tokens wait in the packet on Solana until they are grabbed or return to you.
+              <T variant="meta" style={{ textAlign: 'center', fontSize: 12 }}>
+                One signature. The tokens wait on Solana until grabbed, or return to you.
               </T>
-            </Animated.View>
-          ) : null}
-        </ScrollView>
+            </>
+          )}
+        </View>
       </KeyboardAvoidingView>
     </View>
   )
@@ -577,6 +586,14 @@ function SummaryRow({ k, v }: { k: string; v: string }) {
 }
 
 const styles = StyleSheet.create({
+  footer: {
+    paddingHorizontal: space[5],
+    paddingTop: space[3],
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(58,46,47,0.8)',
+    experimental_backgroundImage: 'linear-gradient(180deg, rgba(15,11,11,0.9), #0B0808)',
+  },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space[4], gap: 8 },
   steps: { flexDirection: 'row', gap: 5 },
   stepBar: { height: 1.5, borderRadius: 1 },
