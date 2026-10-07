@@ -2,8 +2,14 @@ import type { UserView } from '@bao/sdk'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
 
-import { ApiUnavailableError, baoApi } from './use-bao-api'
+import { API_URL, APP_HOST, BAO_CHAIN } from './bao-config'
+import { WalletAccountMismatchError } from './send-with-wallet'
 import { saveSession } from './session-store'
+import { ApiUnavailableError, baoApi } from './use-bao-api'
+
+const API_HOST = API_URL.replace(/^[a-z]+:\/\//i, '')
+  .split('/')[0]
+  .toLowerCase()
 
 const toBase64 = (bytes: Uint8Array) => {
   let binary = ''
@@ -43,7 +49,16 @@ export function useBaoSignIn() {
         }
         throw error
       }
-      const output = await wallet.signIn({ ...input, chainId: input.chainId as never })
+      // Only sign a Bao challenge: for this wallet, on devnet, bound to the Bao domain.
+      if (
+        input.address !== account.address ||
+        input.chainId !== BAO_CHAIN ||
+        (input.domain !== APP_HOST && input.domain !== API_HOST)
+      )
+        throw new Error('The Bao server sent a sign-in request Bao does not recognise. Try again later.')
+      // signIn authorizes and signs in one wallet round trip, for the BAO_CHAIN cluster
+      const output = await wallet.signIn({ ...input, chainId: BAO_CHAIN })
+      if (output.account.address !== account.address) throw new WalletAccountMismatchError()
       const { token, user } = await baoApi.call('POST /api/auth/verify', {
         body: {
           input,

@@ -2,8 +2,11 @@ import {
   appendTransactionMessageInstructions,
   compileTransaction,
   createTransactionMessage,
+  getAddressDecoder,
   getBase58Decoder,
   getBase64EncodedWireTransaction,
+  getBase64Encoder,
+  isAddress,
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -36,11 +39,51 @@ import {
 
 import type { SolanaClient } from '@/features/cluster/data-access/create-solana-client'
 
+import { BAO_CHAIN } from './bao-config'
+import { describeProgramErrorName } from './program-errors'
+
 type Wallet = ReturnType<typeof useMobileWallet>
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** The user closed or declined the wallet: a quiet state, never an error on screen. */
 export class WalletRejectedError extends Error {}
+
+/** The wallet authorized an account other than the one the transaction was built for. */
+export class WalletAccountMismatchError extends Error {
+  constructor() {
+    super('The wallet approved a different account than the one connected. Connect again and retry.')
+  }
+}
+
+/** Sent, but not confirmed in time: the signature is still worth showing (it may yet land). */
+export class ConfirmTimeoutError extends Error {
+  constructor(readonly signature: Signature) {
+    super('The network did not confirm the transaction in time.')
+  }
+}
+
+// MWA protocol codes: authorization declined (-1) and signing declined (-3)
+const MWA_DECLINED = new Set<number | string>([-1, -3, 'ERROR_SESSION_CLOSED', 'ERROR_ASSOCIATION_CANCELLED'])
+
+/** Whether an error means the user declined or closed the wallet (authorize, sign or SIWS). */
+export function isWalletCancel(error: unknown): boolean {
+  if (error instanceof WalletRejectedError) return true
+  const e = error as { name?: string; code?: number | string; message?: string } | null
+  if (e && /^SolanaMobileWalletAdapter(Protocol)?Error$/.test(e.name ?? '') && MWA_DECLINED.has(e.code ?? ''))
+    return true
+  return /declin|reject|cancel/i.test(e?.message ?? String(error))
+}
+
+const b64 = getBase64Encoder()
+const addressDecoder = getAddressDecoder()
+
+/** Base58 addresses of an MWA authorization (the protocol sends them base64-encoded). */
+function authorizedAddresses(accounts: readonly { address: string }[]): string[] {
+  return accounts.map(({ address: a }) =>
+    !a.endsWith('=') && isAddress(a) ? a : addressDecoder.decode(b64.encode(a)).toString(),
+  )
+}
 
 /**
  * Runs the transaction against the cluster before the wallet opens. A program refusal (not a
@@ -86,18 +129,24 @@ export async function sendWithWallet(
   feePayer: Address,
   instructions: Instruction[],
 ): Promise<Signature> {
+  // the wallet must sign for the same cluster the RPC client talks to (devnet)
+  if (wallet.chain !== BAO_CHAIN) throw new Error(`Bao runs on ${BAO_CHAIN}; the wallet is set to ${wallet.chain}.`)
   await preflight(client, feePayer, instructions)
   try {
     const signature = await transact(async (mw) => {
-      const { chain, identity } = wallet
+      // 1. authorize (reusing the stored token when the wallet still accepts it)…
+      const { identity } = wallet
       const cached = await wallet.store.fetch()
       let auth
       try {
-        auth = await mw.authorize({ auth_token: wallet.store.$authToken.get(), chain, identity })
+        auth = await mw.authorize({ auth_token: wallet.store.$authToken.get(), chain: BAO_CHAIN, identity })
       } catch {
-        auth = await mw.authorize({ chain, identity })
+        // a stale token is refused with the same code as a decline: ask afresh
+        auth = await mw.authorize({ chain: BAO_CHAIN, identity })
       }
       if (cached) await wallet.store.persist({ ...cached, authToken: auth.auth_token })
+      // 2. …and only sign as the account this transaction was built for
+      if (!authorizedAddresses(auth.accounts).includes(feePayer)) throw new WalletAccountMismatchError()
 
       // Finalized, not confirmed: wallets preflight against finalized state, where a blockhash
       // only a few seconds old is still unknown ("Blockhash not found").
@@ -123,8 +172,9 @@ export async function sendWithWallet(
     })
     return signature
   } catch (error) {
+    if (error instanceof WalletAccountMismatchError) throw error
     const text = error instanceof Error ? error.message : String(error)
-    if (/declin|reject|cancel/i.test(text)) throw new WalletRejectedError('You closed the wallet before signing.')
+    if (isWalletCancel(error)) throw new WalletRejectedError('You closed the wallet before signing.')
     // the wallet simulated the transaction and the program refused it before sending
     const code = programErrorCodeFromText(text)
     if (code !== null) throw new TransactionFailedError(null, { InstructionError: [1, { Custom: code }] })
@@ -149,7 +199,7 @@ export async function confirmSignature(client: SolanaClient, signature: Signatur
     }
     await sleep(800)
   }
-  throw new Error('The network did not confirm the transaction in time.')
+  throw new ConfirmTimeoutError(signature)
 }
 
 export class TransactionFailedError extends Error {
@@ -208,7 +258,9 @@ function customCode(detail: unknown): number | null {
 export function describeProgramError(detail: unknown): string {
   const custom = customCode(detail)
   if (custom !== null && BAO_ERRORS[custom]) return BAO_ERRORS[custom]
-  if (custom === 1) return 'Not enough tSKR in this wallet.'
+  // custom error 1 is the token (or system) program's insufficient funds
+  if (custom === 1) return 'Not enough SOL or tSKR in this wallet.'
+  if (custom !== null && custom >= 6000) return `The Bao program refused it (${describeProgramErrorName(custom)}).`
   if (typeof detail === 'string') return `The network refused the transaction (${detail}).`
   return `The network refused the transaction (${safeJson(detail)}).`
 }
