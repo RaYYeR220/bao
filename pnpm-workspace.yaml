@@ -2,3 +2,14 @@ packages:
   - "packages/*"
   - "scripts/*"
   - "apps/web"
+
+# supply-chain hardening (pnpm >= 10.26)
+# wait a week before installing a freshly published version
+minimumReleaseAge: 10080
+# transitive dependencies may only come from the registry, never from git or tarball URLs
+blockExoticSubdeps: true
+# refuse an update whose publish provenance is weaker than the version before it
+trustPolicy: no-downgrade
+# the only dependency allowed to run an install script
+onlyBuiltDependencies:
+  - esbuild

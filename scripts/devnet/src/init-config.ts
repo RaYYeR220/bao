@@ -12,7 +12,7 @@ async function main() {
   const [config] = await findConfigPda();
   const existing = await fetchMaybeConfig(rpc, config);
   if (existing.exists) {
-    console.log(`config already initialized: ${config}`, existing.data);
+    console.log('config already initialized: %s', config, existing.data);
     return;
   }
   const [programData] = await getProgramDerivedAddress({
