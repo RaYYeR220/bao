@@ -86,11 +86,10 @@ export function listenToNotificationTaps() {
     const href = routeForNotification(r.notification.request.content.data as Record<string, unknown> | undefined)
     if (href) router.push(href as never)
   }
-  try {
-    open(Notifications.getLastNotificationResponse())
-  } catch {
-    // not available on this platform
-  }
+  // async, as before: the router takes the push only once the root navigator has mounted
+  void Notifications.getLastNotificationResponseAsync()
+    .then(open)
+    .catch(() => undefined)
   const sub = Notifications.addNotificationResponseReceivedListener(open)
   return () => sub.remove()
 }
