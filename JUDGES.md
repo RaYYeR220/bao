@@ -32,7 +32,7 @@ are there too.
 
   ```bash
   cargo test -p bao                  # 76 program tests in LiteSVM
-  pnpm install && pnpm --filter @bao/sdk test && pnpm --filter web test   # 21 + 95
+  pnpm install && pnpm --filter @bao/sdk test && pnpm --filter web test   # 21 + 98
   ```
 
 ## Where things live
