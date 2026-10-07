@@ -1,10 +1,11 @@
 /**
- * Solana Actions: any Actions-aware wallet or site can grab a Bao packet. The POST returns an
- * unsigned grab transaction with the grabber as fee payer.
+ * Solana Actions: any Actions-aware wallet or site can grab a Bao packet, or drop a public one.
+ * Each POST returns an unsigned transaction with the caller as fee payer.
  */
 import {
   address as toAddress,
   appendTransactionMessageInstruction,
+  appendTransactionMessageInstructions,
   compileTransaction,
   createNoopSigner,
   createTransactionMessage,
@@ -14,14 +15,25 @@ import {
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
-import { buildGrab, fetchMaybeClaimRecord, findClaimPda, findGenesisToken, hexToBytes } from '@bao/sdk';
+import { TOKEN_PROGRAM_ADDRESS, fetchMaybeToken, findAssociatedTokenPda } from '@solana-program/token';
+import {
+  buildCreatePacket,
+  buildGrab,
+  fetchMaybeClaimRecord,
+  fetchMaybeConfig,
+  findClaimPda,
+  findConfigPda,
+  findGenesisToken,
+  hexToBytes,
+} from '@bao/sdk';
 import { fetchPacketAccount, modeName, packetStatus } from './chain';
 import { proofFor } from './circles';
 import type { Store } from './db';
-import { baseUrl } from './env';
+import { baseUrl, env } from './env';
 import { json } from './http';
+import { errorMessage, log } from './log';
 import type { SolanaRpc } from './rpc';
-import { formatUi, tokenMeta } from './tokens';
+import { formatUi, parseUi, tokenMeta } from './tokens';
 import { HttpError } from './types';
 
 export const DEVNET_CHAIN_ID = 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
@@ -127,5 +139,152 @@ export async function buildGrabTransaction(
     type: 'transaction',
     transaction: getBase64EncodedWireTransaction(compileTransaction(message)),
     message: modeName(p.mode) === 'lucky' ? 'Grabbed! Your share is revealed in a few seconds.' : 'Grabbed!',
+  };
+}
+
+// ---------- create ----------
+
+/** Bounds `create_packet` enforces (programs/bao/src/constants.rs and instructions/create_packet.rs). */
+export const MAX_SHARES = 200;
+export const MIN_EXPIRY_SECS = 3_600n;
+export const MAX_EXPIRY_SECS = 7n * 86_400n;
+const U64_MAX = 2n ** 64n - 1n;
+/** How long a packet dropped through the Action stays open. */
+export const CREATE_EXPIRES_IN = 24n * 3_600n;
+
+export interface CreateActionInput {
+  /** tSKR as a decimal string ("88", "12.5"). */
+  amount: string | null | undefined;
+  shares: string | null | undefined;
+  mode: string | null | undefined;
+}
+
+/** Checks the three inputs against the program's bounds; throws a 400 naming the field. */
+export function parseCreateInput(input: CreateActionInput, decimals: number) {
+  const unit = formatUi(1n, decimals, decimals);
+  const total = parseUi(input.amount ?? '', decimals);
+  if (total === null) throw new HttpError(400, `amount: a number of tSKR with at most ${decimals} decimals, for example 88`);
+  if (total <= 0n) throw new HttpError(400, 'amount: must be more than 0');
+  if (total > U64_MAX) throw new HttpError(400, 'amount: too large for a packet');
+  const sharesText = (input.shares ?? '').trim();
+  const shares = /^\d{1,4}$/.test(sharesText) ? Number(sharesText) : NaN;
+  if (!(shares >= 1 && shares <= MAX_SHARES)) throw new HttpError(400, `shares: a whole number from 1 to ${MAX_SHARES}`);
+  // the program needs one base unit per share, so no share can be 0
+  if (total < BigInt(shares)) throw new HttpError(400, `amount: at least ${unit} tSKR for each of the ${shares} shares`);
+  const mode = (input.mode ?? 'lucky').trim().toLowerCase();
+  if (mode !== 'lucky' && mode !== 'equal') throw new HttpError(400, 'mode: lucky or equal');
+  return { total, shares, mode: mode as 'lucky' | 'equal' };
+}
+
+async function loadConfig(rpc: SolanaRpc) {
+  const [configPda] = await findConfigPda();
+  const config = await fetchMaybeConfig(rpc, configPda, { commitment: 'confirmed' });
+  if (!config.exists) throw new HttpError(503, 'The Bao program is not set up on this cluster');
+  return config.data;
+}
+
+const percent = (bps: number) => `${formatUi(BigInt(bps), 2)}%`;
+
+export async function createActionMetadata(rpc: SolanaRpc) {
+  const base = baseUrl();
+  const { decimals } = tokenMeta(env().TSKR_MINT);
+  let feeBps = 0;
+  let paused = false;
+  try {
+    ({ feeBps, paused } = await loadConfig(rpc));
+  } catch (e) {
+    // the card still renders; the POST reports the real problem
+    log.warn('actions.config_unread', { error: errorMessage(e) });
+  }
+  return {
+    type: 'action',
+    icon: `${base}/icon.png`,
+    title: 'Drop a red packet',
+    description:
+      'A public tSKR packet on Solana devnet. A wallet holding a Seeker Genesis Token can grab one share, once per device. ' +
+      'What nobody grabs in 24 hours returns to you.' +
+      (feeBps > 0 ? ` Public packets pay a ${percent(feeBps)} fee on top.` : ''),
+    label: 'Drop',
+    ...(paused ? { disabled: true, error: { message: 'New packets are paused right now' } } : {}),
+    links: {
+      actions: [
+        {
+          type: 'transaction',
+          label: 'Drop the packet',
+          href: `${base}/api/actions/create?amount={amount}&shares={shares}&mode={mode}`,
+          parameters: [
+            { name: 'amount', label: 'Amount in tSKR', type: 'number', required: true, min: Number(formatUi(1n, decimals, decimals)) },
+            { name: 'shares', label: `Shares (1 to ${MAX_SHARES})`, type: 'number', required: true, min: 1, max: MAX_SHARES },
+            {
+              name: 'mode',
+              label: 'Split',
+              type: 'radio',
+              required: true,
+              options: [
+                { label: 'Lucky: random shares', value: 'lucky', selected: true },
+                { label: 'Equal: the same share for everyone', value: 'equal' },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+/**
+ * An unsigned `create_packet` from `account`: a public, Seeker-only tSKR packet that stays open
+ * for 24 hours. `max_fee_bps` is the fee read now, so a fee raised before the transaction lands
+ * fails it instead of charging more.
+ */
+export async function buildCreateTransaction(rpc: SolanaRpc, account: string, input: CreateActionInput) {
+  if (!isAddress(account)) throw new HttpError(400, 'account must be a wallet address');
+  const mint = toAddress(env().TSKR_MINT);
+  const { decimals, symbol } = tokenMeta(mint);
+  const { total, shares, mode } = parseCreateInput(input, decimals);
+  const ui = (base: bigint) => `${formatUi(base, decimals, decimals)} ${symbol}`;
+
+  const config = await loadConfig(rpc);
+  if (config.paused) throw new HttpError(409, 'New packets are paused right now');
+
+  // public packets pay the protocol fee on top of the deposit
+  const sender = toAddress(account);
+  const needed = total + (total * BigInt(config.feeBps)) / 10_000n;
+  const [senderToken] = await findAssociatedTokenPda({ owner: sender, mint, tokenProgram: TOKEN_PROGRAM_ADDRESS });
+  const held = await fetchMaybeToken(rpc, senderToken, { commitment: 'confirmed' });
+  const balance = held.exists ? held.data.amount : 0n;
+  if (balance < needed) {
+    throw new HttpError(
+      400,
+      `This wallet holds ${ui(balance)}; the packet needs ${ui(needed)}` +
+        (needed > total ? ` (${ui(total)} plus the ${percent(config.feeBps)} fee).` : '.') +
+        ' On devnet, the Playground in the Bao app gives test tSKR.',
+    );
+  }
+
+  const created = await buildCreatePacket({
+    sender: createNoopSigner(sender),
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    treasury: config.treasury,
+    total,
+    shares,
+    mode,
+    audience: { kind: 'open' },
+    seekerOnly: true,
+    expiresIn: CREATE_EXPIRES_IN,
+    maxFeeBps: config.feeBps,
+  });
+  const { value: blockhash } = await rpc.getLatestBlockhash({ commitment: 'confirmed' }).send();
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(sender, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
+    (m) => appendTransactionMessageInstructions(created.instructions, m),
+  );
+  return {
+    type: 'transaction',
+    transaction: getBase64EncodedWireTransaction(compileTransaction(message)),
+    message: `Packet sealed: ${ui(total)} in ${shares} ${shares === 1 ? 'share' : 'shares'}. Share it: ${baseUrl()}/p/${created.packet}`,
   };
 }

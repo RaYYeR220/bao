@@ -25,6 +25,19 @@ export function formatUi(amount: string | bigint, decimals: number, maxFraction 
   return `${negative ? '-' : ''}${whole}${fraction ? `.${fraction}` : ''}`;
 }
 
+/**
+ * Decimal string -> base units with string math, never floating point ("0.1" at 6 decimals is
+ * exactly 100000n). Null when it is not a plain non-negative number or has more decimals than
+ * the token; nothing is rounded.
+ */
+export function parseUi(text: string, decimals: number): bigint | null {
+  const m = /^(\d*)(?:[.,](\d*))?$/.exec(text.trim());
+  if (!m || (!m[1] && !m[2])) return null;
+  const [, whole, fraction = ''] = m;
+  if (fraction.length > decimals) return null;
+  return BigInt(whole || '0') * 10n ** BigInt(decimals) + BigInt(fraction.padEnd(decimals, '0') || '0');
+}
+
 const prices = new Map<string, { usd: number | null; at: number }>();
 const PRICE_TTL_MS = 5 * 60_000;
 

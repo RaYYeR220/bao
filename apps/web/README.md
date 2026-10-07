@@ -15,7 +15,7 @@ Mainnet is read, never written: `.skr` names (AllDomains) and real Seeker Genesi
 | Indexer (webhook + poller) | `src/lib/indexer.ts`, `src/lib/chain.ts`, `/api/webhooks/helius` |
 | Crank (and house rain) | `src/lib/crank.ts`, `src/lib/house-rain.ts`, `/api/cron/tick`, `/api/claims/:address/payout` |
 | Push (FCM HTTP v1) | `src/lib/push.ts`, `/api/push/register` |
-| Solana Actions | `src/lib/actions.ts`, `/actions.json`, `/api/actions/grab/:packet` |
+| Solana Actions | `src/lib/actions.ts`, `/actions.json`, `/api/actions/grab/:packet`, `/api/actions/create` |
 | Link pages | `/p/:packet` (+ Open Graph image), `/.well-known/assetlinks.json`, `/` |
 | Devnet RPC proxy (allowlisted methods, keeps the Helius key server-side) | `src/lib/rpc-proxy.ts`, `POST /api/rpc` |
 | Database | `src/lib/db.ts` (all SQL), `../../supabase/migrations` |
@@ -141,6 +141,15 @@ until the grab is indexed as paid, and checks the feed.
   and it sends no "packet dropped" push. A drop locks about 0.1 SOL of rent and gas budget (devnet
   rent) until the crank closes it and refunds the faucet; what is spent is mostly the VRF allowance
   (up to 0.001 SOL per grab).
+- Solana Actions (spec 2.4, devnet chain id, CORS on every response): `GET /api/actions/grab/:packet`
+  describes a packet and its `POST` returns the unsigned grab for `account`. `GET /api/actions/create`
+  describes a form (`amount` in tSKR, `shares` 1 to 200, `mode` lucky or equal) and its `POST`
+  returns an unsigned `create_packet` from `account`: a public, Seeker-only tSKR packet open for
+  24 hours, with `max_fee_bps` set to the fee read from the program config. Inputs are checked
+  against the program's bounds, and a wallet that cannot cover the amount plus the fee is told so
+  before anything is signed. A packet dropped this way reaches the feed through the indexer; it has
+  no message or skin, and sends no "packet dropped" push (that needs the sender's signed-in
+  `POST /api/packets`).
 - Circle packet messages are returned only to members of that circle (and the sender); the link page
   and signed-out reads show the amount without the message. Note that the anon Realtime policy on
   `packets` still exposes whole rows to holders of the anon key.
