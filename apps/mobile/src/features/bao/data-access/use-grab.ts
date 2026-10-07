@@ -22,6 +22,7 @@ import {
   ConfirmTimeoutError,
   humanError,
   isWalletCancel,
+  preflight,
   sendWithWallet,
   TransactionFailedError,
 } from './send-with-wallet'
@@ -91,14 +92,6 @@ export function useGrab(packetAddress: string, code?: string) {
         })
         proof = res.proof.map(hexToBytes)
       }
-      if (seekerOnly && !genesis) {
-        setPhase({
-          kind: 'refused',
-          code: null,
-          message: 'Only real Seekers can grab this packet. This wallet holds no Seeker Genesis Token.',
-        })
-        return
-      }
       const mode = packet.data.mode === SplitMode.Lucky ? 'lucky' : 'equal'
       const { instruction, claim } = await buildGrab({
         claimer,
@@ -113,6 +106,23 @@ export function useGrab(packetAddress: string, code?: string) {
         proof,
         code,
       })
+
+      if (seekerOnly && !genesis) {
+        // No Genesis Token: ask the program anyway, so the refusal shown is its own (NotASeeker)
+        // and the wallet never opens for a grab that cannot land.
+        try {
+          await preflight(client, account.address, [instruction])
+        } catch (error) {
+          if (error instanceof TransactionFailedError && error.code !== null) throw error
+        }
+        // the cluster could not run it (an unfunded wallet, a network hiccup): same verdict, checked here
+        setPhase({
+          kind: 'refused',
+          code: null,
+          message: 'Only real Seekers can grab this packet. This wallet holds no Seeker Genesis Token.',
+        })
+        return
+      }
 
       setPhase({ kind: 'signing' })
       const signature = await sendWithWallet(wallet, client, account.address, [instruction])

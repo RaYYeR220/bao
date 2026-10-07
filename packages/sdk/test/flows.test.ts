@@ -124,12 +124,17 @@ describe('buildGrab', () => {
     expect(isSome(data.args.code) && hex(data.args.code.value)).toBe(hex(normalizeCode('gongxi facai')));
   });
 
-  it('refuses a seeker-only grab without a genesis token', async () => {
+  it('builds a seeker-only grab without a genesis token, keyed by the wallet, for the program to refuse', async () => {
     const { claimer, mint } = await setup();
     const packet = (await generateKeyPairSigner()).address;
-    await expect(
-      buildGrab({ claimer, packet: { address: packet, mint, tokenProgram: TOKEN_PROGRAM, mode: 'equal', seekerOnly: true } }),
-    ).rejects.toThrow(/Genesis/);
+    const { instruction, claim, deviceKey } = await buildGrab({
+      claimer,
+      packet: { address: packet, mint, tokenProgram: TOKEN_PROGRAM, mode: 'equal', seekerOnly: true },
+    });
+    expect(deviceKey).toBe(claimer.address);
+    expect(claim).toBe((await findClaimPda(packet, claimer.address))[0]);
+    const data = getGrabEqualInstructionDataDecoder().decode(instruction.data!);
+    expect(data.args.deviceKey).toBe(claimer.address);
   });
 });
 

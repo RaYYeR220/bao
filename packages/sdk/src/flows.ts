@@ -102,17 +102,17 @@ export interface GrabPacketInfo {
 export interface GrabParams {
   claimer: TransactionSigner;
   packet: GrabPacketInfo;
-  /** The claimer's Seeker Genesis Token (required for Seeker-only packets). */
+  /** The claimer's Seeker Genesis Token. Without one, a Seeker-only grab is refused by the program. */
   genesis?: { mint: Address; tokenAccount: Address } | null;
   proof?: Uint8Array[];
   code?: string;
 }
 
 export async function buildGrab(p: GrabParams) {
-  if (p.packet.seekerOnly && !p.genesis) {
-    throw new Error('This packet is Seeker-only and the wallet holds no Seeker Genesis Token');
-  }
-  const deviceKey = p.packet.seekerOnly ? p.genesis!.mint : p.claimer.address;
+  // A Seeker-only grab without a Genesis Token is still built (keyed by the wallet, with no
+  // token accounts), so a caller can simulate it and show the program's own NotASeeker refusal.
+  const genesis = p.packet.seekerOnly ? (p.genesis ?? null) : null;
+  const deviceKey = genesis ? genesis.mint : p.claimer.address;
   const [claim] = await findClaimPda(p.packet.address, deviceKey);
   const common = {
     claimer: p.claimer,
@@ -120,8 +120,8 @@ export async function buildGrab(p: GrabParams) {
     mint: p.packet.mint,
     claim,
     claimerToken: await ataOf(p.claimer.address, p.packet.mint, p.packet.tokenProgram),
-    sgtMint: p.packet.seekerOnly ? p.genesis!.mint : undefined,
-    sgtToken: p.packet.seekerOnly ? p.genesis!.tokenAccount : undefined,
+    sgtMint: genesis?.mint,
+    sgtToken: genesis?.tokenAccount,
     tokenProgram: p.packet.tokenProgram,
     args: {
       deviceKey,

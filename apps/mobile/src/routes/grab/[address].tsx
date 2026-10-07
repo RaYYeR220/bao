@@ -20,6 +20,7 @@ import { $reminders } from '@/features/bao/data-access/prefs'
 import { maybeAskForPush } from '@/features/bao/data-access/push'
 import { useCircles } from '@/features/bao/data-access/use-bao-api'
 import { useMyClaim, usePacketData } from '@/features/bao/data-access/use-bao-data'
+import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
 import { useGrab, type GrabPhase } from '@/features/bao/data-access/use-grab'
 import { useShakeSteps } from '@/features/bao/data-access/use-shake'
 import {
@@ -122,8 +123,12 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
   const [steps, setSteps] = useState(0)
   const [trembleKey, setTrembleKey] = useState(0)
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // only once we know whether this phone already grabbed (unknowable until a wallet is connected)
-  const claimKnown = !wallet.account || mine.isFetched
+  // only once we know whether this phone already grabbed (unknowable until a wallet is connected).
+  // A wallet with no Genesis Token has no claim to look up on a Seeker-only packet: it may try,
+  // and the program refuses it.
+  const genesis = useGenesisToken(wallet.account?.address)
+  const noDeviceKey = detail.seekerOnly && genesis.isFetched && !genesis.data
+  const claimKnown = !wallet.account || mine.isFetched || noDeviceKey
   const canShake = phase.kind === 'idle' && !scheduled && !spent && !alreadyMine && claimKnown
 
   const step = useCallback(() => {
