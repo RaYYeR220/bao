@@ -206,13 +206,18 @@ export async function sendWithWallet(
       // The wallet sends through its own RPC and preflights there, by default against finalized
       // state, ~13 s behind the confirmed state Bao just simulated. Tokens from the faucet, a crown
       // or an account made seconds ago are not there yet, the wallet's preflight fails and it
-      // answers -2 ("payloads invalid"). Ask for confirmed, the state Bao's preflight saw.
+      // answers -2 ("payloads invalid"). Bao ran these exact instructions through
+      // simulateTransaction a moment ago (preflight above), so skip the wallet's second, staler
+      // preflight, and where a wallet still runs one, ask for the confirmed state Bao saw.
       const [signatureBytes] = await mw.signAndSendTransactions({
         minContextSlot: Number(slot),
         commitment: 'confirmed',
+        skipPreflight: true,
         transactions: [message],
       })
-      return getBase58Decoder().decode(signatureBytes) as Signature
+      const sent = getBase58Decoder().decode(signatureBytes) as Signature
+      lifetimes.set(sent, latestBlockhash.lastValidBlockHeight)
+      return sent
     })
     // the confirmation polls and API calls that follow need Bao back in front (network unblocked)
     await untilActive()
@@ -230,22 +235,44 @@ export async function sendWithWallet(
   }
 }
 
-/** Polls until the signature is confirmed; throws with the program error if it failed. */
+/** Last block height at which a transaction sent through the wallet can still land. */
+const lifetimes = new Map<Signature, bigint>()
+
+/** Sent, never seen, and its blockhash ran out (signed too late): it can no longer land. */
+export class TransactionExpiredError extends Error {
+  constructor(readonly signature: Signature) {
+    super('The transaction expired before it reached Solana.')
+  }
+}
+
+/**
+ * Polls until the signature is confirmed; throws with the program error if it failed, and
+ * stops early once a transaction Solana never saw has outlived its blockhash.
+ */
 export async function confirmSignature(client: SolanaClient, signature: Signature, timeoutMs = 60_000) {
   const started = Date.now()
-  while (Date.now() - started < timeoutMs) {
-    try {
-      const {
-        value: [status],
-      } = await client.rpc.getSignatureStatuses([signature]).send()
-      if (status?.err) throw new TransactionFailedError(signature, status.err)
-      if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') return
-    } catch (e) {
-      if (e instanceof TransactionFailedError) throw e
+  const lastValid = lifetimes.get(signature)
+  try {
+    for (let poll = 1; Date.now() - started < timeoutMs; poll++) {
+      try {
+        const {
+          value: [status],
+        } = await client.rpc.getSignatureStatuses([signature]).send()
+        if (status?.err) throw new TransactionFailedError(signature, status.err)
+        if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') return
+        if (!status && lastValid !== undefined && poll % 4 === 0) {
+          const height = await client.rpc.getBlockHeight({ commitment: 'confirmed' }).send()
+          if (height > lastValid) throw new TransactionExpiredError(signature)
+        }
+      } catch (e) {
+        if (e instanceof TransactionFailedError || e instanceof TransactionExpiredError) throw e
+      }
+      await sleep(800)
     }
-    await sleep(800)
+    throw new ConfirmTimeoutError(signature)
+  } finally {
+    lifetimes.delete(signature)
   }
-  throw new ConfirmTimeoutError(signature)
 }
 
 export class TransactionFailedError extends Error {
@@ -326,7 +353,8 @@ export function humanError(error: unknown): string {
     return 'No Solana wallet on this phone yet. Install one (Seed Vault on a Seeker) and try again.'
   if (/network request failed|failed to fetch|ENOTFOUND|ECONN/i.test(text))
     return 'Solana devnet did not answer. Check the connection and try again.'
-  if (/blockhash not found|BlockhashNotFound/i.test(text)) return 'The transaction took too long to sign. Try again.'
+  if (error instanceof TransactionExpiredError || /blockhash not found|BlockhashNotFound/i.test(text))
+    return 'The transaction took too long to sign. Try again.'
   if (/did not confirm the transaction in time/i.test(text))
     return 'Solana is slow right now; the grab may still land. Check back in a minute.'
   return text.length > 160 ? `${text.slice(0, 157)}…` : text
