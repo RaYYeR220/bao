@@ -694,7 +694,7 @@ function Refusal({
           <FoilButton label="Try another word" icon="lock" onPress={onCode} style={{ flex: 1 }} />
         ) : notSeeker ? (
           <FoilButton
-            label="Get a test Genesis token"
+            label="Get a test token"
             icon="drop"
             onPress={() => router.navigate('/seeker')}
             style={{ flex: 1 }}
