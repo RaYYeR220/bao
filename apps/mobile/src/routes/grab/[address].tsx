@@ -218,7 +218,15 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
       landed={landed && where === 'front'}
       isKing={result.isKing && detail.mode === 'lucky'}
       kicker={alreadyMine ? 'You grabbed earlier' : 'You grabbed'}
-      headline={result.isKing && detail.mode === 'lucky' ? 'Luck King' : detail.mode === 'lucky' ? 'Lucky share' : 'Equal share'}
+      headline={
+        result.isKing && detail.mode === 'lucky'
+          ? detail.resolved >= detail.shares
+            ? 'Luck King'
+            : 'Luck King so far'
+          : detail.mode === 'lucky'
+            ? 'Lucky share'
+            : 'Equal share'
+      }
       detail={rankLine}
       postmark={[detail.seekerOnly ? 'Seeker-bound' : 'Grabbed', clockTime(myGrab?.at || mountedAt), result.signature ? `tx ${shortAddress(result.signature, 3)}` : null]
         .filter(Boolean)

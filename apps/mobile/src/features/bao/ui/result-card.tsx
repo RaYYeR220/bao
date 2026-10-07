@@ -39,7 +39,7 @@ function CountUp({ amount, decimals, run, size }: { amount: bigint; decimals: nu
       adjustsFontSizeToFit
       accessibilityLabel={`${formatAmount(amount, decimals)}`}
     >
-      {formatAmount(value, decimals)}
+      {run ? formatAmount(value, decimals) : ' '}
     </T>
   )
 }

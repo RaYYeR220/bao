@@ -1,5 +1,15 @@
 import { address, getBase64Encoder, type Address } from '@solana/kit'
-import { ClaimStatus, findClaimPda, getClaimRecordDecoder, type FeedView, type GrabView, type PacketDetail, type PacketView } from '@bao/sdk'
+import {
+  ClaimStatus,
+  fetchMaybeCrown,
+  findClaimPda,
+  findCrownPda,
+  getClaimRecordDecoder,
+  type FeedView,
+  type GrabView,
+  type PacketDetail,
+  type PacketView,
+} from '@bao/sdk'
 import { useQuery } from '@tanstack/react-query'
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
 
@@ -164,5 +174,23 @@ export function useMyClaim(packet: string | undefined, seekerOnly: boolean | und
     queryKey: ['my-claim', packet, deviceKey],
     queryFn: () => fetchMyClaim(client.rpc as never, address(packet!), deviceKey as Address),
     enabled: !!packet && !!deviceKey && seekerOnly !== undefined,
+  })
+}
+
+/**
+ * The Luck King crown of a packet. It exists once every share is settled (or the packet was
+ * closed); until then the biggest grab is only "Luck King so far" and cannot extend the chain.
+ */
+export function useCrown(packet: string | undefined) {
+  const { client } = useAppCluster()
+  return useQuery({
+    queryKey: ['crown', packet],
+    queryFn: async () => {
+      const [pda] = await findCrownPda({ packet: address(packet!) })
+      const crown = await fetchMaybeCrown(client.rpc as never, pda)
+      return crown.exists ? crown.data : null
+    },
+    enabled: !!packet,
+    refetchInterval: 10_000,
   })
 }

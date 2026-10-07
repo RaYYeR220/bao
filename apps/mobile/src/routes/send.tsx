@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { TSKR_DECIMALS } from '@/features/bao/data-access/bao-config'
 import { humanError, TransactionFailedError, WalletRejectedError } from '@/features/bao/data-access/send-with-wallet'
 import { useApiState, useCircles, useSession } from '@/features/bao/data-access/use-bao-api'
-import { useBalances, usePacketData } from '@/features/bao/data-access/use-bao-data'
+import { useBalances, useCrown, usePacketData } from '@/features/bao/data-access/use-bao-data'
 import { toBaseUnits, useDropPacket, type DropInput } from '@/features/bao/data-access/use-drop-packet'
 import { clockTime, displayName, formatAmount } from '@/features/bao/format'
 import { Backdrop } from '@/ui/backdrop'
@@ -81,7 +81,10 @@ export default function SendScreen() {
     audience === 'public' ? true : audience === 'circle' ? !!circleId && circleAvailable : code.trim().length >= 2
 
   const parentDetail = parent.data?.detail
-  const chainLabel = parentDetail
+  const crown = useCrown(params.parent)
+  const holdsCrown = !!crown.data && crown.data.king === wallet.account?.address
+  const chainPending = !!params.parent && crown.isFetched && !holdsCrown
+  const chainLabel = parentDetail && holdsCrown
     ? `#${parentDetail.chainDepth + 2} in ${displayName(parentDetail.senderSkr, parentDetail.sender)}’s chain`
     : null
 
@@ -104,8 +107,8 @@ export default function SendScreen() {
       startsAt: audience === 'public' && rainIn > 0 ? Math.floor(Date.now() / 1000) + rainIn * 60 : undefined,
       message: message.trim() || undefined,
       skin,
-      parentPacket: params.parent,
-      parentRefundTo: params.parentRefund,
+      parentPacket: holdsCrown ? params.parent : undefined,
+      parentRefundTo: holdsCrown ? params.parentRefund : undefined,
     }
     try {
       const res = await drop.mutateAsync(input)
@@ -168,6 +171,13 @@ export default function SendScreen() {
             ) : null}
           </View>
 
+          {chainPending && step === 0 ? (
+            <Note icon="crown" style={{ marginBottom: space[4] }}>
+              {crown.data
+                ? 'Someone else wears that crown now. This drop starts a chain of its own.'
+                : 'You lead so far. The crown is settled once every share is grabbed; this drop starts a chain of its own.'}
+            </Note>
+          ) : null}
           {step === 0 ? (
             <Animated.View key="s0" entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(200)} style={{ gap: space[5] }}>
               <Pressable onPress={() => amountRef.current?.focus()} style={{ alignItems: 'center' }} accessibilityLabel="Amount">
