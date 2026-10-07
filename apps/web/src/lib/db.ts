@@ -609,6 +609,23 @@ export class Store {
     return num(r?.n);
   }
 
+  /**
+   * Totals for the landing page: packets mirrored from the program, grabs that drew a share, the
+   * base units of `mint` that reached grabbers' wallets, and how many of the packets the house
+   * rain dropped. Four aggregates over small tables.
+   */
+  async totals(mint: string): Promise<{ packets: number; grabs: number; paid: string; houseDrops: number }> {
+    const [r] = await this.sql.query(
+      `select (select count(*) from packets) as packets,
+              (select count(*) from grabs where status <> 'pending') as grabs,
+              (select coalesce(sum(g.amount), 0)::text from grabs g join packets p on p.address = g.packet
+                where g.status = 'paid' and p.mint = $1) as paid,
+              (select coalesce(sum(drops), 0) from house_rain) as house_drops`,
+      [mint],
+    );
+    return { packets: num(r?.packets), grabs: num(r?.grabs), paid: strOrNull(r?.paid) ?? '0', houseDrops: num(r?.house_drops) };
+  }
+
   // ---------- grabs ----------
 
   async applyGrab(g: GrabPatch) {

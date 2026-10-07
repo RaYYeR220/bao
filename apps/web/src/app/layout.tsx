@@ -1,24 +1,27 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { baseUrl } from '@/lib/env';
+import { cjk, display, text } from '@/ui/fonts';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Bao — red packets bots cannot grab',
-  description: 'Drop a red packet of SKR into your circle. One Seeker, one grab — enforced on-chain.',
+  metadataBase: new URL(baseUrl()),
+  title: { default: 'Bao 紅包 · Red packets for Seeker', template: '%s · Bao' },
+  description:
+    'Red packets for Solana Seeker. Drop tSKR to a circle or the public feed, shake to grab a share. Each grab is bound on-chain to a Seeker Genesis Token: one Seeker, one grab.',
+  applicationName: 'Bao',
+  icons: { icon: [{ url: '/favicon.png', type: 'image/png', sizes: '96x96' }], apple: '/icon.png' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0f0b0b',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-          background: '#1a0606',
-          color: '#fbe9d0',
-        }}
-      >
-        {children}
-      </body>
+    <html lang="en" className={`${display.variable} ${text.variable} ${cjk.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }
