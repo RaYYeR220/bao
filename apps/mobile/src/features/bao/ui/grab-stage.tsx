@@ -319,9 +319,9 @@ export function GrabStage({
         {/* interior and lid lining only exist once the seal breaks: no hidden shaders while sealed */}
         {opening ? (
           <>
-            <Lacquer width={envW} tone={tone} part={4} gleam={gleam} style={StyleSheet.absoluteFill} art={false} />
+            <Lacquer live width={envW} tone={tone} part={4} gleam={gleam} style={StyleSheet.absoluteFill} art={false} />
             <Animated.View style={[styles.flap, { width: envW, height: flapH }, flapBackStyle]}>
-              <Lacquer width={envW} tone={tone} part={3} gleam={gleam} heightUnits={ENV.A} />
+              <Lacquer live width={envW} tone={tone} part={3} gleam={gleam} heightUnits={ENV.A} />
             </Animated.View>
           </>
         ) : null}
@@ -332,6 +332,7 @@ export function GrabStage({
           {renderCard?.('inside')}
         </Animated.View>
         <Lacquer
+          live
           width={envW}
           tone={tone}
           part={1}
@@ -345,6 +346,7 @@ export function GrabStage({
         </Animated.View>
         <Animated.View style={[styles.flap, { width: envW, height: flapH }, flapFrontStyle]}>
           <Lacquer
+            live
             width={envW}
             tone={tone}
             part={2}

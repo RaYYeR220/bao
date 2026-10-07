@@ -15,6 +15,7 @@ import {
   useFont,
   useTexture,
   vec,
+  type Uniforms,
 } from '@shopify/react-native-skia'
 import { useMemo, type ReactNode } from 'react'
 import { PixelRatio, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
@@ -60,7 +61,45 @@ export interface LacquerProps {
   /** Draw only the top `heightUnits` of the envelope (flap canvases). */
   heightUnits?: number
   art?: boolean
+  /** Draw the shader every frame instead of baking it (layers that hinge and transform). */
+  live?: boolean
   style?: StyleProp<ViewStyle>
+}
+
+/** One lacquer layer: baked into a texture for static faces, drawn live for the hinged grab layers. */
+export function Lacquer(props: LacquerProps) {
+  return props.live ? <LiveLacquer {...props} /> : <BakedLacquer {...props} />
+}
+
+function LiveLacquer({
+  width,
+  tone,
+  part,
+  gleam,
+  gleamA = 0.26,
+  shimmer,
+  time,
+  ticks,
+  heightUnits = H,
+  art = true,
+  style,
+}: LacquerProps) {
+  const s = width / W
+  const base = useMemo(() => toneUniforms(tone), [tone])
+  const uniforms = useDerivedValue<Uniforms>(() => ({
+    ...base,
+    u_scale: s,
+    u_gleam: gleam.value,
+    u_gleamA: gleamA,
+    u_part: part,
+    u_shimmer: shimmer ? shimmer.value : 0,
+    u_time: time ? time.value * 2.8 : 0,
+  }))
+  return (
+    <Canvas style={[{ width, height: heightUnits * s }, style]} pointerEvents="none">
+      <LacquerArt tone={tone} part={part} scale={s} ticks={ticks} art={art} uniforms={uniforms} />
+    </Canvas>
+  )
 }
 
 /**
@@ -68,7 +107,7 @@ export interface LacquerProps {
  * baked once into a texture; each frame only the specular band (and the waiting shimmer) is
  * drawn over it, so tilting the phone costs two gradients rather than a full shader pass.
  */
-export function Lacquer({
+function BakedLacquer({
   width,
   tone,
   part,
@@ -148,15 +187,17 @@ function LacquerArt({
   scale,
   ticks,
   art,
+  uniforms,
 }: {
   tone: EnvelopeTone
   part: LacquerPart
   scale: number
   ticks?: { total: number; left: number }
   art: boolean
+  uniforms?: SharedValue<Uniforms>
 }) {
   const spec = tones[tone]
-  const uniforms = {
+  const staticUniforms = {
     ...toneUniforms(tone),
     u_scale: scale,
     u_gleam: -5,
@@ -172,7 +213,7 @@ function LacquerArt({
   return (
     <Group transform={[{ scale }]}>
       <RoundedRect x={0} y={0} width={W} height={H} r={6}>
-        <Shader source={lacquerEffect!} uniforms={uniforms} />
+        <Shader source={lacquerEffect!} uniforms={uniforms ?? staticUniforms} />
       </RoundedRect>
       {showPocketArt && art ? (
         <>
