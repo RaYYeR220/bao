@@ -16,6 +16,14 @@ import { T } from '@/ui/text'
 import { color, space } from '@/ui/tokens'
 import { WIDGET_NAME } from '@/widget/task-handler'
 
+/** "1.0.0 (1)": the version and Android build from the app config (app.json). */
+const APP_VERSION = [
+  Constants.expoConfig?.version,
+  Constants.expoConfig?.android?.versionCode ? `(${Constants.expoConfig.android.versionCode})` : null,
+]
+  .filter(Boolean)
+  .join(' ')
+
 export default function Preferences() {
   const insets = useSafeAreaInsets()
   const sound = usePref($sound)
@@ -99,7 +107,7 @@ export default function Preferences() {
           <Hairline />
         </View>
         <T variant="meta" style={{ textAlign: 'center' }}>
-          Bao {Constants.expoConfig?.version ?? ''} · 紅包
+          Bao {APP_VERSION} · 紅包
         </T>
       </ScrollView>
     </View>

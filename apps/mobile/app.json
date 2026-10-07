@@ -7,6 +7,7 @@
         "monochromeImage": "./assets/images/bao-icon-monochrome.png"
       },
       "package": "app.getbao",
+      "versionCode": 1,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.NFC",
@@ -55,6 +56,7 @@
       "icon": "./assets/expo.icon"
     },
     "name": "Bao",
+    "version": "1.0.0",
     "orientation": "portrait",
     "plugins": [
       [
@@ -144,7 +146,8 @@
           }
         }
       ],
-      "./plugins/with-gradle-tuning"
+      "./plugins/with-gradle-tuning",
+      "./plugins/with-release-signing"
     ],
     "scheme": "bao",
     "slug": "bao",
