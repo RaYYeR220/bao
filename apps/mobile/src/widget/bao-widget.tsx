@@ -1,3 +1,5 @@
+'use no memo'
+
 import type { WidgetView } from '@bao/sdk'
 import { FlexWidget, SvgWidget, TextWidget } from 'react-native-android-widget'
 

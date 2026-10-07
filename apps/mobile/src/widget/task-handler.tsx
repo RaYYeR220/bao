@@ -1,3 +1,5 @@
+'use no memo'
+
 import { requestWidgetUpdate, type WidgetTaskHandlerProps } from 'react-native-android-widget'
 
 import { BaoWidget } from './bao-widget'
