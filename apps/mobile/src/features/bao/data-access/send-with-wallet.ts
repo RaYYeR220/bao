@@ -53,11 +53,20 @@ export async function preflight(client: SolanaClient, feePayer: Address, instruc
     createTransactionMessage({ version: 0 }),
     (m) => setTransactionMessageFeePayer(feePayer, m),
     (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
-    (m) => appendTransactionMessageInstructions([getSetComputeUnitPriceInstruction({ microLamports: 10_000n }), ...instructions], m),
+    (m) =>
+      appendTransactionMessageInstructions(
+        [getSetComputeUnitPriceInstruction({ microLamports: 10_000n }), ...instructions],
+        m,
+      ),
   )
   const wire = getBase64EncodedWireTransaction(compileTransaction(message))
   const { value } = await client.rpc
-    .simulateTransaction(wire, { encoding: 'base64', sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' })
+    .simulateTransaction(wire, {
+      encoding: 'base64',
+      sigVerify: false,
+      replaceRecentBlockhash: true,
+      commitment: 'confirmed',
+    })
     .send()
   if (value.err) {
     console.log(`preflight refused: ${safeJson(value.err)} | ${(value.logs ?? []).slice(-12).join(' | ')}`)
@@ -99,9 +108,16 @@ export async function sendWithWallet(
         createTransactionMessage({ version: 0 }),
         (m) => setTransactionMessageFeePayer(feePayer, m),
         (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
-        (m) => appendTransactionMessageInstructions([getSetComputeUnitPriceInstruction({ microLamports: 10_000n }), ...instructions], m),
+        (m) =>
+          appendTransactionMessageInstructions(
+            [getSetComputeUnitPriceInstruction({ microLamports: 10_000n }), ...instructions],
+            m,
+          ),
       )
-      const [signatureBytes] = await mw.signAndSendTransactions({ minContextSlot: Number(slot), transactions: [message] })
+      const [signatureBytes] = await mw.signAndSendTransactions({
+        minContextSlot: Number(slot),
+        transactions: [message],
+      })
       return getBase58Decoder().decode(signatureBytes) as Signature
     })
     return signature
@@ -111,7 +127,8 @@ export async function sendWithWallet(
     // the wallet simulated the transaction and the program refused it before sending
     const code = programErrorCodeFromText(text)
     if (code !== null) throw new TransactionFailedError(null, { InstructionError: [1, { Custom: code }] })
-    if (/insufficient|0x1|debit an account/i.test(text)) throw new Error('Not enough SOL or tSKR in this wallet for that.')
+    if (/insufficient|0x1|debit an account/i.test(text))
+      throw new Error('Not enough SOL or tSKR in this wallet for that.')
     throw error
   }
 }
@@ -182,7 +199,8 @@ const BAO_ERRORS: Record<number, string> = {
 export const safeJson = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? Number(x) : x))
 
 function customCode(detail: unknown): number | null {
-  const custom = (detail as { InstructionError?: [unknown, { Custom?: number | bigint }] })?.InstructionError?.[1]?.Custom
+  const custom = (detail as { InstructionError?: [unknown, { Custom?: number | bigint }] })?.InstructionError?.[1]
+    ?.Custom
   return typeof custom === 'number' || typeof custom === 'bigint' ? Number(custom) : null
 }
 
@@ -197,11 +215,18 @@ export function describeProgramError(detail: unknown): string {
 /** Turns wallet, network and RPC failures into one calm sentence for the screen. */
 export function humanError(error: unknown): string {
   const text = error instanceof Error ? error.message : String(error)
-  if (/TimeoutException|timed out waiting/i.test(text)) return 'The wallet took too long to answer. Open it and try again.'
-  if (/no installed wallet|ActivityNotFound|wallet app not found|SolanaMobileWalletAdapterWalletNotInstalledError/i.test(text))
+  if (/TimeoutException|timed out waiting/i.test(text))
+    return 'The wallet took too long to answer. Open it and try again.'
+  if (
+    /no installed wallet|ActivityNotFound|wallet app not found|SolanaMobileWalletAdapterWalletNotInstalledError/i.test(
+      text,
+    )
+  )
     return 'No Solana wallet on this phone yet. Install one (Seed Vault on a Seeker) and try again.'
-  if (/network request failed|failed to fetch|ENOTFOUND|ECONN/i.test(text)) return 'Solana devnet did not answer. Check the connection and try again.'
+  if (/network request failed|failed to fetch|ENOTFOUND|ECONN/i.test(text))
+    return 'Solana devnet did not answer. Check the connection and try again.'
   if (/blockhash not found|BlockhashNotFound/i.test(text)) return 'The transaction took too long to sign. Try again.'
-  if (/did not confirm the transaction in time/i.test(text)) return 'Solana is slow right now; the grab may still land. Check back in a minute.'
+  if (/did not confirm the transaction in time/i.test(text))
+    return 'Solana is slow right now; the grab may still land. Check back in a minute.'
   return text.length > 160 ? `${text.slice(0, 157)}…` : text
 }

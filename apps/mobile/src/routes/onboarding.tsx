@@ -70,7 +70,13 @@ export default function Onboarding() {
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
         <View style={styles.progress} accessibilityLabel={`Step ${page + 1} of ${steps}`}>
           {Array.from({ length: steps }, (_, i) => (
-            <View key={i} style={[styles.bar, { backgroundColor: i <= page ? color.kin300 : color.kuro600, width: i === page ? 26 : 12 }]} />
+            <View
+              key={i}
+              style={[
+                styles.bar,
+                { backgroundColor: i <= page ? color.kin300 : color.kuro600, width: i === page ? 26 : 12 },
+              ]}
+            />
           ))}
         </View>
         <TextButton label="Skip" tone="muted" onPress={finish} />
@@ -96,7 +102,10 @@ export default function Onboarding() {
       />
       {page < PANELS.length ? (
         <View style={[styles.bottom, { paddingBottom: insets.bottom + space[5] }]}>
-          <FoilButton label={page === PANELS.length - 1 ? 'Connect your Seeker' : 'Next'} onPress={() => go(page + 1)} />
+          <FoilButton
+            label={page === PANELS.length - 1 ? 'Connect your Seeker' : 'Next'}
+            onPress={() => go(page + 1)}
+          />
         </View>
       ) : null}
     </View>
@@ -110,7 +119,13 @@ function Panel({ index, width, active }: { index: number; width: number; active:
   return (
     <View style={[styles.panel, { width }]}>
       <View style={styles.art}>
-        {index === 0 ? <Hero envW={envW} /> : index === 1 ? <Bound envW={envW} /> : <Shake envW={envW} active={active} />}
+        {index === 0 ? (
+          <Hero envW={envW} />
+        ) : index === 1 ? (
+          <Bound envW={envW} />
+        ) : (
+          <Shake envW={envW} active={active} />
+        )}
       </View>
       <View style={styles.copy}>
         <T variant="caps" style={{ color: color.kin400 }}>
@@ -142,7 +157,9 @@ function Bound({ envW: full }: { envW: number }) {
   return (
     <View style={{ alignItems: 'center' }}>
       <View style={{ width: envW * 1.5, height: envW * 1.748 + 8, alignItems: 'center' }}>
-        <View style={{ position: 'absolute', left: 0, top: envW * 0.12, transform: [{ rotate: '-7deg' }], opacity: 0.5 }}>
+        <View
+          style={{ position: 'absolute', left: 0, top: envW * 0.12, transform: [{ rotate: '-7deg' }], opacity: 0.5 }}
+        >
           <EnvelopeFace width={envW * 0.82} tone="kuro" gleam={gleam} sealState="cracked" />
         </View>
         <View style={{ position: 'absolute', right: 0 }}>
@@ -165,14 +182,29 @@ function Shake({ envW, active }: { envW: number; active: boolean }) {
     if (!active) return
     const third = (n: number) => withTiming(n / 3, { duration: 260, easing: Easing.out(Easing.cubic) })
     ring.value = withRepeat(
-      withSequence(withDelay(500, third(1)), withDelay(500, third(2)), withDelay(500, third(3)), withDelay(1100, withTiming(0, { duration: 400 }))),
+      withSequence(
+        withDelay(500, third(1)),
+        withDelay(500, third(2)),
+        withDelay(500, third(3)),
+        withDelay(1100, withTiming(0, { duration: 400 })),
+      ),
       -1,
     )
     if (!reduced) {
       const kick = (deg: number) =>
-        withSequence(withTiming(deg, { duration: 60 }), withTiming(-deg, { duration: 80 }), withTiming(deg * 0.5, { duration: 70 }), withTiming(0, { duration: 90 }))
+        withSequence(
+          withTiming(deg, { duration: 60 }),
+          withTiming(-deg, { duration: 80 }),
+          withTiming(deg * 0.5, { duration: 70 }),
+          withTiming(0, { duration: 90 }),
+        )
       tilt.value = withRepeat(
-        withSequence(withDelay(440, kick(2)), withDelay(200, kick(3.5)), withDelay(200, kick(5)), withDelay(1240, withTiming(0, { duration: 10 }))),
+        withSequence(
+          withDelay(440, kick(2)),
+          withDelay(200, kick(3.5)),
+          withDelay(200, kick(5)),
+          withDelay(1240, withTiming(0, { duration: 10 })),
+        ),
         -1,
       )
     }
@@ -209,7 +241,8 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
       buzz('success')
       play('soft')
     } catch (e) {
-      if (e instanceof WalletRejectedError || /reject|declin|cancel/i.test(String(e))) setError('No problem. Connect whenever you are ready.')
+      if (e instanceof WalletRejectedError || /reject|declin|cancel/i.test(String(e)))
+        setError('No problem. Connect whenever you are ready.')
       else setError(humanError(e))
     }
   }
@@ -245,11 +278,17 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
               Sign in with{'\n'}your Seeker
             </T>
             <T variant="body" style={{ fontSize: 16, lineHeight: 23 }}>
-              One approval in your wallet connects Bao and proves the phone is yours. Nothing moves until you grab or drop.
+              One approval in your wallet connects Bao and proves the phone is yours. Nothing moves until you grab or
+              drop.
             </T>
             <View style={{ flex: 1 }} />
             {error ? <Note tone="shu">{error}</Note> : null}
-            <FoilButton label="Connect your Seeker" icon="wallet" busy={signIn.isPending} onPress={() => void connect()} />
+            <FoilButton
+              label="Connect your Seeker"
+              icon="wallet"
+              busy={signIn.isPending}
+              onPress={() => void connect()}
+            />
             <TextButton label="Look around first" tone="muted" onPress={finish} />
           </>
         ) : (
@@ -261,26 +300,42 @@ function ConnectStep({ width, active }: { width: number; active: boolean }) {
               Get test{'\n'}tokens
             </T>
             <T variant="body" style={{ fontSize: 16, lineHeight: 23 }}>
-              Bao runs on Solana devnet. The playground faucet sends test SOL, tSKR and a test Genesis token, so you can grab and drop for free.
+              Bao runs on Solana devnet. The playground faucet sends test SOL, tSKR and a test Genesis token, so you can
+              grab and drop for free.
             </T>
             <View style={{ flex: 1 }} />
             {faucet.isSuccess ? (
               <Note tone="jade" icon="check">
-                {[faucet.data.sol && 'Test SOL', faucet.data.tskr && 'tSKR', faucet.data.genesis && 'a test Genesis token'].filter(Boolean).join(', ') ||
-                  'Tokens'}{' '}
+                {[
+                  faucet.data.sol && 'Test SOL',
+                  faucet.data.tskr && 'tSKR',
+                  faucet.data.genesis && 'a test Genesis token',
+                ]
+                  .filter(Boolean)
+                  .join(', ') || 'Tokens'}{' '}
                 on the way to your wallet.
               </Note>
             ) : null}
             {offline ? (
-              <Note>The faucet lives on the Bao server, which is unreachable right now. Everything on-chain still works; try it later from the Seeker tab.</Note>
+              <Note>
+                The faucet lives on the Bao server, which is unreachable right now. Everything on-chain still works; try
+                it later from the Seeker tab.
+              </Note>
             ) : null}
             {error ? <Note tone="shu">{error}</Note> : null}
             {faucet.isSuccess ? (
               <FoilButton label="Open the feed" onPress={finish} />
             ) : (
-              <FoilButton label="Get test tokens" icon="drop" busy={faucet.isPending} onPress={() => void getTokens()} />
+              <FoilButton
+                label="Get test tokens"
+                icon="drop"
+                busy={faucet.isPending}
+                onPress={() => void getTokens()}
+              />
             )}
-            {!faucet.isSuccess ? <TextButton label={offline ? 'Continue to the feed' : 'Skip for now'} tone="muted" onPress={finish} /> : null}
+            {!faucet.isSuccess ? (
+              <TextButton label={offline ? 'Continue to the feed' : 'Skip for now'} tone="muted" onPress={finish} />
+            ) : null}
           </>
         )}
       </View>

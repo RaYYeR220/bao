@@ -21,7 +21,15 @@ const TINTS = ['#F6EBD2', '#EBD5A6', '#DDBB7A', '#C9A25C', '#A9823F']
  * Gold-leaf flakes released from the mouth of the envelope: thin foil quads that rise, spin,
  * flutter and settle slowly. No coins. Drawn as one Skia picture per frame.
  */
-export function GoldLeafBurst({ origin, fire, count = 34 }: { origin: { x: number; y: number }; fire: number; count?: number }) {
+export function GoldLeafBurst({
+  origin,
+  fire,
+  count = 34,
+}: {
+  origin: { x: number; y: number }
+  fire: number
+  count?: number
+}) {
   const { width, height } = useWindowDimensions()
   const t = useSharedValue(0)
   const flakes = useMemo<Flake[]>(() => {

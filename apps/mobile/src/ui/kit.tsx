@@ -9,13 +9,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated'
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 
 import { buzz } from './feedback'
@@ -75,13 +69,19 @@ export function FoilButton({
               width="99.6%"
               height="98%"
               rx="27"
-              fill={shu ? (pressed ? color.shu600 : color.shu500) : pressed ? 'rgba(58,46,47,0.6)' : 'rgba(44,33,34,0.35)'}
+              fill={
+                shu ? (pressed ? color.shu600 : color.shu500) : pressed ? 'rgba(58,46,47,0.6)' : 'rgba(44,33,34,0.35)'
+              }
               stroke={`url(#b${id})`}
               strokeWidth="1"
             />
           </Svg>
           <View style={styles.foilBtnInner}>
-            {busy ? <ActivityIndicator color={color.kin200} size="small" /> : icon ? <Icon name={icon} size={20} /> : null}
+            {busy ? (
+              <ActivityIndicator color={color.kin200} size="small" />
+            ) : icon ? (
+              <Icon name={icon} size={20} />
+            ) : null}
             <T variant="button" style={shu ? { color: color.gofun } : undefined} numberOfLines={1}>
               {label}
             </T>
@@ -109,7 +109,15 @@ export function TextButton({
   disabled?: boolean
 }) {
   const c =
-    tone === 'muted' ? color.gofun64 : tone === 'jade' ? color.jade300 : tone === 'shu' ? color.shu500 : tone === 'ink' ? color.kuro900 : color.kin300
+    tone === 'muted'
+      ? color.gofun64
+      : tone === 'jade'
+        ? color.jade300
+        : tone === 'shu'
+          ? color.shu500
+          : tone === 'ink'
+            ? color.kuro900
+            : color.kin300
   return (
     <Pressable
       accessibilityRole="button"
@@ -202,7 +210,11 @@ export function Avatar({ name, size = 30 }: { name: string; size?: number }) {
         <Circle cx="15" cy="15" r="14.5" fill="none" stroke="rgba(244,239,230,0.08)" />
       </Svg>
       <View style={[StyleSheet.absoluteFill, styles.center]}>
-        <T style={{ fontFamily: font.displayItalic, fontSize: size * 0.53, lineHeight: size * 0.9, color: color.gofun }}>{letter}</T>
+        <T
+          style={{ fontFamily: font.displayItalic, fontSize: size * 0.53, lineHeight: size * 0.9, color: color.gofun }}
+        >
+          {letter}
+        </T>
       </View>
     </View>
   )
@@ -212,13 +224,23 @@ export function Avatar({ name, size = 30 }: { name: string; size?: number }) {
 export function FoilRule({ label, style }: { label?: string; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[styles.rule, style]}>
-      <View style={[styles.ruleLine, { experimental_backgroundImage: 'linear-gradient(90deg, rgba(169,130,63,0), rgba(169,130,63,0.6))' }]} />
+      <View
+        style={[
+          styles.ruleLine,
+          { experimental_backgroundImage: 'linear-gradient(90deg, rgba(169,130,63,0), rgba(169,130,63,0.6))' },
+        ]}
+      />
       {label ? (
         <T variant="caps" style={{ color: color.kin500 }}>
           {label}
         </T>
       ) : null}
-      <View style={[styles.ruleLine, { experimental_backgroundImage: 'linear-gradient(90deg, rgba(169,130,63,0.6), rgba(169,130,63,0))' }]} />
+      <View
+        style={[
+          styles.ruleLine,
+          { experimental_backgroundImage: 'linear-gradient(90deg, rgba(169,130,63,0.6), rgba(169,130,63,0))' },
+        ]}
+      />
     </View>
   )
 }
@@ -228,7 +250,17 @@ export function Hairline({ style }: { style?: StyleProp<ViewStyle> }) {
 }
 
 /** A breathing lacquer block for loading states (never a spinner). */
-export function Skeleton({ width, height, radius: r = 6, style }: { width: number | `${number}%`; height: number; radius?: number; style?: StyleProp<ViewStyle> }) {
+export function Skeleton({
+  width,
+  height,
+  radius: r = 6,
+  style,
+}: {
+  width: number | `${number}%`
+  height: number
+  radius?: number
+  style?: StyleProp<ViewStyle>
+}) {
   const reduced = useReducedMotion()
   const t = useSharedValue(0)
   useEffect(() => {
@@ -307,14 +339,24 @@ export function StateBlock({
           {body}
         </T>
       ) : null}
-      {action ? <FoilButton label={action} onPress={onAction} style={{ alignSelf: 'stretch', marginTop: space[3] }} /> : null}
+      {action ? (
+        <FoilButton label={action} onPress={onAction} style={{ alignSelf: 'stretch', marginTop: space[3] }} />
+      ) : null}
       {secondary ? <TextButton label={secondary} onPress={onSecondary} /> : null}
     </View>
   )
 }
 
 /** Opens a devnet explorer link. */
-export function ExplorerLink({ label, url, tone = 'jade' }: { label: string; url: string; tone?: 'jade' | 'foil' | 'muted' | 'ink' }) {
+export function ExplorerLink({
+  label,
+  url,
+  tone = 'jade',
+}: {
+  label: string
+  url: string
+  tone?: 'jade' | 'foil' | 'muted' | 'ink'
+}) {
   return (
     <Pressable
       accessibilityRole="link"
@@ -325,11 +367,26 @@ export function ExplorerLink({ label, url, tone = 'jade' }: { label: string; url
     >
       <T
         variant="capsSmall"
-        style={{ color: tone === 'jade' ? color.jade300 : tone === 'ink' ? color.jade500 : tone === 'muted' ? color.gofun64 : color.kin300, fontSize: 10.5 }}
+        style={{
+          color:
+            tone === 'jade'
+              ? color.jade300
+              : tone === 'ink'
+                ? color.jade500
+                : tone === 'muted'
+                  ? color.gofun64
+                  : color.kin300,
+          fontSize: 10.5,
+        }}
       >
         {label}
       </T>
-      <Icon name="external" size={12} tone={tone === 'jade' ? 'jade' : tone === 'ink' ? color.jade500 : tone === 'muted' ? 'muted' : 'foil'} strokeWidth={1.5} />
+      <Icon
+        name="external"
+        size={12}
+        tone={tone === 'jade' ? 'jade' : tone === 'ink' ? color.jade500 : tone === 'muted' ? 'muted' : 'foil'}
+        strokeWidth={1.5}
+      />
     </Pressable>
   )
 }
@@ -389,7 +446,13 @@ export const kitStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   foilBtn: { height: 54, borderRadius: 27, justifyContent: 'center' },
-  foilBtnInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 20 },
+  foilBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+  },
   textBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, justifyContent: 'center' },
   round: {
     borderWidth: 1,

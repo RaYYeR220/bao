@@ -46,7 +46,9 @@ export function listenToNotificationTaps() {
     const href = routeForNotification(r?.notification.request.content.data as Record<string, unknown> | undefined)
     if (href) router.push(href as never)
   }
-  void Notifications.getLastNotificationResponseAsync().then(open).catch(() => undefined)
+  void Notifications.getLastNotificationResponseAsync()
+    .then(open)
+    .catch(() => undefined)
   const sub = Notifications.addNotificationResponseReceivedListener(open)
   return () => sub.remove()
 }

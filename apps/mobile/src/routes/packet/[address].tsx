@@ -8,7 +8,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { usePacketData } from '@/features/bao/data-access/use-bao-data'
 import { useGenesisToken } from '@/features/bao/data-access/use-genesis-token'
-import { clockTime, countdown, displayName, explorerAddress, explorerTx, formatAmount, sharesLeft, shortAddress } from '@/features/bao/format'
+import {
+  clockTime,
+  countdown,
+  displayName,
+  explorerAddress,
+  explorerTx,
+  formatAmount,
+  sharesLeft,
+  shortAddress,
+} from '@/features/bao/format'
 import { PacketEnvelope } from '@/features/bao/ui/packet-envelope'
 import { Backdrop } from '@/ui/backdrop'
 import { useNow } from '@/ui/countdown'
@@ -53,7 +62,11 @@ export default function PacketScreen() {
         <StateBlock
           icon="envelope"
           title={q.isError ? 'Could not reach Solana' : 'This packet is closed'}
-          body={q.isError ? 'Check the connection and try again.' : 'Its account was swept: every share was settled and the rest returned to the sender.'}
+          body={
+            q.isError
+              ? 'Check the connection and try again.'
+              : 'Its account was swept: every share was settled and the rest returned to the sender.'
+          }
           action={q.isError ? 'Try again' : 'Back'}
           onAction={q.isError ? () => void q.refetch() : back}
         />
@@ -121,7 +134,9 @@ function Summary({ detail }: { detail: PacketDetail }) {
       <PacketEnvelope packet={detail} width={96} gleam={gleam} />
       <View style={{ flex: 1, gap: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-          <T style={{ fontFamily: font.numerals, fontSize: 40, lineHeight: 46, color: color.gofun }}>{formatAmount(detail.total, detail.token.decimals)}</T>
+          <T style={{ fontFamily: font.numerals, fontSize: 40, lineHeight: 46, color: color.gofun }}>
+            {formatAmount(detail.total, detail.token.decimals)}
+          </T>
           <T variant="capsSmall" style={{ color: color.kin300 }}>
             {detail.token.symbol}
           </T>
@@ -142,7 +157,11 @@ function Summary({ detail }: { detail: PacketDetail }) {
           {status}
         </T>
         {detail.chainDepth > 0 ? (
-          <Pressable onPress={() => router.push(`/packet/${detail.chainRoot}`)} accessibilityRole="link" style={styles.chain}>
+          <Pressable
+            onPress={() => router.push(`/packet/${detail.chainRoot}`)}
+            accessibilityRole="link"
+            style={styles.chain}
+          >
             <Icon name="crown" size={14} />
             <T variant="capsSmall" style={{ color: color.kin300 }}>
               #{detail.chainDepth + 1} in a Luck King chain · see the first
@@ -150,7 +169,9 @@ function Summary({ detail }: { detail: PacketDetail }) {
           </Pressable>
         ) : null}
         {detail.message ? (
-          <T style={{ fontFamily: font.displayItalic, fontSize: 15, color: color.gofun64, marginTop: 4 }}>“{detail.message}”</T>
+          <T style={{ fontFamily: font.displayItalic, fontSize: 15, color: color.gofun64, marginTop: 4 }}>
+            “{detail.message}”
+          </T>
         ) : null}
       </View>
     </Animated.View>
@@ -196,7 +217,15 @@ function Ledger({ detail }: { detail: PacketDetail }) {
         </T>
       </View>
       {grabs.length === 0 ? (
-        <T style={{ fontFamily: font.displayItalic, fontSize: 17, color: color.paperInk2, paddingVertical: space[4], textAlign: 'center' }}>
+        <T
+          style={{
+            fontFamily: font.displayItalic,
+            fontSize: 17,
+            color: color.paperInk2,
+            paddingVertical: space[4],
+            textAlign: 'center',
+          }}
+        >
           Nobody has grabbed yet. Be the first.
         </T>
       ) : (
@@ -218,7 +247,19 @@ function Ledger({ detail }: { detail: PacketDetail }) {
   )
 }
 
-function GrabRow({ g, detail, mine, open, onToggle }: { g: GrabView; detail: PacketDetail; mine: boolean; open: boolean; onToggle: () => void }) {
+function GrabRow({
+  g,
+  detail,
+  mine,
+  open,
+  onToggle,
+}: {
+  g: GrabView
+  detail: PacketDetail
+  mine: boolean
+  open: boolean
+  onToggle: () => void
+}) {
   const name = displayName(g.claimerSkr, g.claimer)
   const king = detail.mode === 'lucky' && detail.luckKing === g.claimer && g.amount !== null
   return (
@@ -243,14 +284,23 @@ function GrabRow({ g, detail, mine, open, onToggle }: { g: GrabView; detail: Pac
             {g.at ? ` · ${clockTime(g.at)}` : ''} · device {shortAddress(g.deviceKey, 3)}
           </T>
         </View>
-        <T style={{ fontFamily: font.numerals, fontSize: 22, color: g.amount ? color.kuro950 : color.paperInk3, fontVariant: ['tabular-nums'] }}>
+        <T
+          style={{
+            fontFamily: font.numerals,
+            fontSize: 22,
+            color: g.amount ? color.kuro950 : color.paperInk3,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
           {g.amount ? formatAmount(g.amount, detail.token.decimals) : '···'}
         </T>
       </View>
       {open ? (
         <Animated.View entering={FadeIn.duration(250)} style={styles.links}>
           {g.grabSignature ? <ExplorerLink label="Grab tx" url={explorerTx(g.grabSignature)} tone="ink" /> : null}
-          {g.callbackSignature ? <ExplorerLink label="Verify randomness" url={explorerTx(g.callbackSignature)} tone="ink" /> : null}
+          {g.callbackSignature ? (
+            <ExplorerLink label="Verify randomness" url={explorerTx(g.callbackSignature)} tone="ink" />
+          ) : null}
           {g.payoutSignature ? <ExplorerLink label="Payout" url={explorerTx(g.payoutSignature)} tone="ink" /> : null}
           {!g.grabSignature && !g.callbackSignature ? (
             <T variant="meta" style={{ color: color.paperInk2 }}>
@@ -300,7 +350,13 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   ledgerHead: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: space[2], paddingHorizontal: 4 },
-  row: { paddingVertical: 10, paddingHorizontal: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(127,95,44,0.35)', minHeight: 52 },
+  row: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(127,95,44,0.35)',
+    minHeight: 52,
+  },
   rowMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   idx: { fontFamily: font.caps, fontSize: 11, letterSpacing: 1, color: color.paperInk3, width: 20 },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingTop: 8, paddingLeft: 58 },

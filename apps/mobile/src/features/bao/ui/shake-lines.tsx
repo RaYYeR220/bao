@@ -6,12 +6,29 @@ import type { ViewStyle } from 'react-native'
 import { color } from '@/ui/tokens'
 
 /** Three foil arcs beside the envelope that say "it's shaking". */
-export function ShakeLines({ side, envW, style }: { side: 'left' | 'right'; envW: number; style?: AnimatedStyle<ViewStyle> }) {
+export function ShakeLines({
+  side,
+  envW,
+  style,
+}: {
+  side: 'left' | 'right'
+  envW: number
+  style?: AnimatedStyle<ViewStyle>
+}) {
   const flip = side === 'right'
   const h = envW * 0.75
   return (
-    <Animated.View style={[styles.lines, { top: envW * 0.45 }, flip ? { right: -48 } : { left: -48 }, style]} pointerEvents="none">
-      <Svg width={40} height={h} viewBox="0 0 40 160" preserveAspectRatio="none" style={flip ? { transform: [{ scaleX: -1 }] } : undefined}>
+    <Animated.View
+      style={[styles.lines, { top: envW * 0.45 }, flip ? { right: -48 } : { left: -48 }, style]}
+      pointerEvents="none"
+    >
+      <Svg
+        width={40}
+        height={h}
+        viewBox="0 0 40 160"
+        preserveAspectRatio="none"
+        style={flip ? { transform: [{ scaleX: -1 }] } : undefined}
+      >
         {[0, 1, 2].map((i) => (
           <Path
             key={i}

@@ -103,7 +103,8 @@ function write(name, buf, peak) {
   data.writeUInt16LE(16, 34)
   data.write('data', 36)
   data.writeUInt32LE(buf.length * 2, 40)
-  for (let i = 0; i < buf.length; i++) data.writeInt16LE(Math.round(Math.max(-1, Math.min(1, buf[i])) * 32767), 44 + i * 2)
+  for (let i = 0; i < buf.length; i++)
+    data.writeInt16LE(Math.round(Math.max(-1, Math.min(1, buf[i])) * 32767), 44 + i * 2)
   writeFileSync(join(out, `${name}.wav`), data)
   console.log(`${name}.wav  ${(data.length / 1024).toFixed(1)} KB`)
 }
@@ -125,7 +126,8 @@ function write(name, buf, peak) {
   for (let k = 0; k < 9; k++) {
     const at = Math.round(rand() * 0.05 * RATE)
     const len = Math.round((0.002 + rand() * 0.004) * RATE)
-    for (let i = 0; i < len && at + i < crackle.length; i++) crackle[at + i] += noise() * (1 - i / len) * (0.6 + rand() * 0.4)
+    for (let i = 0; i < len && at + i < crackle.length; i++)
+      crackle[at + i] += noise() * (1 - i / len) * (0.6 + rand() * 0.4)
   }
   add(b, biquadBandpass(crackle, 3200, 0.9), 1.4)
   partial(b, 0.004, 1180, 0.45, 0.03)

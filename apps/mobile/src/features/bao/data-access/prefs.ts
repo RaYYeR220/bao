@@ -35,4 +35,4 @@ export function rememberPacketMeta(packet: string, meta: { message?: string; ski
   $localMeta.set({ ...$localMeta.get(), [packet]: meta })
 }
 
-export const usePref = <T,>(store: WritableAtom<T>) => useStore(store)
+export const usePref = <T>(store: WritableAtom<T>) => useStore(store)

@@ -94,7 +94,13 @@ export function Lacquer({
         </RoundedRect>
         {showPocketArt && art ? (
           <>
-            <Path path={artFor(tone)} style="stroke" strokeWidth={0.9} strokeCap="round" opacity={tone === 'ash' ? 0.35 : 0.85}>
+            <Path
+              path={artFor(tone)}
+              style="stroke"
+              strokeWidth={0.9}
+              strokeCap="round"
+              opacity={tone === 'ash' ? 0.35 : 0.85}
+            >
               <FoilGradient />
             </Path>
             <Path path={framePath} style="stroke" strokeWidth={0.7} opacity={tone === 'ash' ? 0.25 : 0.55}>
@@ -116,12 +122,7 @@ export function Lacquer({
           </>
         ) : null}
         {part === 3 ? (
-          <Path
-            path={liningEdge}
-            style="stroke"
-            strokeWidth={0.7}
-            opacity={0.5}
-          >
+          <Path path={liningEdge} style="stroke" strokeWidth={0.7} opacity={0.5}>
             <FoilGradient horizontal />
           </Path>
         ) : null}
@@ -180,8 +181,16 @@ export function Seal({
         ) : null}
         {cracked ? (
           <Group>
-            <Path path={halfLeft} color={muted ? '#4A4241' : color.shu800} transform={[{ translateX: -5 }, { translateY: 3 }]} />
-            <Path path={halfRight} color={muted ? '#4A4241' : color.shu800} transform={[{ translateX: 6 }, { translateY: 6 }]} />
+            <Path
+              path={halfLeft}
+              color={muted ? '#4A4241' : color.shu800}
+              transform={[{ translateX: -5 }, { translateY: 3 }]}
+            />
+            <Path
+              path={halfRight}
+              color={muted ? '#4A4241' : color.shu800}
+              transform={[{ translateX: 6 }, { translateY: 6 }]}
+            />
           </Group>
         ) : (
           <>
@@ -189,7 +198,12 @@ export function Seal({
               <BlurMask blur={3.2} style="normal" />
             </Circle>
             <Circle cx={50} cy={50} r={31}>
-              <RadialGradient c={vec(44, 42)} r={44} colors={muted ? ['#6B6362', '#4A4241', '#2E2928'] : ['#7A2024', '#50070F', '#320509']} positions={[0, 0.7, 1]} />
+              <RadialGradient
+                c={vec(44, 42)}
+                r={44}
+                colors={muted ? ['#6B6362', '#4A4241', '#2E2928'] : ['#7A2024', '#50070F', '#320509']}
+                positions={[0, 0.7, 1]}
+              />
             </Circle>
             <Circle cx={50} cy={50} r={31} style="stroke" strokeWidth={1.3}>
               <LinearGradient start={vec(19, 19)} end={vec(81, 81)} colors={foilStops} positions={foilPositions} />
@@ -209,7 +223,17 @@ export function Seal({
   )
 }
 
-function RingNode({ x, y, threshold, progress }: { x: number; y: number; threshold: number; progress: SharedValue<number> }) {
+function RingNode({
+  x,
+  y,
+  threshold,
+  progress,
+}: {
+  x: number
+  y: number
+  threshold: number
+  progress: SharedValue<number>
+}) {
   const fill = useDerivedValue(() => (progress.value >= threshold ? color.kin200 : color.kuro700))
   return (
     <>
@@ -220,7 +244,9 @@ function RingNode({ x, y, threshold, progress }: { x: number; y: number; thresho
 }
 
 // starts at 12 o'clock, clockwise
-const ringPath = Skia.PathBuilder.Make().addArc(Skia.XYWHRect(12, 12, 76, 76), -90, 359.9).build()
+const ringPath = Skia.PathBuilder.Make()
+  .addArc(Skia.XYWHRect(12, 12, 76, 76), -90, 359.9)
+  .build()
 
 const halfLeft = Skia.Path.MakeFromSVGString('M50 19 a31 31 0 0 0 0 62 l4 -14 -6 -9 5 -12 -5 -11 z')!
 const halfRight = Skia.Path.MakeFromSVGString('M50 19 a31 31 0 0 1 0 62 l4 -14 -6 -9 5 -12 -5 -11 z')!

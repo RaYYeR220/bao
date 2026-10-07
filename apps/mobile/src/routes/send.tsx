@@ -1,7 +1,15 @@
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useMemo, useRef, useState } from 'react'
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native'
+import {
+  KeyboardAvoidingView,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native'
 import Animated, { FadeIn, FadeInRight, FadeOutLeft } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -84,9 +92,10 @@ export default function SendScreen() {
   const crown = useCrown(params.parent)
   const holdsCrown = !!crown.data && crown.data.king === wallet.account?.address
   const chainPending = !!params.parent && crown.isFetched && !holdsCrown
-  const chainLabel = parentDetail && holdsCrown
-    ? `#${parentDetail.chainDepth + 2} in ${displayName(parentDetail.senderSkr, parentDetail.sender)}’s chain`
-    : null
+  const chainLabel =
+    parentDetail && holdsCrown
+      ? `#${parentDetail.chainDepth + 2} in ${displayName(parentDetail.senderSkr, parentDetail.sender)}’s chain`
+      : null
 
   const envW = step === 2 ? Math.min(width * 0.34, 132) : Math.min(width * 0.22, 92)
 
@@ -141,7 +150,13 @@ export default function SendScreen() {
             <T variant="caps">{['The packet', 'Who it is for', 'Seal it'][step]}</T>
             <View style={styles.steps}>
               {[0, 1, 2].map((i) => (
-                <View key={i} style={[styles.stepBar, { backgroundColor: i <= step ? color.kin300 : color.kuro600, width: i === step ? 22 : 10 }]} />
+                <View
+                  key={i}
+                  style={[
+                    styles.stepBar,
+                    { backgroundColor: i <= step ? color.kin300 : color.kuro600, width: i === step ? 22 : 10 },
+                  ]}
+                />
               ))}
             </View>
           </View>
@@ -179,13 +194,30 @@ export default function SendScreen() {
             </Note>
           ) : null}
           {step === 0 ? (
-            <Animated.View key="s0" entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(200)} style={{ gap: space[5] }}>
-              <Pressable onPress={() => amountRef.current?.focus()} style={{ alignItems: 'center' }} accessibilityLabel="Amount">
+            <Animated.View
+              key="s0"
+              entering={FadeInRight.duration(300)}
+              exiting={FadeOutLeft.duration(200)}
+              style={{ gap: space[5] }}
+            >
+              <Pressable
+                onPress={() => amountRef.current?.focus()}
+                style={{ alignItems: 'center' }}
+                accessibilityLabel="Amount"
+              >
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
                   <TextInput
                     ref={amountRef}
                     value={amount}
-                    onChangeText={(t) => setAmount(t.replace(',', '.').replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').slice(0, 12))}
+                    onChangeText={(t) =>
+                      setAmount(
+                        t
+                          .replace(',', '.')
+                          .replace(/[^0-9.]/g, '')
+                          .replace(/(\..*)\./g, '$1')
+                          .slice(0, 12),
+                      )
+                    }
                     keyboardType="decimal-pad"
                     selectTextOnFocus
                     style={styles.amount}
@@ -240,7 +272,12 @@ export default function SendScreen() {
           ) : null}
 
           {step === 1 ? (
-            <Animated.View key="s1" entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(200)} style={{ gap: space[4] }}>
+            <Animated.View
+              key="s1"
+              entering={FadeInRight.duration(300)}
+              exiting={FadeOutLeft.duration(200)}
+              style={{ gap: space[4] }}
+            >
               <AudienceRow
                 icon="rain"
                 title="Public"
@@ -251,7 +288,11 @@ export default function SendScreen() {
               <AudienceRow
                 icon="circles"
                 title="A circle"
-                body={circleAvailable ? 'Only members of one of your circles can grab.' : 'Needs the Bao server and a signed-in session.'}
+                body={
+                  circleAvailable
+                    ? 'Only members of one of your circles can grab.'
+                    : 'Needs the Bao server and a signed-in session.'
+                }
                 on={audience === 'circle'}
                 disabled={!circleAvailable}
                 onPress={() => setAudience('circle')}
@@ -273,7 +314,9 @@ export default function SendScreen() {
                     ))}
                   </View>
                   {rainIn > 0 ? (
-                    <T variant="meta">Opens at {clockTime(now + rainIn * 60)}. People who set a reminder get a nudge.</T>
+                    <T variant="meta">
+                      Opens at {clockTime(now + rainIn * 60)}. People who set a reminder get a nudge.
+                    </T>
                   ) : null}
                 </Animated.View>
               ) : null}
@@ -284,7 +327,12 @@ export default function SendScreen() {
                   {circles.data?.length ? (
                     <View style={styles.chipsWrap}>
                       {circles.data.map((c) => (
-                        <Chip key={c.id} label={`${c.emoji ?? '◎'} ${c.name}`} on={circleId === c.id} onPress={() => setCircleId(c.id)} />
+                        <Chip
+                          key={c.id}
+                          label={`${c.emoji ?? '◎'} ${c.name}`}
+                          on={circleId === c.id}
+                          onPress={() => setCircleId(c.id)}
+                        />
                       ))}
                     </View>
                   ) : (
@@ -352,7 +400,12 @@ export default function SendScreen() {
                     accessibilityLabel={`${skins[k].label} envelope`}
                     style={[styles.skin, skin === k && styles.skinOn]}
                   >
-                    <View style={[styles.swatch, { backgroundColor: k === 'shu' ? color.shu400 : k === 'kuro' ? color.kuro700 : color.jade500 }]}>
+                    <View
+                      style={[
+                        styles.swatch,
+                        { backgroundColor: k === 'shu' ? color.shu400 : k === 'kuro' ? color.kuro700 : color.jade500 },
+                      ]}
+                    >
                       <T style={{ fontFamily: font.cjk, fontSize: 18, color: color.kin200 }}>{skins[k].cjk}</T>
                     </View>
                     <T variant="meta" style={{ color: skin === k ? color.gofun : color.gofun64 }}>
@@ -391,7 +444,10 @@ export default function SendScreen() {
                         : `Code word${hint ? ` · hint “${hint}”` : ''}`
                   }
                 />
-                <SummaryRow k="Grabs" v={audience === 'public' || seekerOnly ? 'One per Seeker' : 'Anyone with the link'} />
+                <SummaryRow
+                  k="Grabs"
+                  v={audience === 'public' || seekerOnly ? 'One per Seeker' : 'Anyone with the link'}
+                />
                 <SummaryRow k="Returns after" v={EXPIRY.find((e) => e.h === expiry)!.label} />
                 {audience === 'public' ? (
                   <T variant="meta" style={{ marginTop: 6 }}>
@@ -457,22 +513,59 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
   )
 }
 
-function Stepper({ value, onChange, min, max }: { value: number; onChange: (n: number) => void; min: number; max: number }) {
+function Stepper({
+  value,
+  onChange,
+  min,
+  max,
+}: {
+  value: number
+  onChange: (n: number) => void
+  min: number
+  max: number
+}) {
   const set = (n: number) => {
     const v = Math.max(min, Math.min(max, n))
     if (v !== value) buzz('select')
     onChange(v)
   }
   return (
-    <View style={styles.stepper} accessibilityRole="adjustable" accessibilityValue={{ min, max, now: value }} accessibilityLabel="Shares"
+    <View
+      style={styles.stepper}
+      accessibilityRole="adjustable"
+      accessibilityValue={{ min, max, now: value }}
+      accessibilityLabel="Shares"
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={(e) => set(value + (e.nativeEvent.actionName === 'increment' ? 1 : -1))}
     >
-      <Pressable onPress={() => set(value - 1)} onLongPress={() => set(value - 10)} style={styles.stepBtn} accessibilityLabel="Fewer shares" hitSlop={6}>
+      <Pressable
+        onPress={() => set(value - 1)}
+        onLongPress={() => set(value - 10)}
+        style={styles.stepBtn}
+        accessibilityLabel="Fewer shares"
+        hitSlop={6}
+      >
         <Icon name="minus" size={18} />
       </Pressable>
-      <T style={{ fontFamily: font.numerals, fontSize: 28, color: color.gofun, minWidth: 54, textAlign: 'center', fontVariant: ['tabular-nums'] }}>{value}</T>
-      <Pressable onPress={() => set(value + 1)} onLongPress={() => set(value + 10)} style={styles.stepBtn} accessibilityLabel="More shares" hitSlop={6}>
+      <T
+        style={{
+          fontFamily: font.numerals,
+          fontSize: 28,
+          color: color.gofun,
+          minWidth: 54,
+          textAlign: 'center',
+          fontVariant: ['tabular-nums'],
+        }}
+      >
+        {value}
+      </T>
+      <Pressable
+        onPress={() => set(value + 1)}
+        onLongPress={() => set(value + 10)}
+        style={styles.stepBtn}
+        accessibilityLabel="More shares"
+        hitSlop={6}
+      >
         <Icon name="plus" size={18} />
       </Pressable>
     </View>
@@ -485,7 +578,10 @@ function TickRuler({ shares }: { shares: number }) {
   return (
     <View style={styles.ruler} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {Array.from({ length: 40 }, (_, i) => (
-        <View key={i} style={[styles.tick, { height: i % 5 === 4 ? 14 : 9, backgroundColor: i < n ? color.kin300 : color.kuro600 }]} />
+        <View
+          key={i}
+          style={[styles.tick, { height: i % 5 === 4 ? 14 : 9, backgroundColor: i < n ? color.kin300 : color.kuro600 }]}
+        />
       ))}
     </View>
   )
@@ -503,7 +599,12 @@ function ModeSeal({ label, cjk, on, onPress }: { label: string; cjk: string; on:
       accessibilityLabel={`${label} split`}
       style={[styles.mode, on && styles.modeOn]}
     >
-      <View style={[styles.modeSeal, { backgroundColor: on ? color.shu700 : color.kuro800, borderColor: on ? color.kin300 : color.kuro600 }]}>
+      <View
+        style={[
+          styles.modeSeal,
+          { backgroundColor: on ? color.shu700 : color.kuro800, borderColor: on ? color.kin300 : color.kuro600 },
+        ]}
+      >
         <T style={{ fontFamily: font.cjk, fontSize: 20, color: on ? color.kin200 : color.gofun44 }}>{cjk}</T>
       </View>
       <T variant="bodyStrong" style={{ color: on ? color.gofun : color.gofun64 }}>
@@ -546,12 +647,24 @@ function AudienceRow({
         </T>
         <T variant="meta">{body}</T>
       </View>
-      <View style={[styles.radio, on && { borderColor: color.kin300 }]}>{on ? <View style={styles.radioDot} /> : null}</View>
+      <View style={[styles.radio, on && { borderColor: color.kin300 }]}>
+        {on ? <View style={styles.radioDot} /> : null}
+      </View>
     </Pressable>
   )
 }
 
-function Toggle({ label, body, on, onChange }: { label: string; body: string; on: boolean; onChange: (v: boolean) => void }) {
+function Toggle({
+  label,
+  body,
+  on,
+  onChange,
+}: {
+  label: string
+  body: string
+  on: boolean
+  onChange: (v: boolean) => void
+}) {
   return (
     <Pressable
       onPress={() => {
@@ -580,7 +693,9 @@ function SummaryRow({ k, v }: { k: string; v: string }) {
       <T variant="capsSmall" style={{ color: color.paperInk3 }}>
         {k}
       </T>
-      <T style={{ fontFamily: font.textMedium, fontSize: 15, color: color.kuro900, flexShrink: 1, textAlign: 'right' }}>{v}</T>
+      <T style={{ fontFamily: font.textMedium, fontSize: 15, color: color.kuro900, flexShrink: 1, textAlign: 'right' }}>
+        {v}
+      </T>
     </View>
   )
 }
@@ -662,7 +777,15 @@ const styles = StyleSheet.create({
     minHeight: 64,
   },
   audOn: { borderColor: 'rgba(221,187,122,0.55)', backgroundColor: 'rgba(33,24,25,0.9)' },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: color.kuro600, alignItems: 'center', justifyContent: 'center' },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: color.kuro600,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: color.kin300 },
   input: {
     minHeight: 54,
@@ -676,11 +799,27 @@ const styles = StyleSheet.create({
     backgroundColor: color.kuro900,
   },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: 6, minHeight: 56 },
-  switch: { width: 48, height: 28, borderRadius: 14, backgroundColor: color.kuro700, padding: 3, borderWidth: 1, borderColor: color.kuro600 },
+  switch: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: color.kuro700,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: color.kuro600,
+  },
   switchOn: { backgroundColor: color.jade700, borderColor: color.jade500 },
   knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: color.gofun44 },
   knobOn: { backgroundColor: color.jade300, transform: [{ translateX: 20 }] },
-  skin: { alignItems: 'center', gap: 8, padding: 8, borderRadius: radius.card, borderWidth: 1, borderColor: 'transparent', minWidth: 88 },
+  skin: {
+    alignItems: 'center',
+    gap: 8,
+    padding: 8,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    minWidth: 88,
+  },
   skinOn: { borderColor: 'rgba(221,187,122,0.55)' },
   swatch: {
     width: 46,

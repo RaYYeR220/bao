@@ -36,4 +36,5 @@ const NAMES: Record<number, string> = {
   6033: 'BadStart',
 }
 
-export const describeProgramErrorName = (code: number | null) => (code === null ? 'Refused' : (NAMES[code] ?? `Custom ${code}`))
+export const describeProgramErrorName = (code: number | null) =>
+  code === null ? 'Refused' : (NAMES[code] ?? `Custom ${code}`)

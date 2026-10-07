@@ -16,7 +16,13 @@ import { useCallback, useRef, useState } from 'react'
 import { useAppCluster } from '@/features/cluster/data-access/cluster-provider'
 
 import { GENESIS_GROUP } from './bao-config'
-import { confirmSignature, humanError, sendWithWallet, TransactionFailedError, WalletRejectedError } from './send-with-wallet'
+import {
+  confirmSignature,
+  humanError,
+  sendWithWallet,
+  TransactionFailedError,
+  WalletRejectedError,
+} from './send-with-wallet'
 import { baoApi } from './use-bao-api'
 
 export type PayoutState = 'paid' | 'paying' | 'unpaid' | 'collecting'
@@ -90,7 +96,13 @@ export function useGrab(packetAddress: string, code?: string) {
       const mode = packet.data.mode === SplitMode.Lucky ? 'lucky' : 'equal'
       const { instruction, claim } = await buildGrab({
         claimer,
-        packet: { address: packetKey, mint: packet.data.mint, tokenProgram: packet.data.tokenProgram, mode, seekerOnly },
+        packet: {
+          address: packetKey,
+          mint: packet.data.mint,
+          tokenProgram: packet.data.tokenProgram,
+          mode,
+          seekerOnly,
+        },
         genesis,
         proof,
         code,
@@ -139,7 +151,11 @@ export function useGrab(packetAddress: string, code?: string) {
       void queryClient.invalidateQueries({ queryKey: ['history'] })
       if (won) {
         try {
-          const res = await baoApi.call('POST /api/claims/:address/payout', { params: { address: claim } }, { timeoutMs: 20_000 })
+          const res = await baoApi.call(
+            'POST /api/claims/:address/payout',
+            { params: { address: claim } },
+            { timeoutMs: 20_000 },
+          )
           setPhase((p) => (p.kind === 'revealed' ? { ...p, payout: 'paid', payoutSignature: res.signature } : p))
           void queryClient.invalidateQueries({ queryKey: ['balances'] })
         } catch {

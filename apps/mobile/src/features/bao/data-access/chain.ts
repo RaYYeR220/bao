@@ -50,7 +50,11 @@ const bytesFilter = (offset: number, bytes: ReadonlyUint8Array) => ({
   memcmp: { offset: BigInt(offset), bytes: b58.decode(bytes) as Base58EncodedBytes, encoding: 'base58' as const },
 })
 
-async function programAccounts(rpc: BaoRpc, discriminator: Uint8Array, extra: { offset: number; address: Address }[] = []) {
+async function programAccounts(
+  rpc: BaoRpc,
+  discriminator: Uint8Array,
+  extra: { offset: number; address: Address }[] = [],
+) {
   const res = await rpc
     .getProgramAccounts(BAO_PROGRAM_ADDRESS, {
       encoding: 'base64',
@@ -69,7 +73,10 @@ export const tokenFor = (mint: string): TokenInfo | null => (mint === TSKR_MINT 
 
 const nowSec = () => Math.floor(Date.now() / 1000)
 
-export function packetStatus(p: Pick<Packet, 'reserved' | 'totalShares' | 'expiresAt' | 'startsAt'>, now = nowSec()): PacketStatus {
+export function packetStatus(
+  p: Pick<Packet, 'reserved' | 'totalShares' | 'expiresAt' | 'startsAt'>,
+  now = nowSec(),
+): PacketStatus {
   if (p.reserved >= p.totalShares) return 'emptied'
   if (now >= Number(p.expiresAt)) return 'expired'
   if (now < Number(p.startsAt)) return 'scheduled'
@@ -173,7 +180,8 @@ export async function fetchChainFeed(rpc: BaoRpc): Promise<FeedView> {
   return { packets: live, rains }
 }
 
-const claimStatusName = (s: ClaimStatus) => (s === ClaimStatus.Pending ? 'pending' : s === ClaimStatus.Won ? 'won' : 'paid')
+const claimStatusName = (s: ClaimStatus) =>
+  s === ClaimStatus.Pending ? 'pending' : s === ClaimStatus.Won ? 'won' : 'paid'
 
 function claimToGrab(record: ClaimRecord, sigs: { signature: string; blockTime: number | null }[]): GrabView {
   // Oldest first: the grab, then (Lucky) the VRF callback, then the payout.
@@ -292,7 +300,8 @@ export async function fetchBalances(rpc: BaoRpc, owner: Address) {
   ])
   let tskr = 0n
   for (const t of tokens.value) {
-    const amount = (t.account.data as unknown as { parsed?: { info?: { tokenAmount?: { amount?: string } } } }).parsed?.info?.tokenAmount?.amount
+    const amount = (t.account.data as unknown as { parsed?: { info?: { tokenAmount?: { amount?: string } } } }).parsed
+      ?.info?.tokenAmount?.amount
     if (amount) tskr += BigInt(amount)
   }
   return { lamports: BigInt(sol.value), tskr }

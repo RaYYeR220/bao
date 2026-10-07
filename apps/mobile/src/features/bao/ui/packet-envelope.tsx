@@ -48,8 +48,8 @@ export function PacketEnvelope({
       : rainAt && width >= 150
         ? `RAIN AT ${clockTime(rainAt)} · ${packet.shares} SHARES`
         : width < 150
-        ? packet.token.symbol
-        : `${packet.token.symbol} · ${packet.shares} ${packet.shares === 1 ? 'SHARE' : 'SHARES'}`
+          ? packet.token.symbol
+          : `${packet.token.symbol} · ${packet.shares} ${packet.shares === 1 ? 'SHARE' : 'SHARES'}`
   return (
     <EnvelopeFace
       width={width}
@@ -77,7 +77,12 @@ export function PacketEnvelope({
         <T
           variant="capsSmall"
           maxFontSizeMultiplier={1.2}
-          style={{ color: grabbed ? '#8FC1AE' : spec.sub, fontSize: Math.max(10, 9.5 * s), letterSpacing: 2.6 * s, marginTop: 2 }}
+          style={{
+            color: grabbed ? '#8FC1AE' : spec.sub,
+            fontSize: Math.max(10, 9.5 * s),
+            letterSpacing: 2.6 * s,
+            marginTop: 2,
+          }}
           numberOfLines={1}
         >
           {label ?? sub}

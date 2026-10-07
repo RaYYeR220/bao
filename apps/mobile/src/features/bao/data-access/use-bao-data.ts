@@ -54,7 +54,10 @@ export function usePacketData(packet: string | undefined) {
     queryKey: ['packet', packet],
     queryFn: async (): Promise<{ detail: PacketDetail | null; source: Source }> => {
       try {
-        return { detail: await baoApi.call('GET /api/packets/:address', { params: { address: packet! } }), source: 'api' }
+        return {
+          detail: await baoApi.call('GET /api/packets/:address', { params: { address: packet! } }),
+          source: 'api',
+        }
       } catch {
         return { detail: await fetchChainPacketDetail(client.rpc as never, address(packet!)), source: 'chain' }
       }
@@ -94,7 +97,11 @@ export function useHistory(owner: string | undefined) {
       } catch {
         const rpc = client.rpc as never
         const me = address(owner!)
-        const [sent, grabs, crowns] = await Promise.all([fetchChainSent(rpc, me), fetchChainGrabs(rpc, me), fetchChainCrowns(rpc, me)])
+        const [sent, grabs, crowns] = await Promise.all([
+          fetchChainSent(rpc, me),
+          fetchChainGrabs(rpc, me),
+          fetchChainCrowns(rpc, me),
+        ])
         return { sent, grabs, crowns: crowns.length, source: 'chain' }
       }
     },

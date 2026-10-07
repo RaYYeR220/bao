@@ -196,7 +196,9 @@ function MeBadge({ verified, connected }: { verified: boolean; connected: boolea
       <Circle cx="19" cy="19" r="14.5" fill={color.kuro800} />
       <Circle cx="19" cy="16" r="5" fill="none" stroke={color.kin300} strokeWidth={1.1} />
       <Path d="M10.5 28.5 c2-5 15-5 17 0" fill="none" stroke={color.kin300} strokeWidth={1.1} />
-      {!connected ? <Circle cx="31" cy="7" r="3.2" fill={color.shu400} stroke={color.kuro950} strokeWidth={1.5} /> : null}
+      {!connected ? (
+        <Circle cx="31" cy="7" r="3.2" fill={color.shu400} stroke={color.kuro950} strokeWidth={1.5} />
+      ) : null}
     </Svg>
   )
 }
@@ -231,7 +233,9 @@ function Chips({
             }}
             style={styles.chip}
           >
-            <T style={{ fontFamily: font.textMedium, fontSize: 15, color: on ? color.gofun : color.gofun44 }}>{it.label}</T>
+            <T style={{ fontFamily: font.textMedium, fontSize: 15, color: on ? color.gofun : color.gofun44 }}>
+              {it.label}
+            </T>
             <View style={[styles.chipLine, { backgroundColor: on ? color.kin300 : 'transparent' }]} />
           </Pressable>
         )
@@ -408,7 +412,14 @@ function Meta({ packet, grabbed }: { packet: PacketView; grabbed?: string | null
       <View style={styles.metaRow}>
         <View style={styles.who}>
           <Avatar name={name} size={32} />
-          <T style={{ fontFamily: packet.senderSkr ? font.textMedium : font.textMedium, fontSize: 16, color: color.gofun }} numberOfLines={1}>
+          <T
+            style={{
+              fontFamily: packet.senderSkr ? font.textMedium : font.textMedium,
+              fontSize: 16,
+              color: color.gofun,
+            }}
+            numberOfLines={1}
+          >
             {name}
           </T>
           {packet.seekerOnly ? <SgtBadge /> : null}
@@ -433,7 +444,10 @@ function Meta({ packet, grabbed }: { packet: PacketView; grabbed?: string | null
         </T>
       </View>
       {packet.message ? (
-        <T style={{ fontFamily: font.displayItalic, fontSize: 15, lineHeight: 20, color: color.gofun64, marginTop: 8 }} numberOfLines={2}>
+        <T
+          style={{ fontFamily: font.displayItalic, fontSize: 15, lineHeight: 20, color: color.gofun64, marginTop: 8 }}
+          numberOfLines={2}
+        >
           “{packet.message}”
         </T>
       ) : null}
@@ -465,7 +479,11 @@ function CarouselSkeleton({ envW, envH, screenW }: { envW: number; envH: number;
   return (
     <View style={{ height: envH + 44 + 96, paddingTop: 18 }} accessibilityLabel="Loading packets">
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
-        <Skeleton width={envW * 0.94} height={envH * 0.94} style={{ marginTop: 14, marginLeft: -(envW * 0.94) + (screenW - envW) / 2 - 12 }} />
+        <Skeleton
+          width={envW * 0.94}
+          height={envH * 0.94}
+          style={{ marginTop: 14, marginLeft: -(envW * 0.94) + (screenW - envW) / 2 - 12 }}
+        />
         <Skeleton width={envW} height={envH} />
         <Skeleton width={envW * 0.94} height={envH * 0.94} style={{ marginTop: 14 }} />
       </View>
@@ -482,7 +500,13 @@ function EmptyFeed({ hasRains, filter }: { hasRains: boolean; filter: Filter }) 
     <Animated.View entering={FadeIn.duration(400)} style={{ paddingTop: space[4] }}>
       <StateBlock
         icon="envelope"
-        title={hasRains ? 'Nothing open right now' : filter.kind === 'circle' ? `Quiet in ${filter.name}` : 'No packets in the air'}
+        title={
+          hasRains
+            ? 'Nothing open right now'
+            : filter.kind === 'circle'
+              ? `Quiet in ${filter.name}`
+              : 'No packets in the air'
+        }
         body={
           hasRains
             ? 'A rain is on its way. Set a reminder above, or drop a packet of your own.'
@@ -526,4 +550,3 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 18 },
   dot: { height: 1, width: 10 },
 })
-

@@ -84,7 +84,9 @@ export default function ShareScreen() {
         </View>
         <View style={{ width: 40 }} />
       </View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: space[5], paddingBottom: insets.bottom + space[6], gap: space[5] }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: space[5], paddingBottom: insets.bottom + space[6], gap: space[5] }}
+      >
         <View style={styles.hero}>
           {detail ? (
             <Animated.View entering={FadeInDown.duration(600)}>
@@ -117,7 +119,13 @@ export default function ShareScreen() {
           <T variant="meta" style={{ flex: 1, color: color.gofun }} numberOfLines={1} ellipsizeMode="middle">
             {link.replace(/^https:\/\//, '')}
           </T>
-          <Pressable onPress={() => void copy()} accessibilityRole="button" accessibilityLabel="Copy link" hitSlop={8} style={styles.mini}>
+          <Pressable
+            onPress={() => void copy()}
+            accessibilityRole="button"
+            accessibilityLabel="Copy link"
+            hitSlop={8}
+            style={styles.mini}
+          >
             <Icon name={copied ? 'check' : 'copy'} size={18} tone={copied ? 'jade' : 'foil'} />
           </Pressable>
         </View>
@@ -158,7 +166,11 @@ export default function ShareScreen() {
           </View>
         </View>
         {nfc === 'off' ? (
-          <FoilButton label="Open NFC settings" icon="settings" onPress={() => void NfcManager.goToNfcSetting().catch(() => undefined)} />
+          <FoilButton
+            label="Open NFC settings"
+            icon="settings"
+            onPress={() => void NfcManager.goToNfcSetting().catch(() => undefined)}
+          />
         ) : nfc !== 'unsupported' ? (
           <FoilButton
             label={nfc === 'waiting' ? 'Waiting for a tag…' : nfc === 'written' ? 'Write another tag' : 'Write the tag'}
@@ -169,7 +181,11 @@ export default function ShareScreen() {
         ) : null}
         {nfc === 'waiting' ? (
           <Animated.View entering={FadeIn}>
-            <Note icon="info" action="Cancel" onAction={() => void NfcManager.cancelTechnologyRequest().then(() => setNfc('idle'))}>
+            <Note
+              icon="info"
+              action="Cancel"
+              onAction={() => void NfcManager.cancelTechnologyRequest().then(() => setNfc('idle'))}
+            >
               The tag needs to stay still for a second.
             </Note>
           </Animated.View>

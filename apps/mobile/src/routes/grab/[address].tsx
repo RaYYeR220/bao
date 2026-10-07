@@ -14,7 +14,15 @@ import { maybeAskForPush } from '@/features/bao/data-access/push'
 import { useMyClaim, usePacketData } from '@/features/bao/data-access/use-bao-data'
 import { useGrab, type GrabPhase } from '@/features/bao/data-access/use-grab'
 import { useShakeSteps } from '@/features/bao/data-access/use-shake'
-import { clockTime, displayName, explorerTx, formatAmount, ordinal, sharesLeft, shortAddress } from '@/features/bao/format'
+import {
+  clockTime,
+  displayName,
+  explorerTx,
+  formatAmount,
+  ordinal,
+  sharesLeft,
+  shortAddress,
+} from '@/features/bao/format'
 import { GoldLeafBurst } from '@/features/bao/ui/gold-leaf'
 import { GrabStage, stageGeometry, type StageMode } from '@/features/bao/ui/grab-stage'
 import { toneFor } from '@/features/bao/ui/packet-envelope'
@@ -88,7 +96,10 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
   }, [detail.startsAt, opened])
   const scheduled = !opened
   const spent = detail.status === 'emptied' || detail.status === 'expired'
-  const alreadyMine = !!mine.data && mine.data.data.status !== 0 && (phase.kind === 'idle' || (phase.kind === 'refused' && phase.code === 6016))
+  const alreadyMine =
+    !!mine.data &&
+    mine.data.data.status !== 0 &&
+    (phase.kind === 'idle' || (phase.kind === 'refused' && phase.code === 6016))
   const needsCode = detail.audience === 'code' && !code
 
   // shake progress: thirds of the foil ring, drained if the shaking stops
@@ -178,7 +189,8 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
 
   // the result, either fresh from this grab or the one this phone made earlier
   const result = useMemo(() => {
-    if (phase.kind === 'revealed') return { amount: phase.amount, isKing: phase.isLuckKingSoFar, signature: phase.signature as string }
+    if (phase.kind === 'revealed')
+      return { amount: phase.amount, isKing: phase.isLuckKingSoFar, signature: phase.signature as string }
     if (alreadyMine && mine.data) {
       const king = detail.luckKing === wallet.account?.address
       const g = detail.grabs.find((x) => x.deviceKey === mine.data!.data.deviceKey)
@@ -189,7 +201,9 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
 
   const myGrab: GrabView | undefined = useMemo(() => {
     const sig = result?.signature
-    return detail.grabs.find((g) => (sig && g.grabSignature === sig) || (mine.data && g.deviceKey === mine.data.data.deviceKey))
+    return detail.grabs.find(
+      (g) => (sig && g.grabSignature === sig) || (mine.data && g.deviceKey === mine.data.data.deviceKey),
+    )
   }, [detail.grabs, mine.data, result?.signature])
 
   // the envelope keeps its lacquer for whoever opened it; spectators of a spent packet see ash
@@ -214,40 +228,54 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
 
   const renderCard = (where: 'inside' | 'front') =>
     result ? (
-    <ResultCard
-      width={geo.card.width}
-      height={geo.card.height}
-      amount={result.amount}
-      decimals={decimals}
-      symbol={symbol}
-      landed={landed && where === 'front'}
-      isKing={result.isKing && detail.mode === 'lucky'}
-      kicker={alreadyMine ? 'You grabbed earlier' : 'You grabbed'}
-      headline={
-        result.isKing && detail.mode === 'lucky'
-          ? detail.resolved >= detail.shares
-            ? 'Luck King'
-            : 'Luck King so far'
-          : detail.mode === 'lucky'
-            ? 'Lucky share'
-            : 'Equal share'
-      }
-      detail={rankLine}
-      postmark={[detail.seekerOnly ? 'Seeker-bound' : 'Grabbed', clockTime(myGrab?.at || mountedAt), result.signature ? `tx ${shortAddress(result.signature, 3)}` : null]
-        .filter(Boolean)
-        .join(' · ')
-        .toUpperCase()}
-      rightAction={result.isKing && detail.mode === 'lucky' ? { label: 'Send the next', onPress: sendNext } : undefined}
-    />
-  ) : (
-    <SealedCard width={geo.card.width} height={geo.card.height} />
-  )
+      <ResultCard
+        width={geo.card.width}
+        height={geo.card.height}
+        amount={result.amount}
+        decimals={decimals}
+        symbol={symbol}
+        landed={landed && where === 'front'}
+        isKing={result.isKing && detail.mode === 'lucky'}
+        kicker={alreadyMine ? 'You grabbed earlier' : 'You grabbed'}
+        headline={
+          result.isKing && detail.mode === 'lucky'
+            ? detail.resolved >= detail.shares
+              ? 'Luck King'
+              : 'Luck King so far'
+            : detail.mode === 'lucky'
+              ? 'Lucky share'
+              : 'Equal share'
+        }
+        detail={rankLine}
+        postmark={[
+          detail.seekerOnly ? 'Seeker-bound' : 'Grabbed',
+          clockTime(myGrab?.at || mountedAt),
+          result.signature ? `tx ${shortAddress(result.signature, 3)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+          .toUpperCase()}
+        rightAction={
+          result.isKing && detail.mode === 'lucky' ? { label: 'Send the next', onPress: sendNext } : undefined
+        }
+      />
+    ) : (
+      <SealedCard width={geo.card.width} height={geo.card.height} />
+    )
 
   const face = (
     <PocketFace
       envW={geo.envW}
       kicker={
-        scheduled ? 'Opens in' : spent ? (detail.status === 'expired' ? 'Expired' : 'All grabbed') : needsCode ? 'Code word needed' : `Shake to open · ${steps} / 3`
+        scheduled
+          ? 'Opens in'
+          : spent
+            ? detail.status === 'expired'
+              ? 'Expired'
+              : 'All grabbed'
+            : needsCode
+              ? 'Code word needed'
+              : `Shake to open · ${steps} / 3`
       }
       name={name}
       line={`${formatAmount(detail.total, decimals)} ${symbol} · ${sharesLeft(detail)} of ${detail.shares} left`}
@@ -318,7 +346,14 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
 }
 
 function Header({ detail, name, top }: { detail: PacketDetail; name: string; top: number }) {
-  const where = detail.audience === 'open' ? (detail.startsAt > detail.createdAt + 5 ? 'Public rain' : 'Public') : detail.audience === 'code' ? 'Code word' : 'Circle'
+  const where =
+    detail.audience === 'open'
+      ? detail.startsAt > detail.createdAt + 5
+        ? 'Public rain'
+        : 'Public'
+      : detail.audience === 'code'
+        ? 'Code word'
+        : 'Circle'
   return (
     <View style={[styles.header, { paddingTop: top + 10 }]}>
       <RoundButton icon="close" label="Close" onPress={close} />
@@ -326,7 +361,10 @@ function Header({ detail, name, top }: { detail: PacketDetail; name: string; top
         <T variant="caps" numberOfLines={1}>
           {where} · {detail.mode === 'lucky' ? 'Lucky split' : 'Equal split'}
         </T>
-        <T style={{ fontFamily: font.displayItalic, fontSize: 18, lineHeight: 22, color: color.gofun }} numberOfLines={1}>
+        <T
+          style={{ fontFamily: font.displayItalic, fontSize: 18, lineHeight: 22, color: color.gofun }}
+          numberOfLines={1}
+        >
           from {name}
         </T>
       </View>
@@ -354,14 +392,26 @@ function PocketFace({
   const muted = tone === 'ash'
   return (
     <View style={{ position: 'absolute', left: 12, right: 12, top: 222 * s, alignItems: 'center' }}>
-      <T variant="capsSmall" style={{ color: muted ? '#B5ACA8' : color.kin300, fontSize: 10 * Math.max(1, s * 0.95), letterSpacing: 3 }}>
+      <T
+        variant="capsSmall"
+        style={{ color: muted ? '#B5ACA8' : color.kin300, fontSize: 10 * Math.max(1, s * 0.95), letterSpacing: 3 }}
+      >
         {kicker}
       </T>
       {startsAt ? (
-        <Countdown to={startsAt} style={{ fontFamily: font.numerals, fontSize: 40 * s, lineHeight: 46 * s, color: color.gofun, marginTop: 4 }} />
+        <Countdown
+          to={startsAt}
+          style={{ fontFamily: font.numerals, fontSize: 40 * s, lineHeight: 46 * s, color: color.gofun, marginTop: 4 }}
+        />
       ) : (
         <T
-          style={{ fontFamily: font.displayItalic, fontSize: 30 * s, lineHeight: 38 * s, color: muted ? '#C9C1BC' : color.gofun, marginTop: 6 }}
+          style={{
+            fontFamily: font.displayItalic,
+            fontSize: 30 * s,
+            lineHeight: 38 * s,
+            color: muted ? '#C9C1BC' : color.gofun,
+            marginTop: 6,
+          }}
           numberOfLines={1}
           adjustsFontSizeToFit
           maxFontSizeMultiplier={1.1}
@@ -369,7 +419,10 @@ function PocketFace({
           {name}
         </T>
       )}
-      <T style={{ fontFamily: font.textNarrow, fontSize: 12 * s, color: 'rgba(244,239,230,0.7)', marginTop: 2 }} numberOfLines={1}>
+      <T
+        style={{ fontFamily: font.textNarrow, fontSize: 12 * s, color: 'rgba(244,239,230,0.7)', marginTop: 2 }}
+        numberOfLines={1}
+      >
         {line}
       </T>
     </View>
@@ -425,11 +478,19 @@ function Bottom({
       <Animated.View entering={FadeInDown.duration(500)} style={{ gap: space[3] }}>
         <View style={styles.links}>
           {resultSignature ? <ExplorerLink label="Grab tx" url={explorerTx(resultSignature)} /> : null}
-          {myGrab?.callbackSignature ? <ExplorerLink label="Randomness proof" url={explorerTx(myGrab.callbackSignature)} /> : null}
-          {phase.kind === 'revealed' && phase.payoutSignature ? <ExplorerLink label="Payout" url={explorerTx(phase.payoutSignature)} /> : null}
+          {myGrab?.callbackSignature ? (
+            <ExplorerLink label="Randomness proof" url={explorerTx(myGrab.callbackSignature)} />
+          ) : null}
+          {phase.kind === 'revealed' && phase.payoutSignature ? (
+            <ExplorerLink label="Payout" url={explorerTx(phase.payoutSignature)} />
+          ) : null}
         </View>
         {payout === 'unpaid' || payout === 'collecting' ? (
-          <Note icon="wallet" action={payout === 'collecting' ? undefined : 'Collect to my wallet'} onAction={onCollect}>
+          <Note
+            icon="wallet"
+            action={payout === 'collecting' ? undefined : 'Collect to my wallet'}
+            onAction={onCollect}
+          >
             {payout === 'collecting'
               ? 'Confirm the payout in your wallet…'
               : 'Your share is won and reserved. The Bao server usually sends it; it is unreachable, so collect it yourself with one signature.'}
@@ -441,16 +502,25 @@ function Bottom({
           {isKing ? (
             <FoilButton label="Send the next one" icon="envelope" tone="shu" onPress={onSendNext} style={{ flex: 1 }} />
           ) : (
-            <FoilButton label="Details" icon="info" onPress={() => router.push(`/packet/${detail.address}`)} style={{ flex: 1 }} />
+            <FoilButton
+              label="Details"
+              icon="info"
+              onPress={() => router.push(`/packet/${detail.address}`)}
+              style={{ flex: 1 }}
+            />
           )}
           <FoilButton
             label="Share"
             icon="share"
-            onPress={() => void Share.share({ message: `I grabbed a red packet on Bao 紅包 ${packetLink(detail.address)}` })}
+            onPress={() =>
+              void Share.share({ message: `I grabbed a red packet on Bao 紅包 ${packetLink(detail.address)}` })
+            }
             style={{ flex: isKing ? 0.7 : 1 }}
           />
         </View>
-        {isKing ? <TextButton label="Packet details" tone="muted" onPress={() => router.push(`/packet/${detail.address}`)} /> : null}
+        {isKing ? (
+          <TextButton label="Packet details" tone="muted" onPress={() => router.push(`/packet/${detail.address}`)} />
+        ) : null}
       </Animated.View>
     )
   } else if (phase.kind === 'revealed' || alreadyMine) {
@@ -501,7 +571,9 @@ function Bottom({
     content = (
       <View style={{ gap: space[3] }}>
         <T variant="body" style={{ textAlign: 'center' }}>
-          {detail.status === 'expired' ? 'This packet expired before every share was taken.' : 'Every share of this packet is taken.'}
+          {detail.status === 'expired'
+            ? 'This packet expired before every share was taken.'
+            : 'Every share of this packet is taken.'}
           {detail.luckKing ? ` ${displayName(detail.luckKingSkr, detail.luckKing)} is Luck King.` : ''}
         </T>
         <FoilButton label="See who grabbed" icon="crown" onPress={() => router.replace(`/packet/${detail.address}`)} />
@@ -559,7 +631,13 @@ function Refusal({
         Refused by the program
       </T>
       <T style={{ fontFamily: font.display, fontSize: 22, lineHeight: 28, color: color.gofun }}>
-        {notSeeker ? 'Only real Seekers can open this' : wrongCode ? 'That is not the word' : already ? 'This Seeker already grabbed' : 'The seal stays shut'}
+        {notSeeker
+          ? 'Only real Seekers can open this'
+          : wrongCode
+            ? 'That is not the word'
+            : already
+              ? 'This Seeker already grabbed'
+              : 'The seal stays shut'}
       </T>
       <T variant="body" style={{ fontSize: 14, lineHeight: 20 }}>
         {wrongCode
@@ -574,15 +652,27 @@ function Refusal({
         <T variant="capsSmall" style={{ color: color.gofun44 }}>
           {phase.code ? `Error ${phase.code} · ${info}` : 'Checked before signing · no Genesis token'}
         </T>
-        {phase.signature ? <ExplorerLink label="View on explorer" url={explorerTx(phase.signature)} tone="muted" /> : null}
+        {phase.signature ? (
+          <ExplorerLink label="View on explorer" url={explorerTx(phase.signature)} tone="muted" />
+        ) : null}
       </View>
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
         {wrongCode ? (
           <FoilButton label="Try another word" icon="lock" onPress={onCode} style={{ flex: 1 }} />
         ) : notSeeker ? (
-          <FoilButton label="Get a test Genesis token" icon="drop" onPress={() => router.navigate('/seeker')} style={{ flex: 1 }} />
+          <FoilButton
+            label="Get a test Genesis token"
+            icon="drop"
+            onPress={() => router.navigate('/seeker')}
+            style={{ flex: 1 }}
+          />
         ) : (
-          <FoilButton label="Packet details" icon="info" onPress={() => router.replace(`/packet/${detail.address}`)} style={{ flex: 1 }} />
+          <FoilButton
+            label="Packet details"
+            icon="info"
+            onPress={() => router.replace(`/packet/${detail.address}`)}
+            style={{ flex: 1 }}
+          />
         )}
         <FoilButton label="Again" icon="refresh" onPress={onRetry} style={{ flex: 0.55 }} />
       </View>
@@ -646,7 +736,11 @@ async function toggleReminder(packet: string, startsAt: number, on: boolean) {
       body: 'Shake to grab before the shares run out.',
       data: { url: `bao://packet/${packet}` },
     },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(startsAt * 1000), channelId: 'packets' },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: new Date(startsAt * 1000),
+      channelId: 'packets',
+    },
   }).catch(() => undefined)
   $reminders.set({ ...all, [packet]: startsAt })
   buzz('success')
@@ -693,7 +787,13 @@ const styles = StyleSheet.create({
   bottom: { position: 'absolute', left: space[5], right: space[5] },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, justifyContent: 'center' },
   status: { alignItems: 'center', gap: 6 },
-  statusTitle: { fontFamily: font.displayItalic, fontSize: 22, lineHeight: 28, color: color.gofun, textAlign: 'center' },
+  statusTitle: {
+    fontFamily: font.displayItalic,
+    fontSize: 22,
+    lineHeight: 28,
+    color: color.gofun,
+    textAlign: 'center',
+  },
   refusal: {
     gap: 8,
     padding: space[4],
@@ -703,7 +803,15 @@ const styles = StyleSheet.create({
     borderColor: color.kuro600,
     overflow: 'hidden',
   },
-  refusalRule: { position: 'absolute', left: 0, top: 16, bottom: 16, width: 2, backgroundColor: color.shu500, borderRadius: 1 },
+  refusalRule: {
+    position: 'absolute',
+    left: 0,
+    top: 16,
+    bottom: 16,
+    width: 2,
+    backgroundColor: color.shu500,
+    borderRadius: 1,
+  },
   input: {
     height: 56,
     borderRadius: radius.card,

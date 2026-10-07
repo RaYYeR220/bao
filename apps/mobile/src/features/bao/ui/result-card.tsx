@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import Svg, { Circle, Path } from 'react-native-svg'
 
 import { buzz, play } from '@/ui/feedback'
@@ -33,7 +40,15 @@ function CountUp({ amount, decimals, run, size }: { amount: bigint; decimals: nu
   const value = run && reduced ? amount : shown
   return (
     <T
-      style={{ fontFamily: font.numerals, fontSize: size, lineHeight: size * 1.08, letterSpacing: -1, paddingLeft: 2, color: color.kuro950, fontVariant: ['tabular-nums', 'lining-nums'] }}
+      style={{
+        fontFamily: font.numerals,
+        fontSize: size,
+        lineHeight: size * 1.08,
+        letterSpacing: -1,
+        paddingLeft: 2,
+        color: color.kuro950,
+        fontVariant: ['tabular-nums', 'lining-nums'],
+      }}
       maxFontSizeMultiplier={1}
       numberOfLines={1}
       adjustsFontSizeToFit
@@ -115,15 +130,24 @@ export function ResultCard({
           <View style={{ flexShrink: 1 }}>
             <CountUp amount={amount} decimals={decimals} run={landed} size={74 * k} />
           </View>
-          <T style={{ fontFamily: font.textSemi, fontSize: 14 * k, letterSpacing: 2, color: color.shu500 }}>{symbol.toUpperCase()}</T>
+          <T style={{ fontFamily: font.textSemi, fontSize: 14 * k, letterSpacing: 2, color: color.shu500 }}>
+            {symbol.toUpperCase()}
+          </T>
         </View>
         <View style={{ maxWidth: width * 0.6, marginTop: 2 }}>
-          <T style={{ fontFamily: font.displayItalic, fontSize: 20 * k, lineHeight: 26 * k, color: color.shu500 }}>{headline}</T>
-          <T style={{ fontFamily: font.text, fontSize: 13.5 * k, lineHeight: 18 * k, color: color.paperInk2 }}>{detail}</T>
+          <T style={{ fontFamily: font.displayItalic, fontSize: 20 * k, lineHeight: 26 * k, color: color.shu500 }}>
+            {headline}
+          </T>
+          <T style={{ fontFamily: font.text, fontSize: 13.5 * k, lineHeight: 18 * k, color: color.paperInk2 }}>
+            {detail}
+          </T>
         </View>
       </View>
       {isKing ? (
-        <Animated.View style={[styles.seal, { right: 14 * k, top: height * 0.47, width: 96 * k, height: 96 * k }, stampStyle]} pointerEvents="none">
+        <Animated.View
+          style={[styles.seal, { right: 14 * k, top: height * 0.47, width: 96 * k, height: 96 * k }, stampStyle]}
+          pointerEvents="none"
+        >
           <LuckKingSeal size={96 * k} />
         </Animated.View>
       ) : null}

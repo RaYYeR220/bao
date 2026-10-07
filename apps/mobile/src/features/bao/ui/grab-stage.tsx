@@ -36,7 +36,7 @@ const CARD_RATIO = 0.7
 
 export function stageGeometry(screenW: number, screenH: number, headerBottom: number): StageGeometry {
   // Fit the opened object (flap up) plus the card under it on one screen.
-  const envW = Math.min(screenW * 0.6, (screenH - headerBottom - 230) / ENV.H * ENV.W)
+  const envW = Math.min(screenW * 0.6, ((screenH - headerBottom - 230) / ENV.H) * ENV.W)
   const envH = (envW * ENV.H) / ENV.W
   const flapH = (ENV.F / ENV.W) * envW
   const cardW = screenW - 48
@@ -215,7 +215,12 @@ export function GrabStage({
     const sc = interpolate(settle.value, [0, 1], [1, envScaleF])
     const ty = shift.value * dOpen + settle.value * (envTranslateF - 0)
     return {
-      transform: [{ translateX: deny.value }, { translateY: ty }, { scale: sc }, { rotate: `${tremble.value - 2.5 * (1 - shift.value)}deg` }],
+      transform: [
+        { translateX: deny.value },
+        { translateY: ty },
+        { scale: sc },
+        { rotate: `${tremble.value - 2.5 * (1 - shift.value)}deg` },
+      ],
       opacity: 1 - settle.value * 0.12,
     }
   })
@@ -295,22 +300,44 @@ export function GrabStage({
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <Animated.View style={[{ position: 'absolute', left: envLeft, top: sealedTop, width: envW, height: envH }, envStyle]}>
+      <Animated.View
+        style={[{ position: 'absolute', left: envLeft, top: sealedTop, width: envW, height: envH }, envStyle]}
+      >
         <View style={[styles.shadow, { width: envW, height: envH }]} />
         <Lacquer width={envW} tone={tone} part={4} gleam={gleam} style={StyleSheet.absoluteFill} art={false} />
         {/* flap lining: behind the card once the lid is past vertical */}
         <Animated.View style={[styles.flap, { width: envW, height: flapH }, flapBackStyle]}>
           <Lacquer width={envW} tone={tone} part={3} gleam={gleam} heightUnits={ENV.A} />
         </Animated.View>
-        <Animated.View style={[styles.cardBox, { width: cf.width, height: cf.height }, inCardStyle]} pointerEvents="none">
+        <Animated.View
+          style={[styles.cardBox, { width: cf.width, height: cf.height }, inCardStyle]}
+          pointerEvents="none"
+        >
           {renderCard?.('inside')}
         </Animated.View>
-        <Lacquer width={envW} tone={tone} part={1} gleam={gleam} shimmer={shimmer} time={time} style={StyleSheet.absoluteFill} />
+        <Lacquer
+          width={envW}
+          tone={tone}
+          part={1}
+          gleam={gleam}
+          shimmer={shimmer}
+          time={time}
+          style={StyleSheet.absoluteFill}
+        />
         <Animated.View style={[StyleSheet.absoluteFill, faceStyle]} pointerEvents="none">
           {face}
         </Animated.View>
         <Animated.View style={[styles.flap, { width: envW, height: flapH }, flapFrontStyle]}>
-          <Lacquer width={envW} tone={tone} part={2} gleam={gleam} ticks={ticks} heightUnits={ENV.A} shimmer={shimmer} time={time} />
+          <Lacquer
+            width={envW}
+            tone={tone}
+            part={2}
+            gleam={gleam}
+            ticks={ticks}
+            heightUnits={ENV.A}
+            shimmer={shimmer}
+            time={time}
+          />
         </Animated.View>
         <Animated.View style={[{ position: 'absolute', left: sc.x - box / 2, top: sc.y - box / 2 }, sealStyle]}>
           <Pressable
@@ -324,10 +351,16 @@ export function GrabStage({
             <Seal size={sealSize(envW)} ring={ring} muted={tone === 'ash'} />
           </Pressable>
         </Animated.View>
-        <Animated.View style={[{ position: 'absolute', left: sc.x - box / 2, top: sc.y - box / 2 }, halfLStyle]} pointerEvents="none">
+        <Animated.View
+          style={[{ position: 'absolute', left: sc.x - box / 2, top: sc.y - box / 2 }, halfLStyle]}
+          pointerEvents="none"
+        >
           <SealHalf box={box} path={halfL} />
         </Animated.View>
-        <Animated.View style={[{ position: 'absolute', left: sc.x - box / 2, top: sc.y - box / 2 }, halfRStyle]} pointerEvents="none">
+        <Animated.View
+          style={[{ position: 'absolute', left: sc.x - box / 2, top: sc.y - box / 2 }, halfRStyle]}
+          pointerEvents="none"
+        >
           <SealHalf box={box} path={halfR} />
         </Animated.View>
         <ShakeLines side="left" envW={envW} style={linesL} />

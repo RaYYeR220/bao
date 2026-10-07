@@ -27,7 +27,11 @@ export default function Preferences() {
     <View style={{ flex: 1 }}>
       <Backdrop glowY={0.1} />
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <RoundButton icon="back" label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/seeker'))} />
+        <RoundButton
+          icon="back"
+          label="Back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/seeker'))}
+        />
         <T variant="caps" style={{ flex: 1, textAlign: 'center' }}>
           Preferences
         </T>
@@ -68,7 +72,11 @@ export default function Preferences() {
             Test tokens only. The program, the Genesis check and the randomness are the real thing.
           </T>
           <Hairline />
-          <Row icon="info" label="Bao server" value={api === 'down' ? 'Unreachable' : api === 'up' ? 'Connected' : 'Not checked yet'} />
+          <Row
+            icon="info"
+            label="Bao server"
+            value={api === 'down' ? 'Unreachable' : api === 'up' ? 'Connected' : 'Not checked yet'}
+          />
           <T variant="meta" style={{ marginLeft: 34, marginTop: -4, marginBottom: 10 }}>
             {APP_URL.replace(/^https:\/\//, '')} · when it is down, Bao reads straight from the chain.
           </T>
@@ -98,9 +106,27 @@ export default function Preferences() {
   )
 }
 
-function Switch({ icon, label, body, on, onChange }: { icon: IconName; label: string; body: string; on: boolean; onChange: (v: boolean) => void }) {
+function Switch({
+  icon,
+  label,
+  body,
+  on,
+  onChange,
+}: {
+  icon: IconName
+  label: string
+  body: string
+  on: boolean
+  onChange: (v: boolean) => void
+}) {
   return (
-    <Pressable onPress={() => onChange(!on)} accessibilityRole="switch" accessibilityState={{ checked: on }} accessibilityLabel={label} style={styles.row}>
+    <Pressable
+      onPress={() => onChange(!on)}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={label}
+      style={styles.row}
+    >
       <Icon name={icon} size={20} />
       <View style={{ flex: 1, gap: 2 }}>
         <T variant="bodyStrong">{label}</T>
@@ -116,7 +142,15 @@ function Switch({ icon, label, body, on, onChange }: { icon: IconName; label: st
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space[4], gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, paddingVertical: 10 },
-  track: { width: 48, height: 28, borderRadius: 14, backgroundColor: color.kuro700, padding: 3, borderWidth: 1, borderColor: color.kuro600 },
+  track: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: color.kuro700,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: color.kuro600,
+  },
   trackOn: { backgroundColor: color.jade700, borderColor: color.jade500 },
   knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: color.gofun44 },
   knobOn: { backgroundColor: color.jade300, transform: [{ translateX: 20 }] },

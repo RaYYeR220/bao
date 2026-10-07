@@ -41,7 +41,11 @@ export default function SeekerScreen() {
       const res = await signIn.mutateAsync()
       buzz('success')
       play('soft')
-      if (!res.serverReachable) setNote({ tone: 'muted', text: 'Connected. The Bao server is unreachable, so names and circles will sync later.' })
+      if (!res.serverReachable)
+        setNote({
+          tone: 'muted',
+          text: 'Connected. The Bao server is unreachable, so names and circles will sync later.',
+        })
     } catch (e) {
       if (!(e instanceof WalletRejectedError) && !/reject|declin|cancel/i.test(String(e)))
         setNote({ tone: 'shu', text: humanError(e) })
@@ -55,16 +59,25 @@ export default function SeekerScreen() {
       const res = await faucet.mutateAsync()
       buzz('success')
       play('shimmer')
-      const got = [res.sol && 'test SOL', res.tskr && 'tSKR', res.genesis && 'a test Genesis token'].filter(Boolean).join(', ')
-      setNote({ tone: 'jade', text: got ? `Sent: ${got}. It lands in a few seconds.` : 'You already have everything the playground gives.' })
+      const got = [res.sol && 'test SOL', res.tskr && 'tSKR', res.genesis && 'a test Genesis token']
+        .filter(Boolean)
+        .join(', ')
+      setNote({
+        tone: 'jade',
+        text: got ? `Sent: ${got}. It lands in a few seconds.` : 'You already have everything the playground gives.',
+      })
       setTimeout(() => {
         void balances.refetch()
         void genesis.refetch()
       }, 4000)
     } catch (e) {
-      if (e instanceof ApiUnavailableError) setNote({ tone: 'muted', text: 'The faucet lives on the Bao server, which is unreachable right now.' })
+      if (e instanceof ApiUnavailableError)
+        setNote({ tone: 'muted', text: 'The faucet lives on the Bao server, which is unreachable right now.' })
       else if (!(e instanceof WalletRejectedError))
-        setNote({ tone: 'shu', text: e instanceof Error ? e.message.replace(/^.*→ \d+: /, '') : 'The faucet did not answer.' })
+        setNote({
+          tone: 'shu',
+          text: e instanceof Error ? e.message.replace(/^.*→ \d+: /, '') : 'The faucet did not answer.',
+        })
     }
   }
 
@@ -74,7 +87,14 @@ export default function SeekerScreen() {
   return (
     <View style={{ flex: 1 }}>
       <Backdrop glowY={0.18} />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: space[5], paddingBottom: space[6], gap: space[5] }}>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 16,
+          paddingHorizontal: space[5],
+          paddingBottom: space[6],
+          gap: space[5],
+        }}
+      >
         <View style={{ gap: 4 }}>
           <T variant="caps">Your Seeker</T>
           <T variant="title" style={{ fontSize: 34, lineHeight: 40 }} accessibilityRole="header">
@@ -87,7 +107,10 @@ export default function SeekerScreen() {
           <View style={{ flex: 1, gap: 6 }}>
             {address ? (
               <>
-                <T style={{ fontFamily: font.displayItalic, fontSize: 24, lineHeight: 30, color: color.gofun }} numberOfLines={1}>
+                <T
+                  style={{ fontFamily: font.displayItalic, fontSize: 24, lineHeight: 30, color: color.gofun }}
+                  numberOfLines={1}
+                >
                   {name}
                 </T>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -102,13 +125,20 @@ export default function SeekerScreen() {
                 </View>
               </>
             ) : (
-              <T variant="body">One approval connects the wallet in your Seed Vault and proves this phone is a Seeker.</T>
+              <T variant="body">
+                One approval connects the wallet in your Seed Vault and proves this phone is a Seeker.
+              </T>
             )}
           </View>
         </View>
 
         {!address ? (
-          <FoilButton label="Connect your Seeker" icon="wallet" busy={signIn.isPending} onPress={() => void connect()} />
+          <FoilButton
+            label="Connect your Seeker"
+            icon="wallet"
+            busy={signIn.isPending}
+            onPress={() => void connect()}
+          />
         ) : (
           <>
             <View style={styles.balances}>
@@ -123,7 +153,9 @@ export default function SeekerScreen() {
               </View>
               <View style={{ flex: 1, gap: 4 }}>
                 <T variant="bodyStrong">Playground faucet</T>
-                <T variant="meta">Test SOL, tSKR and a test Genesis token, so you can grab and drop for free on devnet.</T>
+                <T variant="meta">
+                  Test SOL, tSKR and a test Genesis token, so you can grab and drop for free on devnet.
+                </T>
               </View>
             </View>
             <FoilButton
@@ -133,7 +165,11 @@ export default function SeekerScreen() {
               onPress={() => void getTokens()}
             />
             {!session ? (
-              <Note icon="link" action={apiState === 'down' ? undefined : 'Sign in to sync'} onAction={() => void connect()}>
+              <Note
+                icon="link"
+                action={apiState === 'down' ? undefined : 'Sign in to sync'}
+                onAction={() => void connect()}
+              >
                 {apiState === 'down'
                   ? 'Some features need the Bao server, which is unreachable. Grabs and drops still work on-chain.'
                   : 'Sign in once to sync your .skr name, circles and notifications.'}
@@ -188,7 +224,9 @@ export default function SeekerScreen() {
           ) : null}
           <Hairline />
         </View>
-        {address ? <ExplorerLink label="Your wallet on the explorer" url={explorerAddress(address)} tone="muted" /> : null}
+        {address ? (
+          <ExplorerLink label="Your wallet on the explorer" url={explorerAddress(address)} tone="muted" />
+        ) : null}
       </ScrollView>
     </View>
   )
@@ -218,7 +256,15 @@ function Balance({ label, value }: { label: string; value: string | null }) {
       {value === null ? (
         <Skeleton width={80} height={30} />
       ) : (
-        <T style={{ fontFamily: font.numerals, fontSize: 32, lineHeight: 38, color: color.gofun, fontVariant: ['tabular-nums', 'lining-nums'] }}>
+        <T
+          style={{
+            fontFamily: font.numerals,
+            fontSize: 32,
+            lineHeight: 38,
+            color: color.gofun,
+            fontVariant: ['tabular-nums', 'lining-nums'],
+          }}
+        >
           {value}
         </T>
       )}

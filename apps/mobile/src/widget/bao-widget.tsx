@@ -37,7 +37,8 @@ export function BaoWidget({ data }: { data: (WidgetView & { source?: string }) |
   const uri = data?.topPacket ? `bao://packet/${data.topPacket}` : 'bao://'
   const rain = rainLine(data?.nextRainAt ?? null)
   const line = data
-    ? [waiting ? `${data.waitingAmountUi} ${data.symbol}` : null, rain].filter(Boolean).join(' · ') || 'Tap to drop the first one'
+    ? [waiting ? `${data.waitingAmountUi} ${data.symbol}` : null, rain].filter(Boolean).join(' · ') ||
+      'Tap to drop the first one'
     : 'Opening the box…'
   return (
     <FlexWidget
@@ -58,13 +59,20 @@ export function BaoWidget({ data }: { data: (WidgetView & { source?: string }) |
     >
       <SvgWidget svg={envelopeSvg(waiting ? 'shu' : 'ash')} style={{ height: 92, width: 54 }} />
       <FlexWidget style={{ flex: 1, marginLeft: 16, flexDirection: 'column', justifyContent: 'center' }}>
-        <TextWidget text="BAO · 紅包" style={{ fontSize: 10, color: '#C9A25C', letterSpacing: 0.2, fontFamily: 'InstrumentSansCondensed-SemiBold' }} />
+        <TextWidget
+          text="BAO · 紅包"
+          style={{ fontSize: 10, color: '#C9A25C', letterSpacing: 0.2, fontFamily: 'InstrumentSansCondensed-SemiBold' }}
+        />
         <TextWidget
           text={waiting ? `${waiting} ${waiting === 1 ? 'packet' : 'packets'} waiting` : 'No packets right now'}
           style={{ fontSize: 22, color: '#F4EFE6', marginTop: 4, fontFamily: 'BodoniModa-Medium' }}
           maxLines={1}
         />
-        <TextWidget text={line} style={{ fontSize: 13, color: '#A29D97', marginTop: 4, fontFamily: 'InstrumentSans-Regular' }} maxLines={1} />
+        <TextWidget
+          text={line}
+          style={{ fontSize: 13, color: '#A29D97', marginTop: 4, fontFamily: 'InstrumentSans-Regular' }}
+          maxLines={1}
+        />
       </FlexWidget>
     </FlexWidget>
   )

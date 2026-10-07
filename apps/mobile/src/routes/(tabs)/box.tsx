@@ -36,7 +36,12 @@ export default function BoxScreen() {
     <View style={{ flex: 1 }}>
       <Backdrop glowY={0.12} />
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: space[5], paddingBottom: space[6], gap: space[5] }}
+        contentContainerStyle={{
+          paddingTop: insets.top + 16,
+          paddingHorizontal: space[5],
+          paddingBottom: space[6],
+          gap: space[5],
+        }}
         refreshControl={
           account ? (
             <RefreshControl
@@ -74,9 +79,17 @@ export default function BoxScreen() {
         ) : (
           <>
             <View style={styles.stats}>
-              <Stat label="Grabbed" value={formatAmount(receivedTotal, 6)} sub={`${received.length} ${received.length === 1 ? 'packet' : 'packets'}`} />
+              <Stat
+                label="Grabbed"
+                value={formatAmount(receivedTotal, 6)}
+                sub={`${received.length} ${received.length === 1 ? 'packet' : 'packets'}`}
+              />
               <View style={styles.vr} />
-              <Stat label="Given" value={formatAmount(sentTotal, 6)} sub={`${sent.length} ${sent.length === 1 ? 'packet' : 'packets'}`} />
+              <Stat
+                label="Given"
+                value={formatAmount(sentTotal, 6)}
+                sub={`${sent.length} ${sent.length === 1 ? 'packet' : 'packets'}`}
+              />
               <View style={styles.vr} />
               <Stat label="Crowns" value={data ? String(data.crowns) : '–'} sub="運氣王" cjk />
             </View>
@@ -93,7 +106,13 @@ export default function BoxScreen() {
                   }}
                   style={[styles.segItem, tab === t && styles.segOn]}
                 >
-                  <T style={{ fontFamily: font.textMedium, fontSize: 15, color: tab === t ? color.gofun : color.gofun44 }}>
+                  <T
+                    style={{
+                      fontFamily: font.textMedium,
+                      fontSize: 15,
+                      color: tab === t ? color.gofun : color.gofun44,
+                    }}
+                  >
                     {t === 'received' ? 'Received' : 'Sent'}
                   </T>
                 </Pressable>
@@ -107,7 +126,13 @@ export default function BoxScreen() {
                 ))}
               </View>
             ) : history.isError && !data ? (
-              <StateBlock icon="refresh" title="Could not open the box" body="Solana devnet did not answer." action="Try again" onAction={() => void history.refetch()} />
+              <StateBlock
+                icon="refresh"
+                title="Could not open the box"
+                body="Solana devnet did not answer."
+                action="Try again"
+                onAction={() => void history.refetch()}
+              />
             ) : tab === 'received' ? (
               received.length ? (
                 <Animated.View entering={FadeIn.duration(300)} style={{ gap: 10 }}>
@@ -116,7 +141,13 @@ export default function BoxScreen() {
                   ))}
                 </Animated.View>
               ) : (
-                <StateBlock icon="envelope" title="Nothing opened yet" body="Shake one open from the feed and it lands here." action="Go to the feed" onAction={() => router.navigate('/')} />
+                <StateBlock
+                  icon="envelope"
+                  title="Nothing opened yet"
+                  body="Shake one open from the feed and it lands here."
+                  action="Go to the feed"
+                  onAction={() => router.navigate('/')}
+                />
               )
             ) : sent.length ? (
               <Animated.View entering={FadeIn.duration(300)} style={{ gap: 10 }}>
@@ -125,9 +156,17 @@ export default function BoxScreen() {
                 ))}
               </Animated.View>
             ) : (
-              <StateBlock icon="envelope" title="No packets sent yet" body="Drop one into a circle or the public feed." action="Send a packet" onAction={() => router.push('/send')} />
+              <StateBlock
+                icon="envelope"
+                title="No packets sent yet"
+                body="Drop one into a circle or the public feed."
+                action="Send a packet"
+                onAction={() => router.push('/send')}
+              />
             )}
-            {data?.source === 'chain' ? <Note icon="link">Read straight from Solana devnet. Names return when the Bao server is reachable.</Note> : null}
+            {data?.source === 'chain' ? (
+              <Note icon="link">Read straight from Solana devnet. Names return when the Bao server is reachable.</Note>
+            ) : null}
           </>
         )}
       </ScrollView>
@@ -139,10 +178,28 @@ function Stat({ label, value, sub, cjk }: { label: string; value: string; sub: s
   return (
     <View style={{ flex: 1, gap: 2 }} accessible accessibilityLabel={`${label}: ${value}`}>
       <T variant="caps">{label}</T>
-      <T style={{ fontFamily: font.numerals, fontSize: 26, lineHeight: 32, color: color.gofun, fontVariant: ['tabular-nums'] }} numberOfLines={1} adjustsFontSizeToFit>
+      <T
+        style={{
+          fontFamily: font.numerals,
+          fontSize: 26,
+          lineHeight: 32,
+          color: color.gofun,
+          fontVariant: ['tabular-nums'],
+        }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
         {value}
       </T>
-      <T style={{ fontFamily: cjk ? font.cjk : font.textNarrow, fontSize: cjk ? 12 : 12, color: cjk ? color.kin400 : color.gofun44 }}>{sub}</T>
+      <T
+        style={{
+          fontFamily: cjk ? font.cjk : font.textNarrow,
+          fontSize: cjk ? 12 : 12,
+          color: cjk ? color.kin400 : color.gofun44,
+        }}
+      >
+        {sub}
+      </T>
     </View>
   )
 }
@@ -158,8 +215,16 @@ function ReceivedRow({ grab, packet, i }: { grab: GrabView; packet: PacketView |
   const king = packet?.mode === 'lucky' && packet.luckKing === grab.claimer
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(300)}>
-      <Pressable onPress={() => router.push(`/packet/${grab.packet}`)} style={styles.row} accessibilityRole="button" accessibilityLabel={`Grabbed from ${from}`}>
-        <MiniEnvelope tone={packet ? (packet.skin === 'kuro' || packet.skin === 'jade' ? packet.skin : 'shu') : 'shu'} open />
+      <Pressable
+        onPress={() => router.push(`/packet/${grab.packet}`)}
+        style={styles.row}
+        accessibilityRole="button"
+        accessibilityLabel={`Grabbed from ${from}`}
+      >
+        <MiniEnvelope
+          tone={packet ? (packet.skin === 'kuro' || packet.skin === 'jade' ? packet.skin : 'shu') : 'shu'}
+          open
+        />
         <View style={{ flex: 1, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <T style={{ fontFamily: font.displayItalic, fontSize: 17, color: color.gofun }} numberOfLines={1}>
@@ -193,13 +258,23 @@ function SentRow({ packet, i }: { packet: PacketView; i: number }) {
             : 'Closed'
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(300)}>
-      <Pressable onPress={() => router.push(`/packet/${packet.address}`)} style={styles.row} accessibilityRole="button" accessibilityLabel={`Packet of ${formatAmount(packet.total)} tSKR, ${status}`}>
+      <Pressable
+        onPress={() => router.push(`/packet/${packet.address}`)}
+        style={styles.row}
+        accessibilityRole="button"
+        accessibilityLabel={`Packet of ${formatAmount(packet.total)} tSKR, ${status}`}
+      >
         <MiniEnvelope tone={toneFor(packet)} open={packet.status !== 'live' && packet.status !== 'scheduled'} />
         <View style={{ flex: 1, gap: 2 }}>
           <T variant="bodyStrong" numberOfLines={1}>
-            {packet.audience === 'open' ? 'Public' : packet.audience === 'circle' ? 'Circle' : 'Code word'} · {packet.mode === 'lucky' ? 'Lucky' : 'Equal'}
+            {packet.audience === 'open' ? 'Public' : packet.audience === 'circle' ? 'Circle' : 'Code word'} ·{' '}
+            {packet.mode === 'lucky' ? 'Lucky' : 'Equal'}
           </T>
-          <T variant="meta" style={{ color: packet.status === 'live' ? color.jade300 : color.gofun64 }} numberOfLines={1}>
+          <T
+            variant="meta"
+            style={{ color: packet.status === 'live' ? color.jade300 : color.gofun64 }}
+            numberOfLines={1}
+          >
             {status} · {timeAgo(packet.createdAt)}
           </T>
         </View>
@@ -213,7 +288,13 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: space[3], alignItems: 'stretch' },
   vr: { width: StyleSheet.hairlineWidth, backgroundColor: color.kuro600 },
   seg: { flexDirection: 'row', gap: 22, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.kuro600 },
-  segItem: { paddingVertical: 12, minHeight: 44, borderBottomWidth: 1, borderBottomColor: 'transparent', marginBottom: -1 },
+  segItem: {
+    paddingVertical: 12,
+    minHeight: 44,
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+    marginBottom: -1,
+  },
   segOn: { borderBottomColor: color.kin300 },
   row: {
     flexDirection: 'row',

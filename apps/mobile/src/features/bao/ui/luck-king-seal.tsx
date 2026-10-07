@@ -1,4 +1,15 @@
-import { Canvas, Circle, Group, LinearGradient, Path, RadialGradient, Skia, Text as SkText, useFont, vec } from '@shopify/react-native-skia'
+import {
+  Canvas,
+  Circle,
+  Group,
+  LinearGradient,
+  Path,
+  RadialGradient,
+  Skia,
+  Text as SkText,
+  useFont,
+  vec,
+} from '@shopify/react-native-skia'
 
 import { color, foilPositions, foilStops } from '@/ui/tokens'
 
@@ -15,7 +26,12 @@ export function LuckKingSeal({ size = 96 }: { size?: number }) {
       <Group transform={[{ scale: k }, { rotate: (-9 * Math.PI) / 180 }]} origin={vec(48, 48)}>
         <Circle cx={48} cy={50} r={42} color="rgba(80,7,15,0.25)" />
         <Circle cx={48} cy={48} r={42}>
-          <RadialGradient c={vec(36, 31)} r={70} colors={['#CF3338', color.shu500, color.shu700]} positions={[0, 0.6, 1]} />
+          <RadialGradient
+            c={vec(36, 31)}
+            r={70}
+            colors={['#CF3338', color.shu500, color.shu700]}
+            positions={[0, 0.6, 1]}
+          />
         </Circle>
         <Circle cx={48} cy={48} r={42} style="stroke" strokeWidth={1.2}>
           <LinearGradient start={vec(6, 6)} end={vec(90, 90)} colors={foilStops} positions={foilPositions} />

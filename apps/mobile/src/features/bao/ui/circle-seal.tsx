@@ -14,7 +14,12 @@ export function CircleSeal({ glyph, size = 52 }: { glyph: string | null; size?: 
     <View style={[styles.seal, { width: size, height: size, borderRadius: size / 2 }]} accessible={false}>
       <View style={[styles.inner, { borderRadius: size / 2 - 4, top: 3, left: 3, right: 3, bottom: 3 }]} />
       <T
-        style={{ fontFamily: cjk ? font.cjk : undefined, fontSize: size * (cjk ? 0.42 : 0.44), lineHeight: size * 0.6, color: color.kin200 }}
+        style={{
+          fontFamily: cjk ? font.cjk : undefined,
+          fontSize: size * (cjk ? 0.42 : 0.44),
+          lineHeight: size * 0.6,
+          color: color.kin200,
+        }}
         maxFontSizeMultiplier={1}
       >
         {g}

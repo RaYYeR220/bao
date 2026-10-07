@@ -210,7 +210,16 @@ export function Icon({
                 ? color.kuro900
                 : tone
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       {tone === 'foil' ? (
         <Defs>
           <LinearGradient id={`f${id}`} x1="0" y1="0" x2="1" y2="1">

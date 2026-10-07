@@ -101,10 +101,17 @@ function cornerStyle(k: 'tl' | 'tr' | 'bl' | 'br') {
 }
 
 const styles = StyleSheet.create({
-  header: { position: 'absolute', left: 0, right: 0, top: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: space[4] },
+  header: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: space[4],
+  },
   mask: { backgroundColor: 'rgba(10,7,7,0.72)' },
   corner: { position: 'absolute', width: 34, height: 34 },
   caption: { position: 'absolute', left: space[5], right: space[5], gap: 8, alignItems: 'center' },
   captionTitle: { fontFamily: 'BodoniModa-MediumItalic', fontSize: 22, color: color.gofun, textAlign: 'center' },
 })
-

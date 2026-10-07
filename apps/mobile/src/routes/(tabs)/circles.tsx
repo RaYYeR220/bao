@@ -36,7 +36,8 @@ export default function CirclesScreen() {
     setSignInNote(null)
     try {
       const r = await signIn.mutateAsync()
-      if (!r.serverReachable) setSignInNote('The Bao server is unreachable right now. Circles will be here when it is back.')
+      if (!r.serverReachable)
+        setSignInNote('The Bao server is unreachable right now. Circles will be here when it is back.')
     } catch (e) {
       if (!(e instanceof WalletRejectedError)) setSignInNote(humanError(e))
     }
@@ -46,7 +47,12 @@ export default function CirclesScreen() {
     <View style={{ flex: 1 }}>
       <Backdrop glowY={0.15} />
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: space[5], paddingBottom: space[6], gap: space[5] }}
+        contentContainerStyle={{
+          paddingTop: insets.top + 16,
+          paddingHorizontal: space[5],
+          paddingBottom: space[6],
+          gap: space[5],
+        }}
         refreshControl={
           session ? (
             <RefreshControl
@@ -70,7 +76,13 @@ export default function CirclesScreen() {
               Circles
             </T>
           </View>
-          <Pressable onPress={() => router.push('/scan')} accessibilityRole="button" accessibilityLabel="Scan a circle invite" style={styles.iconBtn} hitSlop={6}>
+          <Pressable
+            onPress={() => router.push('/scan')}
+            accessibilityRole="button"
+            accessibilityLabel="Scan a circle invite"
+            style={styles.iconBtn}
+            hitSlop={6}
+          >
             <Icon name="scan" size={22} />
           </Pressable>
         </View>
@@ -84,7 +96,11 @@ export default function CirclesScreen() {
               action={account ? 'Sign in to see your circles' : 'Connect your Seeker'}
               onAction={() => void doSignIn()}
             />
-            {apiState === 'down' ? <Note icon="link">Circles live on the Bao server, which is unreachable right now. Packets and grabs still work on-chain.</Note> : null}
+            {apiState === 'down' ? (
+              <Note icon="link">
+                Circles live on the Bao server, which is unreachable right now. Packets and grabs still work on-chain.
+              </Note>
+            ) : null}
             {signInNote ? <Note tone="shu">{signInNote}</Note> : null}
           </View>
         ) : circles.isLoading ? (
@@ -94,7 +110,13 @@ export default function CirclesScreen() {
             ))}
           </View>
         ) : circles.isError ? (
-          <StateBlock icon="refresh" title="Circles did not load" body="The Bao server did not answer." action="Try again" onAction={() => void circles.refetch()} />
+          <StateBlock
+            icon="refresh"
+            title="Circles did not load"
+            body="The Bao server did not answer."
+            action="Try again"
+            onAction={() => void circles.refetch()}
+          />
         ) : circles.data?.length ? (
           <View style={{ gap: 12 }}>
             {circles.data.map((c, i) => (
@@ -102,7 +124,11 @@ export default function CirclesScreen() {
             ))}
           </View>
         ) : (
-          <StateBlock icon="circles" title="No circles yet" body="Start one and share the invite, or join a friend’s with their code." />
+          <StateBlock
+            icon="circles"
+            title="No circles yet"
+            body="Start one and share the invite, or join a friend’s with their code."
+          />
         )}
 
         {session ? (
@@ -196,8 +222,17 @@ function CreateSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
           </Pressable>
         ))}
       </View>
-      {create.isError ? <Note tone="shu">{create.error instanceof Error ? create.error.message.replace(/^.*→ \d+: /, '') : 'Could not create it.'}</Note> : null}
-      <FoilButton label="Start the circle" disabled={name.trim().length < 2} busy={create.isPending} onPress={() => create.mutate()} />
+      {create.isError ? (
+        <Note tone="shu">
+          {create.error instanceof Error ? create.error.message.replace(/^.*→ \d+: /, '') : 'Could not create it.'}
+        </Note>
+      ) : null}
+      <FoilButton
+        label="Start the circle"
+        disabled={name.trim().length < 2}
+        busy={create.isPending}
+        onPress={() => create.mutate()}
+      />
     </Sheet>
   )
 }

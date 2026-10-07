@@ -39,7 +39,12 @@ export default function CircleScreen() {
         <RoundButton
           icon="share"
           label="Share the invite"
-          onPress={() => c && void Share.share({ message: `Join ${c.name} on Bao 紅包 · code ${c.inviteCode} · ${inviteLink(c.inviteCode)}` })}
+          onPress={() =>
+            c &&
+            void Share.share({
+              message: `Join ${c.name} on Bao 紅包 · code ${c.inviteCode} · ${inviteLink(c.inviteCode)}`,
+            })
+          }
         />
       </View>
       {q.isLoading ? (
@@ -49,7 +54,13 @@ export default function CircleScreen() {
           <Skeleton width="100%" height={200} radius={14} />
         </View>
       ) : !c ? (
-        <StateBlock icon="circles" title="This circle did not load" body="The Bao server did not answer." action="Try again" onAction={() => void q.refetch()} />
+        <StateBlock
+          icon="circles"
+          title="This circle did not load"
+          body="The Bao server did not answer."
+          action="Try again"
+          onAction={() => void q.refetch()}
+        />
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: space[5], paddingBottom: insets.bottom + space[6], gap: space[6] }}
@@ -69,7 +80,16 @@ export default function CircleScreen() {
         >
           <Animated.View entering={FadeInDown.duration(400)} style={{ alignItems: 'center', gap: 10 }}>
             <CircleSeal glyph={c.emoji} size={76} />
-            <T style={{ fontFamily: font.display, fontSize: 32, lineHeight: 38, color: color.gofun, textAlign: 'center' }} accessibilityRole="header">
+            <T
+              style={{
+                fontFamily: font.display,
+                fontSize: 32,
+                lineHeight: 38,
+                color: color.gofun,
+                textAlign: 'center',
+              }}
+              accessibilityRole="header"
+            >
               {c.name}
             </T>
             <T variant="meta">
@@ -85,7 +105,11 @@ export default function CircleScreen() {
                 Nothing open right now.
               </T>
             )}
-            <FoilButton label="Drop a packet here" icon="envelope" onPress={() => router.push({ pathname: '/send', params: { circle: c.id } })} />
+            <FoilButton
+              label="Drop a packet here"
+              icon="envelope"
+              onPress={() => router.push({ pathname: '/send', params: { circle: c.id } })}
+            />
           </Section>
 
           <Invite c={c} />
@@ -93,11 +117,18 @@ export default function CircleScreen() {
           {c.chains.length ? (
             <Section title="Luck King chains">
               {c.chains.map((ch) => (
-                <Pressable key={ch.root} onPress={() => router.push(`/packet/${ch.root}`)} style={styles.chain} accessibilityRole="button">
+                <Pressable
+                  key={ch.root}
+                  onPress={() => router.push(`/packet/${ch.root}`)}
+                  style={styles.chain}
+                  accessibilityRole="button"
+                >
                   <Icon name="crown" size={18} />
                   <View style={{ flex: 1 }}>
                     <T variant="bodyStrong">{ch.depth + 1} packets long</T>
-                    <T variant="meta">{ch.lastKing ? `Now with ${displayName(ch.lastKingSkr, ch.lastKing)}` : 'Waiting for its king'}</T>
+                    <T variant="meta">
+                      {ch.lastKing ? `Now with ${displayName(ch.lastKingSkr, ch.lastKing)}` : 'Waiting for its king'}
+                    </T>
                   </View>
                   <ChainBeads depth={ch.depth} />
                 </Pressable>
@@ -108,9 +139,18 @@ export default function CircleScreen() {
           <View style={{ flexDirection: 'row', gap: space[4] }}>
             <Board
               title="Most generous"
-              rows={c.leaderboard.generous.map((g) => ({ name: displayName(g.skrName, g.address), value: formatAmount(g.total, 6) }))}
+              rows={c.leaderboard.generous.map((g) => ({
+                name: displayName(g.skrName, g.address),
+                value: formatAmount(g.total, 6),
+              }))}
             />
-            <Board title="Luckiest" rows={c.leaderboard.lucky.map((g) => ({ name: displayName(g.skrName, g.address), value: `${g.crowns} 運` }))} />
+            <Board
+              title="Luckiest"
+              rows={c.leaderboard.lucky.map((g) => ({
+                name: displayName(g.skrName, g.address),
+                value: `${g.crowns} 運`,
+              }))}
+            />
           </View>
 
           <Section title={`Members · ${c.members.length}`}>
@@ -149,9 +189,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function LivePackets({ c }: { c: CircleDetail }) {
   const gleam = useTiltGleam(0.5)
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingVertical: 6 }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 14, paddingVertical: 6 }}
+    >
       {c.packets.map((p) => (
-        <Pressable key={p.address} onPress={() => router.push(`/grab/${p.address}`)} accessibilityRole="button" accessibilityLabel={`Open ${displayName(p.senderSkr, p.sender)}'s packet`}>
+        <Pressable
+          key={p.address}
+          onPress={() => router.push(`/grab/${p.address}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${displayName(p.senderSkr, p.sender)}'s packet`}
+        >
           <PacketEnvelope packet={p} width={96} gleam={gleam} />
           <T variant="meta" style={{ textAlign: 'center', marginTop: 6 }} numberOfLines={1}>
             {displayName(p.senderSkr, p.sender)}
@@ -182,7 +231,9 @@ function Invite({ c }: { c: CircleDetail }) {
         accessibilityLabel={`Invite code ${c.inviteCode}, copy`}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
       >
-        <T style={{ fontFamily: font.numerals, fontSize: 32, letterSpacing: 5, color: color.kuro950 }}>{c.inviteCode}</T>
+        <T style={{ fontFamily: font.numerals, fontSize: 32, letterSpacing: 5, color: color.kuro950 }}>
+          {c.inviteCode}
+        </T>
         <Icon name={copied ? 'check' : 'copy'} size={18} tone={copied ? color.jade500 : color.kin600} />
       </Pressable>
       <QRCode value={inviteLink(c.inviteCode)} size={150} color={color.kuro950} backgroundColor="transparent" />
@@ -205,7 +256,10 @@ function ChainBeads({ depth }: { depth: number }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
       {Array.from({ length: n }, (_, i) => (
-        <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: i === n - 1 ? color.shu400 : color.kin400 }} />
+        <View
+          key={i}
+          style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: i === n - 1 ? color.shu400 : color.kin400 }}
+        />
       ))}
     </View>
   )
@@ -218,7 +272,16 @@ function Board({ title, rows }: { title: string; rows: { name: string; value: st
       {rows.length ? (
         rows.slice(0, 5).map((r, i) => (
           <View key={`${r.name}-${i}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <T style={{ fontFamily: font.display, fontSize: 15, color: i === 0 ? color.kin300 : color.gofun44, width: 14 }}>{i + 1}</T>
+            <T
+              style={{
+                fontFamily: font.display,
+                fontSize: 15,
+                color: i === 0 ? color.kin300 : color.gofun44,
+                width: 14,
+              }}
+            >
+              {i + 1}
+            </T>
             <T variant="meta" style={{ flex: 1, color: color.gofun }} numberOfLines={1}>
               {r.name}
             </T>
@@ -244,8 +307,24 @@ const styles = StyleSheet.create({
     borderColor: color.kuro600,
     backgroundColor: 'rgba(23,17,18,0.85)',
   },
-  invite: { alignItems: 'center', gap: space[3], padding: space[5], borderRadius: 4, backgroundColor: color.paper, transform: [{ rotate: '0.8deg' }] },
-  inviteFrame: { position: 'absolute', left: 7, top: 7, right: 7, bottom: 7, borderWidth: 1, borderColor: 'rgba(127,95,44,0.5)', borderRadius: 2 },
+  invite: {
+    alignItems: 'center',
+    gap: space[3],
+    padding: space[5],
+    borderRadius: 4,
+    backgroundColor: color.paper,
+    transform: [{ rotate: '0.8deg' }],
+  },
+  inviteFrame: {
+    position: 'absolute',
+    left: 7,
+    top: 7,
+    right: 7,
+    bottom: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(127,95,44,0.5)',
+    borderRadius: 2,
+  },
   board: {
     flex: 1,
     gap: 10,

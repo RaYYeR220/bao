@@ -53,7 +53,11 @@ export function useDropPacket() {
         const snap = await baoApi
           .call('POST /api/circles/:id/snapshot', { params: { id: input.audience.circleId } }, { force: true })
           .catch((e) => {
-            throw e instanceof ApiUnavailableError ? new Error('Circle packets need the Bao server, which is unreachable right now. Try a public or code-word packet.') : e
+            throw e instanceof ApiUnavailableError
+              ? new Error(
+                  'Circle packets need the Bao server, which is unreachable right now. Try a public or code-word packet.',
+                )
+              : e
           })
         snapshotRoot = snap.root
         audience = { kind: 'circle', root: hexToBytes(snap.root) }
@@ -69,7 +73,8 @@ export function useDropPacket() {
         const [crownPda] = await findCrownPda({ packet: address(input.parentPacket) })
         const crown = await fetchMaybeCrown(client.rpc as never, crownPda)
         if (!crown.exists) throw new Error('That crown has already been passed on.')
-        if (crown.data.king !== account.address) throw new Error('Only the Luck King of that packet can send the next one.')
+        if (crown.data.king !== account.address)
+          throw new Error('Only the Luck King of that packet can send the next one.')
         parentRefund = crown.data.refundTo
       }
 

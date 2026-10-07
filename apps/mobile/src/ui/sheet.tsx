@@ -25,11 +25,20 @@ export function Sheet({
   const insets = useSafeAreaInsets()
   const reduced = useReducedMotion()
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         <Animated.View
-          entering={reduced ? FadeIn.duration(150) : SlideInDown.duration(380).springify().damping(22).stiffness(180).mass(1.1)}
+          entering={
+            reduced ? FadeIn.duration(150) : SlideInDown.duration(380).springify().damping(22).stiffness(180).mass(1.1)
+          }
           style={[styles.panel, { paddingBottom: insets.bottom + space[4] }]}
         >
           <View style={styles.lip} />
@@ -68,7 +77,8 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     height: 1,
-    experimental_backgroundImage: 'linear-gradient(90deg, rgba(221,187,122,0), rgba(221,187,122,0.55), rgba(221,187,122,0))',
+    experimental_backgroundImage:
+      'linear-gradient(90deg, rgba(221,187,122,0), rgba(221,187,122,0.55), rgba(221,187,122,0))',
   },
   handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: color.kuro600 },
   head: { flexDirection: 'row', alignItems: 'center', gap: space[3] },
