@@ -451,7 +451,7 @@ function Bottom({
         <FoilButton label="Try again" icon="refresh" onPress={onRetry} />
       </Animated.View>
     )
-  } else if (phase.kind !== 'idle' && phase.kind !== 'revealed') {
+  } else if (phase.kind !== 'idle') {
     const copy =
       phase.kind === 'preparing'
         ? ['Checking your Seeker…', 'Reading the packet and your Genesis token']
