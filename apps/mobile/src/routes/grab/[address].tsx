@@ -631,7 +631,7 @@ function Refusal({
     <Animated.View entering={FadeInDown.duration(450)} style={styles.refusal} accessibilityLiveRegion="polite">
       <View style={styles.refusalRule} />
       <T variant="caps" style={{ color: color.shu300 }}>
-        Refused by the program
+        {phase.code === null ? 'Seeker-only packet' : 'Refused by the program'}
       </T>
       <T style={{ fontFamily: font.display, fontSize: 22, lineHeight: 28, color: color.gofun }}>
         {notSeeker
