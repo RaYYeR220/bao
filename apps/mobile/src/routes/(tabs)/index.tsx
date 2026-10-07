@@ -304,9 +304,13 @@ function Carousel({
     },
   )
 
+  // jump to a just-dropped packet once; later refetches must not yank the carousel back
+  const focused = useRef<string | null>(null)
   useEffect(() => {
-    if (!focus) return
+    if (!focus || focused.current === focus) return
     const i = packets.findIndex((p) => p.address === focus)
+    if (i < 0) return
+    focused.current = focus
     if (i > 0) setTimeout(() => listRef.current?.scrollToOffset({ offset: i * itemW, animated: true }), 300)
   }, [focus, itemW, packets])
 
