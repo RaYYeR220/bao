@@ -1,4 +1,11 @@
-import type { GrabView, PacketDetail } from '@bao/sdk'
+import {
+  BAO_ERROR__ALREADY_GRABBED_ON_THIS_DEVICE,
+  BAO_ERROR__NOT_A_SEEKER,
+  BAO_ERROR__WRONG_CODE,
+  BAO_ERROR__WRONG_SGT_GROUP,
+  type GrabView,
+  type PacketDetail,
+} from '@bao/sdk'
 import { useStore } from '@nanostores/react'
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
 import * as Notifications from 'expo-notifications'
@@ -105,7 +112,7 @@ function Grab({ detail, initialCode }: { detail: PacketDetail; initialCode?: str
   const alreadyMine =
     !!mine.data &&
     mine.data.data.status !== 0 &&
-    (phase.kind === 'idle' || (phase.kind === 'refused' && phase.code === 6016))
+    (phase.kind === 'idle' || (phase.kind === 'refused' && phase.code === BAO_ERROR__ALREADY_GRABBED_ON_THIS_DEVICE))
   const needsCode = detail.audience === 'code' && !code
 
   // shake progress: thirds of the foil ring, drained if the shaking stops
@@ -639,9 +646,10 @@ function Refusal({
   onCode: () => void
 }) {
   const info = describeProgramErrorName(phase.code)
-  const notSeeker = phase.code === null || phase.code === 6013 || phase.code === 6015
-  const wrongCode = phase.code === 6012
-  const already = phase.code === 6016
+  const notSeeker =
+    phase.code === null || phase.code === BAO_ERROR__NOT_A_SEEKER || phase.code === BAO_ERROR__WRONG_SGT_GROUP
+  const wrongCode = phase.code === BAO_ERROR__WRONG_CODE
+  const already = phase.code === BAO_ERROR__ALREADY_GRABBED_ON_THIS_DEVICE
   return (
     <Animated.View entering={FadeInDown.duration(450)} style={styles.refusal} accessibilityLiveRegion="polite">
       <View style={styles.refusalRule} />
