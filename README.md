@@ -111,6 +111,27 @@ Environment variables for the API are listed in [`apps/web/README.md`](apps/web/
 See [THREAT_MODEL.md](THREAT_MODEL.md): device binding, randomness, the griefing attacks that were closed
 (with the tests that prove it), and what Bao does not claim.
 
+## What is in this build
+
+Nothing in the submitted APK is mocked. Each feature is either working, working on devnet only, or planned.
+
+| Feature | Status |
+|---|---|
+| Drop, grab, payout, refund (Anchor program) | Working on devnet |
+| One grab per Seeker Genesis Token (`NotASeeker` 6013, `AlreadyGrabbedOnThisDevice` 6016) | Working on devnet against a test group; the real mainnet token layout passes the same check in a test |
+| Verifiable randomness per grab (MagicBlock VRF) | Working on devnet |
+| Wallet connect, Sign In With Solana and signing over Mobile Wallet Adapter | Working; tested with Phantom on a Samsung Galaxy A52 and with a test wallet, not yet on a Seeker |
+| Shake to open, haptics, sound, home-screen widget, push, QR scanner, App Links | Working |
+| Circles, invite codes, Luck King chains, leaderboards, scheduled rains | Working |
+| House rain (the crank keeps a few public packets live) | Working on devnet |
+| Solana Actions (grab, create) | Working on devnet |
+| Writing a packet to an NFC tag | Built; not tried on a physical tag |
+| SKR | tSKR stand-in on devnet; real SKR on mainnet is planned |
+| Mainnet deployment, dApp Store release, multisig upgrade authority | Planned |
+
+On devnet so far: 37 packets, 32 grabs, 30 randomness proofs and 26 payouts, 344 of 1,701 tSKR grabbed. These
+are the builder's own test runs on one phone, one emulator and scripted wallets; there are no outside users yet.
+
 ## Honest limits
 
 - **Devnet only, for now.** The deployed program checks a devnet test group that anyone can join through the
