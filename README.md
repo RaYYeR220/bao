@@ -12,7 +12,7 @@ emulators is refused by the program itself, not by a server.
 
 ![Feed, shake to open, the result card with the Luck King seal, a refused code word, choosing who a packet is for, and sharing it](docs/screens.jpg)
 
-**[Watch the three-minute demo](https://youtu.be/N1hNVH_5Gmo)** · [Get the APK](https://github.com/RaYYeR220/bao/releases/latest) · [Review it in five minutes](JUDGES.md)
+**[Watch the three-minute demo](https://youtu.be/N1hNVH_5Gmo)** · [Get the APK](https://github.com/RaYYeR220/bao/releases/latest) · [Review it in five minutes](JUDGES.md) · [Pitch deck](https://getbao.vercel.app/bao-deck.pdf)
 
 > Live on **Solana devnet** (`DifXuyhEu3r7sgXQjgCokyikQFcYCYD2cwhjNyU7j6XR`). Mainnet follows the dApp Store
 > release. Every claim below links to a transaction in [PROOF.md](PROOF.md).
