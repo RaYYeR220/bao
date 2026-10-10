@@ -30,6 +30,7 @@ are there too.
   by the same check in a fixture test.
 - [THREAT_MODEL.md](THREAT_MODEL.md): device binding, randomness, the griefing attacks closed (each with its test),
   the dependency scan, and what Bao does not claim.
+- [MAINNET.md](MAINNET.md): what changes between this devnet build and mainnet, and in which order.
 - Tests, from a clone:
 
   ```bash

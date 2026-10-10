@@ -127,7 +127,7 @@ Nothing in the submitted APK is mocked. Each feature is either working, working 
 | Solana Actions (grab, create) | Working on devnet |
 | Writing a packet to an NFC tag | Built; not tried on a physical tag |
 | SKR | tSKR stand-in on devnet; real SKR on mainnet is planned |
-| Mainnet deployment, dApp Store release, multisig upgrade authority | Planned |
+| Mainnet deployment, dApp Store release, multisig upgrade authority | Planned; the steps are in [MAINNET.md](MAINNET.md) |
 
 On devnet so far: 37 packets, 32 grabs, 30 randomness proofs and 26 payouts, 344 of 1,701 tSKR grabbed. These
 are the builder's own test runs on one phone, one emulator and scripted wallets; there are no outside users yet.
