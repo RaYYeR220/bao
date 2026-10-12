@@ -109,7 +109,8 @@ Environment variables for the API are listed in [`apps/web/README.md`](apps/web/
 ## Security
 
 See [THREAT_MODEL.md](THREAT_MODEL.md): device binding, randomness, the griefing attacks that were closed
-(with the tests that prove it), and what Bao does not claim.
+(with the tests that prove it), and what Bao does not claim. [AUDIT.md](AUDIT.md) goes through the hackathon's automated audit
+finding by finding.
 
 ## What is in this build
 
