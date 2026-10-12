@@ -2,6 +2,7 @@
 name = "bao"
 version = "0.1.0"
 description = "Device-bound red packets for Seeker"
+license = "MIT"
 edition.workspace = true
 rust-version.workspace = true
 
