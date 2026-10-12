@@ -11,10 +11,10 @@ program crate now declares its license.
 | Finding | Reported at | What the code does |
 |---|---|---|
 | Account data matching: a mint is unpacked "without verifying authorization" | `mint_safety.rs:31` | The owner is checked on the lines just above: a classic SPL mint returns early, anything else must be owned by Token-2022 (`require_keys_eq!(*mint.owner, token_2022::ID)`), and only then is the extension list read. Covered by `every_denied_token2022_extension_is_rejected`. |
-| Writable `UncheckedAccount` with no constraint (six places) | `grab.rs:233`, `grab.rs:251`, `close.rs:75`, `payout.rs:36` | These four do carry an `address =` constraint; it is written on several lines and the tool did not read it. `claimer_token` and `sender_token` are pinned to the associated token address of the claimer or sender, and `oracle_queue` is pinned to the MagicBlock queue constant. |
+| Account data matching: a writable `UncheckedAccount` with no constraint (six places) | `grab.rs:233`, `grab.rs:251`, `close.rs:75`, `payout.rs:36` | These four do carry an `address =` constraint; it is written on several lines and the tool did not read it. `claimer_token` and `sender_token` are pinned to the associated token address of the claimer or sender, and `oracle_queue` is pinned to the MagicBlock queue constant. |
 | | `grab.rs:111` | `claimer_token` in `grab_equal` is handed to the Associated Token program's idempotent create for (claimer, mint), which fails unless the address is that exact associated token account. Tokens are transferred only after that call. |
 | | `create_packet.rs:62` | `parent_crown_refund` is compared in the handler with `crown.refund_to`, the address stored when the crown was created (`require_keys_eq!`), before the crown is closed to it. |
-| Random authority generation (seven places) | `audience.rs:54`, `sgt.rs:61`, five test files | All seven are `Pubkey::new_unique()` inside `#[cfg(test)]` modules and the LiteSVM test harness. No program instruction creates a key. |
+| Signer passthrough CPI: random authority generation (seven places) | `audience.rs:54`, `sgt.rs:61`, five test files | All seven are `Pubkey::new_unique()` inside `#[cfg(test)]` modules and the LiteSVM test harness. No program instruction creates a key. |
 | Type cosplay: an account deserialized without a discriminator | `sgt.rs:17`, `mint_safety.rs:30` | These read SPL Token-2022 accounts, which have no Anchor discriminator by design. Both check the owner program first, then the mint, the amount, the group member and the metadata pointer. Seven forgeries are tested in `src/sgt.rs`, and `test_mainnet_genesis.rs` runs the check on a real mainnet token. |
 | | `grab.rs:83`, `vrf_callback.rs:109` | These lines write, not read: they serialize a `ClaimRecord` or a `Crown` (with its Anchor discriminator) into a PDA the program has just created at seeds it derived. |
 | PDA sharing | `gas.rs:79` | The gas tank is one PDA per packet (`["gas", packet]`) and signs only system transfers out of itself. Nothing else is derived from those seeds. |
@@ -36,7 +36,7 @@ program crate now declares its license.
 
 | Finding | What the code does |
 |---|---|
-| CPI target "unresolved" (eleven places) | Every target is a typed Anchor account: `Program<'info, System>`, `Program<'info, AssociatedToken>`, or `Interface<'info, TokenInterface>` constrained to the packet's stored `token_program`. Anchor checks the program id when the instruction is deserialized. |
+| Arbitrary CPI: the target is "unresolved" (eleven places) | Every target is a typed Anchor account: `Program<'info, System>`, `Program<'info, AssociatedToken>`, or `Interface<'info, TokenInterface>` constrained to the packet's stored `token_program`. Anchor checks the program id when the instruction is deserialized. |
 | Missing owner check (`cancel_stale.rs:7`, `config.rs:5`, `payout.rs:12`) | The accounts are `Account<'info, T>` types, for which Anchor checks the owner and the discriminator. |
 | Missing signer check (`vrf_callback.rs:11`) | The `#[vrf_callback]` macro from the MagicBlock SDK adds the VRF program identity as a required signer. `callback_not_signed_by_the_vrf_identity_is_refused` sends a forged callback and expects the refusal. |
 
