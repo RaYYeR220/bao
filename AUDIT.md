@@ -2,8 +2,9 @@
 
 The hackathon's security audit ran on commit `dc2d4cc` and reported 94 findings: 13 high, 56 medium, 21 low and
 4 informational. Every one is marked "needs review" by the tool, most with low confidence. This page goes through
-each class and says what the code actually does at the reported lines. No finding led to a change in the program;
-the reasons are below, with the line or the test that settles it.
+each class and says what the code actually does at the reported lines. No finding led to a change in the program's
+logic; the reasons are below, with the line or the test that settles it. One informational finding was fixed: the
+program crate now declares its license.
 
 ## High
 
@@ -38,6 +39,13 @@ the reasons are below, with the line or the test that settles it.
 | CPI target "unresolved" (eleven places) | Every target is a typed Anchor account: `Program<'info, System>`, `Program<'info, AssociatedToken>`, or `Interface<'info, TokenInterface>` constrained to the packet's stored `token_program`. Anchor checks the program id when the instruction is deserialized. |
 | Missing owner check (`cancel_stale.rs:7`, `config.rs:5`, `payout.rs:12`) | The accounts are `Account<'info, T>` types, for which Anchor checks the owner and the discriminator. |
 | Missing signer check (`vrf_callback.rs:11`) | The `#[vrf_callback]` macro from the MagicBlock SDK adds the VRF program identity as a required signer. `callback_not_signed_by_the_vrf_identity_is_refused` sends a forged callback and expects the refusal. |
+
+## Informational
+
+| Finding | What was done |
+|---|---|
+| The program crate declared no license | Fixed: `license = "MIT"` in `programs/bao/Cargo.toml`, matching the repository's `LICENSE`. |
+| 74 crates resolve to more than one version | They come from Anchor, the Solana crates and the MagicBlock SDK depending on different major versions. Nothing in this crate selects them. |
 
 ## What the audit could not cover
 
