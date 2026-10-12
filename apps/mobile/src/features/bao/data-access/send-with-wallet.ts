@@ -229,7 +229,7 @@ export async function sendWithWallet(
     // the wallet simulated the transaction and the program refused it before sending
     const code = programErrorCodeFromText(text)
     if (code !== null) throw new TransactionFailedError(null, { InstructionError: [1, { Custom: code }] })
-    if (/insufficient|0x1|debit an account/i.test(text))
+    if (/insufficient|0x1\b|debit an account/i.test(text))
       throw new Error('Not enough SOL or tSKR in this wallet for that.')
     throw error
   }
